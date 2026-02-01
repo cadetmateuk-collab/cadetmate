@@ -177,7 +177,7 @@ export default async function DashboardPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className="h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                  {user.profile?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'}
+                 {user.profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || '?'}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
