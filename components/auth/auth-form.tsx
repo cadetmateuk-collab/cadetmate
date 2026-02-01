@@ -36,7 +36,7 @@ export function AuthForm() {
         if (error) throw error
         
         setMessage({ type: 'success', text: 'Login successful!' })
-        router.push('/dashboard')
+        router.push('/settings')
         router.refresh()
       } else {
         const { error } = await supabase.auth.signUp({
