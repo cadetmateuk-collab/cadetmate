@@ -20,6 +20,7 @@ import {
   Sparkles,
   House,
   X,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNavItem } from "./SidebarNavItem";
@@ -335,7 +336,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           {!isCollapsed && (
             <div>
               <h1 className="font-semibold text-base text-foreground">Cadet Mate</h1>
-              <p className="text-xs text-muted-foreground">Maritime Training</p>
+              <p className="text-xs text-muted-foreground">Maritime Training Platform</p>
             </div>
           )}
         </div>
@@ -411,6 +412,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           {renderNavItem(FileText, "TRB", "/trb", true)}
           {renderNavItem(Anchor, "Sea Survival", "/sea-survival", true)}
           {renderNavItem(Lightbulb, "General Tips", "/general-tips", true)}
+          {renderNavItem(Compass, "Simulators", "/simulator", true)}
         </div>
       </nav>
 
