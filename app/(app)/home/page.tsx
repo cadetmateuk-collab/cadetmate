@@ -278,7 +278,7 @@ export default function HomePage() {
             {/* LinkedIn Feed */}
             <section className="flex-1 p-6 flex flex-col min-h-0 bg-background">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold">Latest Updates</h2>
+                <h2 className="font-semibold">Latest Update</h2>
                 <a
                   href="https://www.linkedin.com/company/cadetmate/"
                   target="_blank"
@@ -293,7 +293,7 @@ export default function HomePage() {
 
               <div className="flex-1 border border-border rounded-lg overflow-hidden bg-white">
                 <iframe
-                  src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7289958766697959424"
+                  src="https://www.linkedin.com/embed/feed/update/urn:li:share:7423140746456825856"
                   className="w-full h-full"
                   frameBorder="0"
                   allowFullScreen
