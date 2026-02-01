@@ -210,7 +210,7 @@ function ImportModal({ isOpen, onClose, onImport }: {
     </div>
   );
 }
-const normalizeBlocks = useCallback((blocks: ContentBlock[]) => {
+function normalizeBlocks(blocks: ContentBlock[]) {
   return blocks.map(block => {
     if (block.type === "quiz") {
       return {
@@ -226,7 +226,8 @@ const normalizeBlocks = useCallback((blocks: ContentBlock[]) => {
 
     return block;
   });
-}, []);
+}
+
 // Main Builder Component
 export function ModuleBuilder() {
   const [draggingBlock, setDraggingBlock] = useState<number | null>(null);
