@@ -70,7 +70,7 @@ function ModuleViewer({ moduleData, onBack }: { moduleData: ModuleData; onBack: 
         return (
           <HeadingTag
             key={block.id}
-            className={`font-bold text-gray-900 mb-4 ${
+            className={`font-bold text-gray-800 mb-4 ${
               block.content.level === 1 ? "text-3xl" :
               block.content.level === 2 ? "text-2xl" :
               "text-xl"
