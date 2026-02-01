@@ -81,10 +81,38 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [modulesOpen, setModulesOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [openModuleChildren, setOpenModuleChildren] = useState<Record<string, boolean>>({});
-  const [openAdminChildren, setOpenAdminChildren] = useState<Record<string, boolean>>({});
+  
+  // Load dropdown states from localStorage
+  const [modulesOpen, setModulesOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('sidebar_modules_open') === 'true';
+  });
+  
+  const [adminOpen, setAdminOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('sidebar_admin_open') === 'true';
+  });
+  
+  const [openModuleChildren, setOpenModuleChildren] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('sidebar_module_children');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  
+  const [openAdminChildren, setOpenAdminChildren] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('sidebar_admin_children');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  
   const [mounted, setMounted] = useState(false);
 
   const pathname = usePathname();
@@ -105,6 +133,31 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Save dropdown states to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar_modules_open', String(modulesOpen));
+    }
+  }, [modulesOpen]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar_admin_open', String(adminOpen));
+    }
+  }, [adminOpen]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar_module_children', JSON.stringify(openModuleChildren));
+    }
+  }, [openModuleChildren]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar_admin_children', JSON.stringify(openAdminChildren));
+    }
+  }, [openAdminChildren]);
 
   const toggleTheme = useCallback(() => {
     setTheme(theme === "dark" ? "light" : "dark");
@@ -363,74 +416,103 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
 
       {/* Footer */}
       <div className="border-t border-border bg-card">
-        {/* Premium Badge */}
-        <div className="p-3 border-b border-border">
-          {isPremium ? (
-            <div className="w-full bg-primary text-primary-foreground rounded-lg p-3">
-              <div className="flex items-center justify-center gap-2 text-white">
-                <Sparkles size={20} />
-                <span className="font-semibold">Premium Active</span>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowPremiumModal(true)}
-              className="w-full bg-primary text-primary-foreground rounded-lg p-3 hover:opacity-90 transition-all"
-            >
-              <div className="flex items-center justify-center gap-2 text-white">
-                <Sparkles size={20} />
-                <span className="font-semibold">Upgrade to Premium</span>
-              </div>
-            </button>
-          )}
-        </div>
+
 
         {/* Settings */}
         <div className="p-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/settings")}
-              className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg text-card-foreground hover:bg-muted transition-colors"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="text-sm font-medium">Settings</span>
-            </button>
-            <button
-              onClick={toggleTheme}
-              className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-card-foreground"
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {!mounted ? (
-                <Moon className="h-5 w-5" />
-              ) : theme === "dark" ? (
-                <Sun className="h-5 w-5" />
-              ) : (
-                <Moon className="h-5 w-5" />
-              )}
-            </button>
-          </div>
+          {/* Premium / Upgrade Section */}
+{userProfile && (
+  <div className="p-3 border-b border-border">
+    {isPremium ? (
+      <div className="w-full bg-primary text-primary-foreground rounded-lg p-3">
+        <div className="flex items-center justify-center gap-2 text-white">
+          <Sparkles size={20} />
+          <span className="font-semibold">Premium Active</span>
+        </div>
+      </div>
+    ) : (
+      <button
+        onClick={() => setShowPremiumModal(true)}
+        className="w-full bg-primary text-primary-foreground rounded-lg p-3 hover:opacity-90 transition-all"
+      >
+        <div className="flex items-center justify-center gap-2 text-white">
+          <Sparkles size={20} />
+          <span className="font-semibold">Upgrade to Premium</span>
+        </div>
+      </button>
+    )}
+  </div>
+)}
+
         </div>
 
-        {/* User Profile */}
-        <div className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer min-w-0 hover:bg-muted transition-colors">
-              <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-semibold text-white">{userProfile?.initials || "?"}</span>
-              </div>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className="text-sm font-medium truncate text-card-foreground">{userProfile?.name || "Loading..."}</p>
-                <p className="text-xs truncate text-muted-foreground">{userProfile?.email || ""}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => router.push("/logout")}
-              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
-          </div>
+        {/* User / Auth Section */}
+<div className="p-3">
+  {userProfile ? (
+    <div className="flex items-center gap-2">
+      {/* Profile / Settings */}
+      <div
+        onClick={() => router.push("/settings")}
+        className="
+          group relative flex items-center gap-3
+          px-3 py-2 rounded-lg cursor-pointer
+          hover:bg-muted transition-all duration-150 ease-out
+          flex-1 min-w-0
+          motion-safe:hover:scale-[1.03]
+          motion-safe:hover:z-10
+        "
+      >
+        {/* Avatar */}
+        <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+          <span className="text-sm font-semibold text-white">
+            {userProfile.initials}
+          </span>
         </div>
+
+        {/* Name + Email */}
+        <div className="relative flex-1 min-w-0">
+          {/* Fade */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-6
+                          bg-gradient-to-l from-card to-transparent" />
+
+          <p className="text-sm font-medium text-card-foreground whitespace-nowrap overflow-hidden">
+            {userProfile.name}
+          </p>
+          <p className="text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
+            {userProfile.email}
+          </p>
+        </div>
+      </div>
+
+      {/* Logout */}
+      <button
+        onClick={() => router.push("/logout")}
+        className="
+          h-10 w-10 flex-shrink-0 rounded-lg
+          flex items-center justify-center
+          text-destructive
+          hover:bg-destructive/10 transition-colors
+        "
+        aria-label="Logout"
+      >
+        <LogOut className="h-5 w-5" />
+      </button>
+    </div>
+  ) : (
+    <button
+      onClick={() => router.push("/auth")}
+      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg
+                 bg-primary text-white hover:opacity-90 transition-all"
+    >
+      <Lock className="h-4 w-4" />
+      <span className="text-sm font-semibold">Log in</span>
+    </button>
+  )}
+</div>
+
+
+
+
       </div>
     </>
   );

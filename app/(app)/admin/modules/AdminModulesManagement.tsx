@@ -377,35 +377,49 @@ const AdminModulesManagement: React.FC = () => {
   };
 
   const deleteModule = async (moduleId: string, title: string): Promise<void> => {
-  if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/modules?id=${encodeURIComponent(moduleId)}`, {
-      method: 'DELETE',
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to delete module');
+    if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      return;
     }
 
-    // Update local state
-    setModules(modules.filter(m => m.id !== moduleId));
-    alert('Module deleted successfully!');
-  } catch (error: any) {
-    console.error('Error deleting module:', error);
-    alert(`Failed to delete module: ${error.message}`);
-  }
-};
+    try {
+      const response = await fetch(`/api/modules?id=${encodeURIComponent(moduleId)}`, {
+        method: 'DELETE',
+      });
 
-  const handleEdit = (module: Module): void => {
-    // Store the module data in sessionStorage for the module builder to pick up
-    sessionStorage.setItem('importModule', JSON.stringify(module));
-    // Navigate to module builder with import parameter
-    window.location.href = `/admin/module-builder?import=${module.id}`;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete module');
+      }
+
+      // Update local state
+      setModules(modules.filter(m => m.id !== moduleId));
+      alert('Module deleted successfully!');
+    } catch (error: any) {
+      console.error('Error deleting module:', error);
+      alert(`Failed to delete module: ${error.message}`);
+    }
+  };
+
+  const handleEdit = async (module: Module): Promise<void> => {
+    try {
+      // Fetch the full module data including content
+      const response = await fetch(`/api/modules?slug=${encodeURIComponent(module.slug)}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch module');
+      }
+
+      // Store the complete module data in sessionStorage
+      sessionStorage.setItem('importModule', JSON.stringify(result.data));
+      
+      // Navigate to module builder
+      window.location.href = `/admin/module-builder?import=${module.id}`;
+    } catch (error: any) {
+      console.error('Error loading module for editing:', error);
+      alert(`Failed to load module: ${error.message}`);
+    }
   };
 
   const allCategories = ['all', ...categories];
@@ -542,16 +556,15 @@ const AdminModulesManagement: React.FC = () => {
                                   )}
                                 </div>
                                 <div className="text-sm text-gray-600 space-y-1">
-<div>
-  Slug:{" "}
-  <Link
-    href={`/modules/${module.slug}`}
-    className="font-mono text-blue-600 hover:underline"
-  >
-    {module.slug}
-  </Link>
-</div>
-
+                                  <div>
+                                    Slug:{" "}
+                                    <Link
+                                      href={`/modules/${module.slug}`}
+                                      className="font-mono text-blue-600 hover:underline"
+                                    >
+                                      {module.slug}
+                                    </Link>
+                                  </div>
                                   <div>Last updated: {new Date(module.updated_at || module.created_at).toLocaleDateString()}</div>
                                 </div>
                               </div>

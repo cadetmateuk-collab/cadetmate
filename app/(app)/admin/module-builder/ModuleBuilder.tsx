@@ -970,7 +970,42 @@ export function ModuleBuilder() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [saving, setSaving] = useState(false);
+// Add this useEffect to your ModuleBuilder component
+// It safely checks for sessionStorage only on the client side
 
+useEffect(() => {
+  // Only run on client side
+  if (typeof window === 'undefined') return;
+  
+  // Check for import from sessionStorage on mount
+  const importData = sessionStorage.getItem('importModule');
+  if (importData) {
+    try {
+      const data = JSON.parse(importData);
+      console.log('Loading module from sessionStorage:', data);
+      
+      dispatch({
+        type: 'SET_MODULE',
+        payload: {
+          id: data.id || '',
+          title: data.title || '',
+          description: data.description || '',
+          category: data.category || '',
+          subcategory: data.subcategory || '',
+          blocks: normalizeBlocks(data.blocks || data.content?.blocks || []),
+        },
+      });
+      
+      // Clear the sessionStorage after importing
+      sessionStorage.removeItem('importModule');
+      alert('✅ Module loaded successfully!');
+    } catch (error) {
+      console.error('Error parsing sessionStorage data:', error);
+      sessionStorage.removeItem('importModule');
+      alert('❌ Error loading module from sessionStorage');
+    }
+  }
+}, []); // Empty dependency array - run only on mount
   // Fetch categories
   useEffect(() => {
     fetch('/api/admin/categories')
@@ -984,29 +1019,32 @@ export function ModuleBuilder() {
 
   // Import module
   const importModule = useCallback(async (moduleId: string) => {
-    try {
-      const res = await fetch(`/api/modules?id=${moduleId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const data = await res.json();
-      
-      dispatch({
-        type: 'SET_MODULE',
-        payload: {
-          id: data.id,
-          title: data.title,
-          description: data.description || "",
-          category: data.category,
-          subcategory: data.subcategory,
-          blocks: normalizeBlocks(data.blocks || []),
-        },
-      });
+  try {
+    const res = await fetch(`/api/modules?id=${moduleId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const result = await res.json();
+    
+    // Handle different response formats
+    const data = result.data || result;
+    
+    dispatch({
+      type: 'SET_MODULE',
+      payload: {
+        id: data.id || '',
+        title: data.title || '',
+        description: data.description || '',
+        category: data.category || '',
+        subcategory: data.subcategory || '',
+        blocks: normalizeBlocks(data.blocks || data.content?.blocks || []),
+      },
+    });
 
-      setShowImportModal(false);
-      alert("✅ Module imported successfully!");
-    } catch (error: any) {
-      alert(`❌ Error importing module: ${error.message}`);
-    }
-  }, []);
+    setShowImportModal(false);
+  } catch (error: any) {
+    console.error('Import error:', error);
+    alert(`❌ Error importing module: ${error.message}`);
+  }
+}, []);
 
   // Create new module
   const createNewModule = useCallback(() => {
@@ -1080,7 +1118,6 @@ export function ModuleBuilder() {
 
       const data = await res.json();
       dispatch({ type: 'UPDATE_FIELD', field: 'id', value: data.id });
-      alert('✅ Module saved successfully!');
     } catch (error: any) {
       alert(`❌ Error saving module: ${error.message}`);
     } finally {
