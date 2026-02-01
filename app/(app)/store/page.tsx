@@ -49,7 +49,7 @@ const StorePage = () => {
   };
 
   // Stripe Pricing Table Component
-  const StripePricingTable = ({ category }: { category: string }) => {
+  const StripePricingTable = ({ category }: { category: keyof typeof stripeTables }) => {
     React.useEffect(() => {
       const script = document.createElement('script');
       script.src = 'https://js.stripe.com/v3/pricing-table.js';
@@ -62,13 +62,13 @@ const StorePage = () => {
     }, []);
 
     return (
-      <div className="w-full">
-        <stripe-pricing-table
-          pricing-table-id={stripeTables[category].pricingTableId}
-          publishable-key={stripeTables[category].publishableKey}
-        />
-      </div>
-    );
+  <div className="w-full">
+    {React.createElement('stripe-pricing-table', {
+      'pricing-table-id': stripeTables[category].pricingTableId,
+      'publishable-key': stripeTables[category].publishableKey,
+    })}
+  </div>
+);
   };
 
   return (
