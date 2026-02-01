@@ -62,6 +62,7 @@ function RichTextEditor({ value, onChange, placeholder }: any) {
     }, 0);
   }, [onChange]);
 
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
       <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
@@ -209,7 +210,23 @@ function ImportModal({ isOpen, onClose, onImport }: {
     </div>
   );
 }
+const normalizeBlocks = useCallback((blocks: ContentBlock[]) => {
+  return blocks.map(block => {
+    if (block.type === "quiz") {
+      return {
+        ...block,
+        content: {
+          title: block.content?.title || "Quiz",
+          questions: Array.isArray(block.content?.questions)
+            ? block.content.questions
+            : [],
+        },
+      };
+    }
 
+    return block;
+  });
+}, []);
 // Main Builder Component
 export function ModuleBuilder() {
   const [draggingBlock, setDraggingBlock] = useState<number | null>(null);
@@ -239,13 +256,14 @@ export function ModuleBuilder() {
       const data = await res.json();
       
       setModule({
-        id: data.id,
-        title: data.title,
-        description: data.description || "",
-        category: data.category,
-        subcategory: data.subcategory,
-        blocks: data.blocks || [],
-      });
+  id: data.id,
+  title: data.title,
+  description: data.description || "",
+  category: data.category,
+  subcategory: data.subcategory,
+  blocks: normalizeBlocks(data.blocks || []),
+});
+
 
       setShowImportModal(false);
       alert("✅ Module imported successfully!");
