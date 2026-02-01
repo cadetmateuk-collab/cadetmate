@@ -3,14 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { CadetMateSidebar } from "@/components/Sidebar";
 
-const categories = [
-  { id: 'all', label: 'All' },
-  { id: 'modules', label: 'Modules' },
-  { id: 'trb', label: 'TRB' },
-  { id: 'seatime', label: 'Sea Time' },
-  { id: 'exams', label: 'Exams' },
-  { id: 'extras', label: 'Extras' }
-];
+
 
 const StorePage = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -47,7 +40,14 @@ const StorePage = () => {
       publishableKey: 'pk_test_YOUR_KEY_HERE'
     }
   };
-
+const categories: { id: keyof typeof stripeTables; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'modules', label: 'Modules' },
+  { id: 'trb', label: 'TRB' },
+  { id: 'seatime', label: 'Sea Time' },
+  { id: 'exams', label: 'Exams' },
+  { id: 'extras', label: 'Extras' }
+];
   // Stripe Pricing Table Component
   const StripePricingTable = ({ category }: { category: keyof typeof stripeTables }) => {
     React.useEffect(() => {
