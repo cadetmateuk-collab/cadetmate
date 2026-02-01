@@ -171,7 +171,7 @@ export default function HomePage() {
                 </div>
 
                 <h1 className="text-6xl font-semibold mb-6 leading-tight">
-                  Master Your Maritime Career
+                  Master Your Maritime JOB FUCK YEAH
                 </h1>
 
                 <p className="text-muted-foreground mb-8 text-xl leading-relaxed">
