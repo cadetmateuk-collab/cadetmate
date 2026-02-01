@@ -231,17 +231,24 @@ const RichTextEditor = memo(function RichTextEditor({
   const editorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const isExternalUpdate = useRef(false);
+  const [initialized, setInitialized] = useState(false);
 
-  // Only update DOM when value changes externally (not from user typing)
+  // Initialize content on mount and when value changes from external source
   useEffect(() => {
-    if (editorRef.current && !isFocused && isExternalUpdate.current) {
+    if (editorRef.current) {
       const currentHtml = editorRef.current.innerHTML;
-      if (value !== currentHtml) {
+      
+      // Only update if:
+      // 1. Not currently focused (user isn't typing)
+      // 2. The value is different from current content
+      // 3. Either not initialized yet OR it's an external update
+      if (!isFocused && value !== currentHtml && (!initialized || isExternalUpdate.current)) {
         editorRef.current.innerHTML = value || '';
+        setInitialized(true);
+        isExternalUpdate.current = false;
       }
-      isExternalUpdate.current = false;
     }
-  }, [value, isFocused]);
+  }, [value, isFocused, initialized]);
 
   // Debounced change handler for performance
   const debouncedOnChange = useMemo(
