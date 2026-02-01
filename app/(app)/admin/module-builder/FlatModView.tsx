@@ -66,7 +66,7 @@ function ModuleViewer({ moduleData, onBack }: { moduleData: ModuleData; onBack: 
   const renderBlock = (block: ContentBlock) => {
     switch (block.type) {
       case "heading":
-        const HeadingTag = `h${block.content.level}` as keyof JSX.IntrinsicElements;
+        const HeadingTag = `h${block.content.level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
         return (
           <HeadingTag
             key={block.id}

@@ -529,7 +529,7 @@ export function ModuleBuilder() {
       );
     }
 
-    const editors: Record<string, JSX.Element> = {
+    const editors: Record<string, React.ReactElement> = {
       heading: (
         <div className="space-y-2">
           <select
