@@ -1,7 +1,4 @@
 @import "tailwindcss";
-nextjs-portal {
-  display: none !important;
-}
 @layer base {
   :root {
     /* Light mode - Clean minimal aesthetic */
