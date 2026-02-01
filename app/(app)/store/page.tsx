@@ -49,7 +49,7 @@ const StorePage = () => {
   };
 
   // Stripe Pricing Table Component
-  const StripePricingTable = ({ category }) => {
+  const StripePricingTable = ({ category }: { category: string }) => {
     React.useEffect(() => {
       const script = document.createElement('script');
       script.src = 'https://js.stripe.com/v3/pricing-table.js';
