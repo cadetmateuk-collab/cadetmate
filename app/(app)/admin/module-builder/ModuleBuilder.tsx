@@ -872,6 +872,33 @@ const BlockEditor = memo(function BlockEditor({ block, onUpdate }: BlockEditorPr
           placeholder="PDF URL..."
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
         />
+        {block.content.url && (
+          <div className="flex gap-2 mt-2">
+            <a
+              href={block.content.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              View Original
+            </a>
+            <span className="text-gray-300">|</span>
+            <button
+              onClick={() => {
+                const userEmail = prompt('Enter email for watermark:');
+                if (userEmail) {
+                  // Note: downloadWatermarkedPDF is not accessible here in BlockEditor
+                  // We need to pass it as a prop or use a different approach
+                  alert('PDF watermarking is available in the module viewer');
+                }
+              }}
+              className="text-sm text-green-600 hover:underline"
+              type="button"
+            >
+              Preview Watermark Feature
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -910,6 +937,7 @@ const BlockEditor = memo(function BlockEditor({ block, onUpdate }: BlockEditorPr
 // ============================================================================
 // DRAGGABLE BLOCK
 // ============================================================================
+// Add this function inside ModuleBuilder component
 
 interface DraggableBlockProps {
   block: ContentBlock;
@@ -977,9 +1005,42 @@ export function ModuleBuilder() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [saving, setSaving] = useState(false);
-// Add this useEffect to your ModuleBuilder component
-// It safely checks for sessionStorage only on the client side
+const downloadWatermarkedPDF = useCallback(async (pdfUrl: string, userEmail: string, fileName: string) => {
+  try {
+    const response = await fetch('/api/pdf/watermark', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdfUrl,
+        userEmail,
+      }),
+    });
 
+    if (!response.ok) {
+      throw new Error('Failed to generate watermarked PDF');
+    }
+
+    // Create blob from response
+    const blob = await response.blob();
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'document.pdf';
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error('Error downloading watermarked PDF:', error);
+    alert('Failed to download PDF with watermark');
+  }
+}, []);
 useEffect(() => {
   // Only run on client side
   if (typeof window === 'undefined') return;

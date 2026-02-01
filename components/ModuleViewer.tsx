@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { CheckCircle2, FileText } from "lucide-react";
+import { CheckCircle2, FileText, Download, Eye } from "lucide-react";
 
 interface QuizQuestion {
   id: string;
@@ -30,15 +30,17 @@ interface ModuleData {
 interface ModuleViewerProps {
   moduleId: string;
   moduleData?: ModuleData;
+  userEmail?: string;
 }
 
-export default function ModuleViewer({ moduleId, moduleData: initialData }: ModuleViewerProps) {
+export default function ModuleViewer({ moduleId, moduleData: initialData, userEmail }: ModuleViewerProps) {
   const [moduleData, setModuleData] = useState<ModuleData | null>(initialData || null);
   const [currentPage, setCurrentPage] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, any>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({});
   const [quizQuestionIndex, setQuizQuestionIndex] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(!initialData);
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null);
 
   useEffect(() => {
     if (!initialData && moduleId) {
@@ -49,6 +51,47 @@ export default function ModuleViewer({ moduleId, moduleData: initialData }: Modu
         .finally(() => setLoading(false));
     }
   }, [moduleId, initialData]);
+
+  const downloadWatermarkedPDF = useCallback(async (pdfUrl: string, fileName: string, blockId: string) => {
+    try {
+      setDownloadingPdf(blockId);
+      const email = userEmail || prompt('Enter your email for watermark:');
+      if (!email) {
+        setDownloadingPdf(null);
+        return;
+      }
+
+      const response = await fetch('/api/pdf/watermark', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pdfUrl,
+          userEmail: email,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate watermarked PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'document.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading watermarked PDF:', error);
+      alert('Failed to download PDF with watermark');
+    } finally {
+      setDownloadingPdf(null);
+    }
+  }, [userEmail]);
 
   const pages = useMemo(() => {
     if (!moduleData) return [];
@@ -364,20 +407,44 @@ export default function ModuleViewer({ moduleId, moduleData: initialData }: Modu
         );
 
       case "pdf":
+        const isDownloading = downloadingPdf === block.id;
         return (
-          <a
-            key={block.id}
-            href={block.content.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 p-4 mb-3 rounded-lg hover:bg-gray-50 border border-gray-200"
-          >
-            <FileText className="h-5 w-5 text-blue-600" />
-            <div>
-              <p className="font-medium text-gray-900">{block.content.title}</p>
-              <p className="text-sm text-gray-500">Click to open PDF</p>
+          <div key={block.id} className="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-start gap-3 mb-4">
+              <FileText className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 text-lg">{block.content.title}</h3>
+                <p className="text-sm text-gray-500 mt-1">PDF Document</p>
+              </div>
             </div>
-          </a>
+            <div className="flex gap-3">
+              <button
+                onClick={() => downloadWatermarkedPDF(block.content.url, block.content.title || 'document.pdf', block.id)}
+                disabled={isDownloading}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDownloading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    Download with Watermark
+                  </>
+                )}
+              </button>
+            </div>
+            {userEmail && (
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                PDF will be watermarked with: {userEmail}
+              </p>
+            )}
+          </div>
         );
 
       case "link":
@@ -405,7 +472,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData }: Modu
       default:
         return null;
     }
-  }, [renderQuiz]);
+  }, [renderQuiz, downloadWatermarkedPDF, downloadingPdf, userEmail]);
 
   if (loading) {
     return (
