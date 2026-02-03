@@ -1,0 +1,368 @@
+{
+  "scenarios": [
+    {
+      "id": "man-overboard",
+      "name": "Man Overboard",
+      "description": "Crew member has fallen overboard. Execute immediate rescue procedures.",
+      "timeLimit": 300,
+      "events": [
+        {
+          "id": "mob-alarm",
+          "type": "alarm",
+          "trigger": "immediate",
+          "data": {
+            "active": true
+          }
+        },
+        {
+          "id": "mob-sound",
+          "type": "sound",
+          "trigger": "immediate",
+          "data": {
+            "soundFile": "/sounds/man-overboard-alarm.mp3"
+          }
+        }
+      ],
+      "checklist": [
+        {
+          "id": "mob-1",
+          "action": "Sound alarm (General Alarm)",
+          "location": "center",
+          "buttonId": "silence-alarm-btn",
+          "order": 1,
+          "completed": false
+        },
+        {
+          "id": "mob-2",
+          "action": "Deploy life buoy from port side",
+          "location": "port",
+          "buttonId": "lifebuoy-port",
+          "order": 2,
+          "completed": false
+        },
+        {
+          "id": "mob-3",
+          "action": "Mark position on ECDIS",
+          "location": "center",
+          "buttonId": "ecdis",
+          "order": 3,
+          "completed": false
+        },
+        {
+          "id": "mob-4",
+          "action": "Hard turn to starboard (Williamson Turn)",
+          "location": "center",
+          "buttonId": "helm",
+          "order": 4,
+          "completed": false
+        },
+        {
+          "id": "mob-5",
+          "action": "Reduce engine speed",
+          "location": "center",
+          "buttonId": "engine-telegraph",
+          "order": 5,
+          "completed": false
+        },
+        {
+          "id": "mob-6",
+          "action": "Make VHF distress call",
+          "location": "center",
+          "buttonId": "vhf-radio",
+          "order": 6,
+          "completed": false
+        },
+        {
+          "id": "mob-7",
+          "action": "Post lookout on starboard wing",
+          "location": "starboard",
+          "buttonId": "starboard-lookout",
+          "order": 7,
+          "completed": false
+        },
+        {
+          "id": "mob-8",
+          "action": "Log incident in ship's log",
+          "location": "center",
+          "buttonId": "logbook",
+          "order": 8,
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "blackout",
+      "name": "Total Blackout",
+      "description": "Complete power failure. Restore emergency systems and ensure vessel safety.",
+      "timeLimit": 600,
+      "events": [
+        {
+          "id": "blackout-lights",
+          "type": "lighting",
+          "trigger": "immediate",
+          "data": {
+            "level": 0.1
+          }
+        },
+        {
+          "id": "blackout-alarm",
+          "type": "alarm",
+          "trigger": "delayed",
+          "delay": 2000,
+          "data": {
+            "active": true
+          }
+        },
+        {
+          "id": "restore-emergency-lights",
+          "type": "lighting",
+          "trigger": "delayed",
+          "delay": 5000,
+          "data": {
+            "level": 0.3
+          }
+        }
+      ],
+      "checklist": [
+        {
+          "id": "blackout-1",
+          "action": "Acknowledge blackout alarm",
+          "location": "center",
+          "buttonId": "silence-alarm-btn",
+          "order": 1,
+          "completed": false
+        },
+        {
+          "id": "blackout-2",
+          "action": "Check radar for traffic",
+          "location": "center",
+          "buttonId": "radar",
+          "order": 2,
+          "completed": false
+        },
+        {
+          "id": "blackout-3",
+          "action": "Switch to manual steering",
+          "location": "center",
+          "buttonId": "helm",
+          "order": 3,
+          "completed": false
+        },
+        {
+          "id": "blackout-4",
+          "action": "Verify position on ECDIS backup",
+          "location": "center",
+          "buttonId": "ecdis",
+          "order": 4,
+          "completed": false
+        },
+        {
+          "id": "blackout-5",
+          "action": "Post lookouts port and starboard",
+          "location": "port",
+          "buttonId": "port-lookout",
+          "order": 5,
+          "completed": false
+        },
+        {
+          "id": "blackout-6",
+          "action": "Verify starboard lookout posted",
+          "location": "starboard",
+          "buttonId": "starboard-lookout",
+          "order": 6,
+          "completed": false
+        },
+        {
+          "id": "blackout-7",
+          "action": "Make Pan-Pan call on VHF",
+          "location": "center",
+          "buttonId": "vhf-radio",
+          "order": 7,
+          "completed": false
+        },
+        {
+          "id": "blackout-8",
+          "action": "Log blackout in deck log",
+          "location": "center",
+          "buttonId": "logbook",
+          "order": 8,
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "fire-alarm",
+      "name": "Fire in Engine Room",
+      "description": "Fire detected in engine room. Implement fire response procedures.",
+      "timeLimit": 420,
+      "events": [
+        {
+          "id": "fire-alarm",
+          "type": "alarm",
+          "trigger": "immediate",
+          "data": {
+            "active": true
+          }
+        },
+        {
+          "id": "fire-visual",
+          "type": "visual",
+          "trigger": "immediate",
+          "data": {
+            "effect": "smoke"
+          }
+        },
+        {
+          "id": "fire-sound",
+          "type": "sound",
+          "trigger": "immediate",
+          "data": {
+            "soundFile": "/sounds/fire-alarm.mp3"
+          }
+        }
+      ],
+      "checklist": [
+        {
+          "id": "fire-1",
+          "action": "Sound general alarm",
+          "location": "center",
+          "buttonId": "silence-alarm-btn",
+          "order": 1,
+          "completed": false
+        },
+        {
+          "id": "fire-2",
+          "action": "Check ECDIS position",
+          "location": "center",
+          "buttonId": "ecdis",
+          "order": 2,
+          "completed": false
+        },
+        {
+          "id": "fire-3",
+          "action": "Stop engines",
+          "location": "center",
+          "buttonId": "engine-telegraph",
+          "order": 3,
+          "completed": false
+        },
+        {
+          "id": "fire-4",
+          "action": "Make Mayday call",
+          "location": "center",
+          "buttonId": "vhf-radio",
+          "order": 4,
+          "completed": false
+        },
+        {
+          "id": "fire-5",
+          "action": "Prepare to abandon ship - check port side",
+          "location": "port",
+          "buttonId": "port-lookout",
+          "order": 5,
+          "completed": false
+        },
+        {
+          "id": "fire-6",
+          "action": "Check starboard evacuation route",
+          "location": "starboard",
+          "buttonId": "starboard-lookout",
+          "order": 6,
+          "completed": false
+        },
+        {
+          "id": "fire-7",
+          "action": "Log emergency in deck log",
+          "location": "center",
+          "buttonId": "logbook",
+          "order": 7,
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": "collision-avoidance",
+      "name": "Collision Avoidance",
+      "description": "Vessel on collision course detected. Execute evasive maneuvers.",
+      "timeLimit": 180,
+      "events": [
+        {
+          "id": "collision-ship",
+          "type": "ship_movement",
+          "trigger": "immediate",
+          "data": {
+            "approaching": true,
+            "speed": 2
+          }
+        },
+        {
+          "id": "collision-alarm",
+          "type": "alarm",
+          "trigger": "delayed",
+          "delay": 3000,
+          "data": {
+            "active": true
+          }
+        }
+      ],
+      "checklist": [
+        {
+          "id": "collision-1",
+          "action": "Check radar for CPA/TCPA",
+          "location": "center",
+          "buttonId": "radar",
+          "order": 1,
+          "completed": false
+        },
+        {
+          "id": "collision-2",
+          "action": "Verify position on ECDIS",
+          "location": "center",
+          "buttonId": "ecdis",
+          "order": 2,
+          "completed": false
+        },
+        {
+          "id": "collision-3",
+          "action": "Execute starboard turn",
+          "location": "center",
+          "buttonId": "helm",
+          "order": 3,
+          "completed": false
+        },
+        {
+          "id": "collision-4",
+          "action": "Sound 5 short blasts",
+          "location": "center",
+          "buttonId": "silence-alarm-btn",
+          "order": 4,
+          "completed": false
+        },
+        {
+          "id": "collision-5",
+          "action": "Call other vessel on VHF Ch 16",
+          "location": "center",
+          "buttonId": "vhf-radio",
+          "order": 5,
+          "completed": false
+        },
+        {
+          "id": "collision-6",
+          "action": "Post lookout on starboard wing",
+          "location": "starboard",
+          "buttonId": "starboard-lookout",
+          "order": 6,
+          "completed": false
+        },
+        {
+          "id": "collision-7",
+          "action": "Log incident",
+          "location": "center",
+          "buttonId": "logbook",
+          "order": 7,
+          "completed": false
+        }
+      ]
+    }
+  ]
+}
