@@ -515,15 +515,7 @@ export default function ShipBridgeSimulator() {
     // List the actual filenames of your MP3 files here
     const vhfFiles = [
       '/vhfchatter/chatter1.mp3',
-      '/vhfchatter/chatter2.mp3',
-      '/vhfchatter/chatter3.mp3',
-      '/vhfchatter/chatter4.mp3',
-      '/vhfchatter/chatter5.mp3',
-      '/vhfchatter/chatter6.mp3',
-      '/vhfchatter/chatter7.mp3',
-      '/vhfchatter/chatter8.mp3',
-      '/vhfchatter/chatter9.mp3',
-      '/vhfchatter/chatter10.mp3'
+      '/vhfchatter/chatter2.mp3'
     ];
 
     // Pick a random file
