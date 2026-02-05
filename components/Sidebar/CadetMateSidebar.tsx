@@ -135,6 +135,24 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
     setMounted(true);
   }, []);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [isMobileOpen]);
+
   // Save dropdown states to localStorage whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -328,7 +346,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   const SidebarContent = () => (
     <>
       {/* Header */}
-      <div className="h-[73px] flex items-center justify-between p-4 border-b border-border bg-card flex-shrink-0">
+      <div className="h-[73px] flex items-center justify-between p-4 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative h-10 w-10">
             <Image src="/images/logo.png" alt="Cadet Mate" fill className="object-contain" priority />
@@ -342,14 +360,15 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
         </div>
         <button
           onClick={() => (isMobileOpen ? closeMobileMenu() : setIsCollapsed(!isCollapsed))}
-          className="p-2 rounded-md hover:bg-muted transition-colors lg:hidden text-foreground"
+          className="p-2 rounded-md hover:bg-muted transition-colors text-foreground lg:block"
+          aria-label="Close menu"
         >
           {isMobileOpen ? <X className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 bg-card">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3">
         <div className="space-y-1">
           {renderNavItem(House, "Home", "/home")}
           {renderNavItem(ShoppingBag, "Store", "/store")}
@@ -417,104 +436,92 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border bg-card">
-
-
-        {/* Settings */}
-        <div className="p-3 border-b border-border">
-          {/* Premium / Upgrade Section */}
-{userProfile && (
-  <div className="p-3 border-b border-border">
-    {isPremium ? (
-      <div className="w-full bg-primary text-primary-foreground rounded-lg p-3">
-        <div className="flex items-center justify-center gap-2 text-white">
-          <Sparkles size={20} />
-          <span className="font-semibold">Premium Active</span>
-        </div>
-      </div>
-    ) : (
-      <button
-        onClick={() => setShowPremiumModal(true)}
-        className="w-full bg-primary text-primary-foreground rounded-lg p-3 hover:opacity-90 transition-all"
-      >
-        <div className="flex items-center justify-center gap-2 text-white">
-          <Sparkles size={20} />
-          <span className="font-semibold">Upgrade to Premium</span>
-        </div>
-      </button>
-    )}
-  </div>
-)}
-
-        </div>
+      <div className="border-t border-border flex-shrink-0">
+        {/* Premium / Upgrade Section */}
+        {userProfile && (
+          <div className="p-3 border-b border-border">
+            {isPremium ? (
+              <div className="w-full bg-primary text-primary-foreground rounded-lg p-3">
+                <div className="flex items-center justify-center gap-2 text-white">
+                  <Sparkles size={20} />
+                  <span className="font-semibold">Premium Active</span>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowPremiumModal(true)}
+                className="w-full bg-primary text-primary-foreground rounded-lg p-3 hover:opacity-90 transition-all"
+              >
+                <div className="flex items-center justify-center gap-2 text-white">
+                  <Sparkles size={20} />
+                  <span className="font-semibold">Upgrade to Premium</span>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* User / Auth Section */}
-<div className="p-3">
-  {userProfile ? (
-    <div className="flex items-center gap-2">
-      {/* Profile / Settings */}
-      <div
-        onClick={() => router.push("/settings")}
-        className="
-          group relative flex items-center gap-3
-          px-3 py-2 rounded-lg cursor-pointer
-          hover:bg-muted transition-all duration-150 ease-out
-          flex-1 min-w-0
-          motion-safe:hover:scale-[1.03]
-          motion-safe:hover:z-10
-        "
-      >
-        {/* Avatar */}
-        <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-          <span className="text-sm font-semibold text-white">
-            {userProfile.initials}
-          </span>
+        <div className="p-3">
+          {userProfile ? (
+            <div className="flex items-center gap-2">
+              {/* Profile / Settings */}
+              <div
+                onClick={() => router.push("/settings")}
+                className="
+                  group relative flex items-center gap-3
+                  px-3 py-2 rounded-lg cursor-pointer
+                  hover:bg-muted transition-all duration-150 ease-out
+                  flex-1 min-w-0
+                  motion-safe:hover:scale-[1.02]
+                "
+              >
+                {/* Avatar */}
+                <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-semibold text-white">
+                    {userProfile.initials}
+                  </span>
+                </div>
+
+                {/* Name + Email */}
+                <div className="relative flex-1 min-w-0">
+                  <div className="pointer-events-none absolute right-0 top-0 h-full w-6
+                                  bg-gradient-to-l from-card to-transparent" />
+
+                  <p className="text-sm font-medium text-card-foreground whitespace-nowrap overflow-hidden">
+                    {userProfile.name}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
+                    {userProfile.email}
+                  </p>
+                </div>
+              </div>
+
+              {/* Logout */}
+              <button
+                onClick={() => router.push("/logout")}
+                className="
+                  h-10 w-10 flex-shrink-0 rounded-lg
+                  flex items-center justify-center
+                  text-destructive
+                  hover:bg-destructive/10 transition-colors
+                "
+                aria-label="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push("/auth")}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg
+                         bg-primary text-white hover:opacity-90 transition-all"
+            >
+              <Lock className="h-4 w-4" />
+              <span className="text-sm font-semibold">Log in</span>
+            </button>
+          )}
         </div>
-
-        {/* Name + Email */}
-        <div className="relative flex-1 min-w-0">
-          {/* Fade */}
-          <div className="pointer-events-none absolute right-0 top-0 h-full w-6
-                          bg-gradient-to-l from-card to-transparent" />
-
-          <p className="text-sm font-medium text-card-foreground whitespace-nowrap overflow-hidden">
-            {userProfile.name}
-          </p>
-          <p className="text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
-            {userProfile.email}
-          </p>
-        </div>
-      </div>
-
-      {/* Logout */}
-      <button
-        onClick={() => router.push("/logout")}
-        className="
-          h-10 w-10 flex-shrink-0 rounded-lg
-          flex items-center justify-center
-          text-destructive
-          hover:bg-destructive/10 transition-colors
-        "
-        aria-label="Logout"
-      >
-        <LogOut className="h-5 w-5" />
-      </button>
-    </div>
-  ) : (
-    <button
-      onClick={() => router.push("/auth")}
-      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg
-                 bg-primary text-white hover:opacity-90 transition-all"
-    >
-      <Lock className="h-4 w-4" />
-      <span className="text-sm font-semibold">Log in</span>
-    </button>
-  )}
-</div>
-
-
-
-
       </div>
     </>
   );
@@ -522,10 +529,11 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   return (
     <>
       {/* Mobile Top Navbar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-40 flex items-center justify-between px-4">
         <button
           onClick={() => setIsMobileOpen(true)}
           className="p-2 rounded-lg hover:bg-muted transition-colors text-card-foreground"
+          aria-label="Open menu"
         >
           <Menu className="h-6 w-6" />
         </button>
@@ -538,27 +546,28 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
             <h1 className="font-semibold text-sm text-card-foreground">Cadet Mate</h1>
           </div>
         </div>
+
+        <div className="w-10" /> {/* Spacer for centering */}
       </div>
 
-      {/* Mobile Overlay */}
-      {isMobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      {/* Sidebar */}
+      {/* Full Screen Mobile Sidebar */}
       <aside
         className={cn(
-          "fixed lg:relative top-0 left-0 h-screen z-50 transition-all duration-300 border-r border-border bg-card",
-          "lg:translate-x-0",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full",
-          isCollapsed ? "w-16" : "w-64",
+          // Desktop sidebar (normal behavior)
+          "hidden lg:flex lg:relative lg:h-screen lg:border-r lg:border-border lg:bg-card",
+          isCollapsed ? "lg:w-16" : "lg:w-64",
+          // Mobile full-screen overlay with explicit white background
+          isMobileOpen && "fixed inset-0 z-50 flex lg:hidden bg-white",
           className
         )}
       >
-        <div className="flex flex-col h-full">
+        <div 
+          className={cn(
+            "flex flex-col h-full w-full transition-all duration-300",
+            // Explicit white background for both mobile and desktop
+            "bg-white"
+          )}
+        >
           <SidebarContent />
         </div>
       </aside>

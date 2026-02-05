@@ -63,6 +63,13 @@ interface Hotspot {
   action?: string;
 }
 
+// Radio response mapping
+interface RadioResponse {
+  keywords: string[];
+  audioFile: string;
+  description: string;
+}
+
 export default function ShipBridgeSimulator() {
   const [currentScene, setCurrentScene] = useState<Scene>('center');
   const [alarmActive, setAlarmActive] = useState(false);
@@ -91,11 +98,493 @@ export default function ShipBridgeSimulator() {
   const [vhfChatterEnabled, setVhfChatterEnabled] = useState(true);
   const vhfPlayingRef = useRef<boolean>(false);
 
+  // Radio communication system - NO VOICE RECORDING, only speech-to-text in memory
+  // Text transcript is temporary and cleared on page refresh
+  const [isRecording, setIsRecording] = useState(false);
+  const [radioTranscript, setRadioTranscript] = useState('');
+  const [radioStatus, setRadioStatus] = useState<'idle' | 'listening' | 'processing' | 'responding'>('idle');
+  const recognitionRef = useRef<any>(null);
+  const radioAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+const [useAI, setUseAI] = useState(false);
+const [aiProcessingStatus, setAiProcessingStatus] = useState('');
+const [lastBosunResponse, setLastBosunResponse] = useState('');
+
   // Lookout positioning state - matches scene positions
   const [lookoutPosition, setLookoutPosition] = useState<Scene>('center');
   const [showLookoutArrows, setShowLookoutArrows] = useState(false);
   const [lookoutTransitioning, setLookoutTransitioning] = useState(false);
   const [lookoutExitDirection, setLookoutExitDirection] = useState<'left' | 'right' | null>(null);
+
+  // Radio response database - maps keywords to audio files
+  const radioResponses: RadioResponse[] = useMemo(() => [
+    {
+      keywords: ['for now', 'will update', 'standby', 'stand by', 'later'],
+      audioFile: '/audio/bosun/bsn_all_for_now_will_update.wav',
+      description: 'All for now, will update'
+    },
+    {
+      keywords: ['anchor', 'clear', 'ready', 'anchoring'],
+      audioFile: '/audio/bosun/bsn_anchor_clear_and_ready.wav',
+      description: 'Anchor clear and ready'
+    },
+    {
+      keywords: ['boundary', 'cooling', 'started'],
+      audioFile: '/audio/bosun/bsn_boundary_cooling_started.wav',
+      description: 'Boundary cooling started'
+    },
+    {
+      keywords: ['cargo', 'lashing', 'loose', 'securing'],
+      audioFile: '/audio/bosun/bsn_cargo_lashing_loose_securing.wav',
+      description: 'Cargo lashing loose, securing'
+    },
+    {
+      keywords: ['checking', 'hotspots', 'check'],
+      audioFile: '/audio/bosun/bsn_checking_for_hotspots.wav',
+      description: 'Checking for hotspots'
+    },
+    {
+      keywords: ['crew', 'safe', 'working', 'hard'],
+      audioFile: '/audio/bosun/bsn_crew_safe_working_hard.wav',
+      description: 'Crew safe, working hard'
+    },
+    {
+      keywords: ['damage', 'railing'],
+      audioFile: '/audio/bosun/bsn_damage_railing.wav',
+      description: 'Damage to railing'
+    },
+    {
+      keywords: ['fcastle', 'checked', 'flooding', 'no flooding'],
+      audioFile: '/audio/bosun/bsn_fcastle_checked_no_flooding.wav',
+      description: 'Fcastle checked, no flooding'
+    },
+    {
+      keywords: ['fire', 'contained'],
+      audioFile: '/audio/bosun/bsn_fire_contained.wav',
+      description: 'Fire contained'
+    },
+    {
+      keywords: ['fire', 'main deck', 'starboard'],
+      audioFile: '/audio/bosun/bsn_fire_main_deck_stbd_side.wav',
+      description: 'Fire on main deck starboard side'
+    },
+    {
+      keywords: ['fire', 'party', 'deck'],
+      audioFile: '/audio/bosun/bsn_fire_party_on_deck.wav',
+      description: 'Fire party on deck'
+    },
+    {
+      keywords: ['fire', 'spreading', 'slightly'],
+      audioFile: '/audio/bosun/bsn_fire_spreading_slightly.wav',
+      description: 'Fire spreading slightly'
+    },
+    {
+      keywords: ['go ahead', 'ahead'],
+      audioFile: '/audio/bosun/bsn_go_ahead.wav',
+      description: 'Go ahead'
+    },
+    {
+      keywords: ['heavy smoke', 'no flame'],
+      audioFile: '/audio/bosun/bsn_heavy_smoke_no_flame.wav',
+      description: 'Heavy smoke, no flame'
+    },
+    {
+      keywords: ['hoses', 'charged'],
+      audioFile: '/audio/bosun/bsn_hoses_charged.wav',
+      description: 'Hoses charged'
+    },
+    {
+      keywords: ['mooring', 'line', 'chaffed', 'holding'],
+      audioFile: '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav',
+      description: 'Mooring line chaffed but holding'
+    },
+    {
+      keywords: ['need', 'more light', 'deck'],
+      audioFile: '/audio/bosun/bsn_need_more_light_on_deck.wav',
+      description: 'Need more light on deck'
+    },
+    {
+      keywords: ['no injury', 'all crew', 'accounted'],
+      audioFile: '/audio/bosun/bsn_no_injury_all_crew_accounted.wav',
+      description: 'No injury, all crew accounted'
+    },
+    {
+      keywords: ['okay', 'copy'],
+      audioFile: '/audio/bosun/bsn_okay_copy.wav',
+      description: 'Okay, copy'
+    },
+    {
+      keywords: ['please', 'advise', 'next action'],
+      audioFile: '/audio/bosun/bsn_please_advise_next_action.wav',
+      description: 'Please advise next action'
+    },
+    {
+      keywords: ['repeat', 'last message'],
+      audioFile: '/audio/bosun/bsn_repeat_last_message.wav',
+      description: 'Repeat last message'
+    },
+    {
+      keywords: ['replace', 'leaky', 'hose'],
+      audioFile: '/bosun/bsn_replace_leaky_hose.wav',
+      description: 'Replace leaky hose'
+    },
+    {
+      keywords: ['situation', 'under control'],
+      audioFile: '/audio/bosun/bsn_situation_under_control.wav',
+      description: 'Situation under control'
+    },
+    {
+      keywords: ['situation', 'worsening', 'worse'],
+      audioFile: '/audio/bosun/bsn_situation_worsening.wav',
+      description: 'Situation worsening'
+    },
+    {
+      keywords: ['slippery', 'deck'],
+      audioFile: '/audio/bosun/bsn_slippery_deck.wav',
+      description: 'Slippery deck'
+    },
+    {
+      keywords: ['strong wind', 'poor vis', 'visibility'],
+      audioFile: '/audio/bosun/bsn_strong_wind_poor_vis.wav',
+      description: 'Strong wind, poor visibility'
+    },
+    {
+      keywords: ['understood', 'proceeding'],
+      audioFile: '/audio/bosun/bsn_understood_proceeding.wav',
+      description: 'Understood, proceeding'
+    },
+    {
+      keywords: ['wait', 'confirm', 'instruction'],
+      audioFile: '/audio/bosun/bsn_wait_confirm_instruction.wav',
+      description: 'Wait, confirm instruction'
+    },
+    {
+      keywords: ['we are', 'on deck', 'now'],
+      audioFile: '/audio/bosun/bsn_we_are_on_deck_now.wav',
+      description: 'We are on deck now'
+    }
+  ], []);
+
+  // Initialize speech recognition
+  // NOTE: This uses the browser's Web Speech API for speech-to-text conversion
+  // NO audio recording is performed - only text transcription in memory
+  // All data is cleared when the page refreshes
+  useEffect(() => {
+  if (typeof window !== 'undefined') {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        console.log('Transcript received:', transcript); // DEBUG
+        setRadioTranscript(transcript);
+        setRadioStatus('processing');
+        processRadioMessage(transcript);
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setRadioStatus('idle');
+        setIsRecording(false);
+        alert(`Speech recognition error: ${event.error}`); // DEBUG
+      };
+      
+      recognition.onend = () => {
+        console.log('Recognition ended'); // DEBUG
+        setRadioStatus('idle');
+        setIsRecording(false);
+      };
+      
+      recognitionRef.current = recognition;
+      console.log('Speech recognition initialized'); // DEBUG
+    } else {
+      console.error('Speech recognition not supported');
+      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
+    }
+  }
+}, []);
+
+  // Process radio message and find appropriate response using improved matching
+ // Process radio message and find appropriate response using improved matching
+const processRadioMessage = useCallback(async (transcript: string) => {
+  console.log('Processing message:', transcript);
+  setRadioStatus('processing');
+  setAiProcessingStatus('🤖 Analyzing your message...');
+  
+  // If AI is enabled and API key is set, use OpenAI
+  if (useAI && openaiApiKey) {
+    try {
+      setAiProcessingStatus('☁️ Sending to OpenAI...');
+      
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `You are a maritime Bosun (deck crew leader) on a cargo ship. The Bridge Officer is communicating with you via radio.
+
+CONTEXT: You are currently on deck managing the crew during various situations including normal operations, fires, weather, and equipment issues.
+
+YOUR ROLE: Analyze what the officer said and choose the MOST APPROPRIATE response number (1-29).
+
+RESPONSE OPTIONS:
+
+RADIO COMMUNICATION:
+1. "Go ahead" - Officer calls you (e.g., "bosun bosun bridge", "bosun do you copy")
+2. "We are on deck now" - Confirming arrival at location
+3. "Okay, copy" - Simple acknowledgment
+4. "Understood, proceeding" - Acknowledging orders to move/act
+5. "Repeat last message" - Message unclear or garbled
+6. "Wait, confirm instruction" - Need clarification before acting
+
+FIRE EMERGENCIES:
+7. "Fire party on deck" - Fire team is deployed
+8. "Fire contained" - Fire is under control
+9. "Fire spreading slightly" - Fire is worsening
+10. "Fire on main deck starboard side" - Reporting fire location
+11. "Heavy smoke, no flame" - Fire status report
+12. "Hoses charged" - Fire equipment ready
+13. "Replace leaky hose" - Equipment issue during firefighting
+
+CREW & SAFETY:
+14. "Crew safe, working hard" - Crew status positive
+15. "No injury, all crew accounted" - Safety/headcount report
+16. "All for now, will update" - Standby, will report later
+
+EQUIPMENT & OPERATIONS:
+17. "Anchor clear and ready" - Anchor operations ready
+18. "Mooring line chaffed but holding" - Line condition report
+19. "Checking for hotspots" - Inspection in progress
+20. "Slippery deck" - Deck condition warning
+21. "Need more light on deck" - Request for lighting
+
+DAMAGE & ISSUES:
+22. "Damage to railing" - Structural damage report
+23. "Fcastle checked, no flooding" - Forward area inspection result
+24. "Boundary cooling started" - Fire prevention measure active
+25. "Cargo lashing loose, securing" - Cargo securing issue
+
+WEATHER & CONDITIONS:
+26. "Strong wind, poor visibility" - Weather report
+
+GENERAL STATUS:
+27. "Situation under control" - Positive general status
+28. "Situation worsening" - Negative status, deteriorating
+29. "Please advise next action" - Requesting orders
+
+IMPORTANT RULES:
+- Match the CONTEXT of what's happening (fire, weather, normal ops, etc.)
+- If it's a radio CALL ("bosun bosun bridge"), use 1
+- If given an ORDER to move/act, use 4
+- If asking for STATUS, choose appropriate status (7-29)
+- If asking about CREW, use 14 or 15
+- If asking about FIRE, use 7-13
+- If UNCLEAR or doesn't fit, use 3 (copy)
+- ALWAYS respond with ONLY a number 1-29, nothing else`
+            },
+            {
+              role: "user",
+              content: `Officer said: "${transcript}"
+
+What's your response number (1-29)?`
+            }
+          ],
+          max_tokens: 10,
+          temperature: 0.2
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content.trim();
+      console.log('AI selected:', aiResponse);
+      
+      setAiProcessingStatus('✅ AI selected response #' + aiResponse);
+      
+      // Map number to audio file - ALL 29 OPTIONS
+      const responseMap: { [key: string]: { file: string; desc: string } } = {
+        '1': { file: '/audio/bosun/bsn_go_ahead.wav', desc: 'Go ahead' },
+        '2': { file: '/audio/bosun/bsn_we_are_on_deck_now.wav', desc: 'We are on deck now' },
+        '3': { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' },
+        '4': { file: '/audio/bosun/bsn_understood_proceeding.wav', desc: 'Understood, proceeding' },
+        '5': { file: '/audio/bosun/bsn_repeat_last_message.wav', desc: 'Repeat last message' },
+        '6': { file: '/audio/bosun/bsn_wait_confirm_instruction.wav', desc: 'Wait, confirm instruction' },
+        '7': { file: '/audio/bosun/bsn_fire_party_on_deck.wav', desc: 'Fire party on deck' },
+        '8': { file: '/audio/bosun/bsn_fire_contained.wav', desc: 'Fire contained' },
+        '9': { file: '/audio/bosun/bsn_fire_spreading_slightly.wav', desc: 'Fire spreading slightly' },
+        '10': { file: '/audio/bosun/bsn_fire_main_deck_stbd_side.wav', desc: 'Fire on main deck starboard side' },
+        '11': { file: '/audio/bosun/bsn_heavy_smoke_no_flame.wav', desc: 'Heavy smoke, no flame' },
+        '12': { file: '/audio/bosun/bsn_hoses_charged.wav', desc: 'Hoses charged' },
+        '13': { file: '/audio/bosun/bsn_replace_leaky_hose.wav', desc: 'Replace leaky hose' },
+        '14': { file: '/audio/bosun/bsn_crew_safe_working_hard.wav', desc: 'Crew safe, working hard' },
+        '15': { file: '/audio/bosun/bsn_no_injury_all_crew_accounted.wav', desc: 'No injury, all crew accounted' },
+        '16': { file: '/audio/bosun/bsn_all_for_now_will_update.wav', desc: 'All for now, will update' },
+        '17': { file: '/audio/bosun/bsn_anchor_clear_and_ready.wav', desc: 'Anchor clear and ready' },
+        '18': { file: '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav', desc: 'Mooring line chaffed but holding' },
+        '19': { file: '/audio/bosun/bsn_checking_for_hotspots.wav', desc: 'Checking for hotspots' },
+        '20': { file: '/audio/bosun/bsn_slippery_deck.wav', desc: 'Slippery deck' },
+        '21': { file: '/audio/bosun/bsn_need_more_light_on_deck.wav', desc: 'Need more light on deck' },
+        '22': { file: '/audio/bosun/bsn_damage_railing.wav', desc: 'Damage to railing' },
+        '23': { file: '/audio/bosun/bsn_fcastle_checked_no_flooding.wav', desc: 'Fcastle checked, no flooding' },
+        '24': { file: '/audio/bosun/bsn_boundary_cooling_started.wav', desc: 'Boundary cooling started' },
+        '25': { file: '/audio/bosun/bsn_cargo_lashing_loose_securing.wav', desc: 'Cargo lashing loose, securing' },
+        '26': { file: '/audio/bosun/bsn_strong_wind_poor_vis.wav', desc: 'Strong wind, poor visibility' },
+        '27': { file: '/audio/bosun/bsn_situation_under_control.wav', desc: 'Situation under control' },
+        '28': { file: '/audio/bosun/bsn_situation_worsening.wav', desc: 'Situation worsening' },
+        '29': { file: '/audio/bosun/bsn_please_advise_next_action.wav', desc: 'Please advise next action' }
+      };
+      
+      const selected = responseMap[aiResponse] || responseMap['3'];
+      console.log('Playing:', selected.desc);
+      setLastBosunResponse(selected.desc);
+      setAiProcessingStatus('🔊 Playing: ' + selected.desc);
+      playRadioResponse(selected.file);
+      
+      // Log to logbook
+      setLogEntries(prev => {
+        const newEntry: LogEntry = {
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          heading: '',
+          speed: '',
+          depth: '',
+          visibility: '',
+          event: `Radio: "${transcript}" → Bosun: "${selected.desc}"`
+        };
+        return [...prev, newEntry];
+      });
+      
+      // Clear status after 3 seconds
+      setTimeout(() => {
+        setAiProcessingStatus('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('OpenAI API failed:', error);
+      setAiProcessingStatus('❌ API Error - using fallback');
+      
+      // Fallback to default
+      const fallback = { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' };
+      setLastBosunResponse(fallback.desc);
+      playRadioResponse(fallback.file);
+      
+      setTimeout(() => {
+        setAiProcessingStatus('');
+      }, 3000);
+    }
+  } else {
+    // No AI - use simple keyword matching
+    setAiProcessingStatus('🔍 Using keyword matching...');
+    
+    const lower = transcript.toLowerCase();
+    let selectedFile = '/audio/bosun/bsn_go_ahead.wav';
+    let selectedDesc = 'Go ahead';
+    
+    if (lower.includes('proceed') || lower.includes('go to') || lower.includes('move to')) {
+      selectedFile = '/audio/bosun/bsn_understood_proceeding.wav';
+      selectedDesc = 'Understood, proceeding';
+    } else if (lower.includes('fire') && lower.includes('contain')) {
+      selectedFile = '/audio/bosun/bsn_fire_contained.wav';
+      selectedDesc = 'Fire contained';
+    } else if (lower.includes('okay') || lower.includes('copy')) {
+      selectedFile = '/audio/bosun/bsn_okay_copy.wav';
+      selectedDesc = 'Okay, copy';
+    } else if (lower.includes('crew') || lower.includes('safe')) {
+      selectedFile = '/audio/bosun/bsn_crew_safe_working_hard.wav';
+      selectedDesc = 'Crew safe, working hard';
+    } else if (lower.includes('status') || lower.includes('situation')) {
+      selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
+      selectedDesc = 'Situation under control';
+    }
+    
+    console.log('Keyword match:', selectedDesc);
+    setLastBosunResponse(selectedDesc);
+    setAiProcessingStatus('🔊 Playing: ' + selectedDesc);
+    playRadioResponse(selectedFile);
+    
+    setLogEntries(prev => {
+      const newEntry: LogEntry = {
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        heading: '',
+        speed: '',
+        depth: '',
+        visibility: '',
+        event: `Radio: "${transcript}" → Bosun: "${selectedDesc}"`
+      };
+      return [...prev, newEntry];
+    });
+    
+    setTimeout(() => {
+      setAiProcessingStatus('');
+    }, 3000);
+  }
+}, [useAI, openaiApiKey]);
+
+  // Play radio response audio
+  const playRadioResponse = useCallback((audioFile: string) => {
+    setRadioStatus('responding');
+    
+    const audio = new Audio(audioFile);
+    audio.volume = 0.8;
+    
+    audio.onended = () => {
+      setRadioStatus('idle');
+      radioAudioRef.current = null;
+    };
+    
+    audio.onerror = (err) => {
+      console.error('Audio playback error:', audioFile, err);
+      setRadioStatus('idle');
+      radioAudioRef.current = null;
+    };
+    
+    audio.play().catch(err => {
+      console.error('Audio play failed:', err);
+      setRadioStatus('idle');
+    });
+    
+    radioAudioRef.current = audio;
+  }, []);
+
+  // Handle push-to-talk button
+  const handlePTTPress = useCallback(() => {
+    if (!recognitionRef.current) {
+      alert('Speech recognition not supported in this browser');
+      return;
+    }
+    
+    setIsRecording(true);
+    setRadioStatus('listening');
+    setRadioTranscript('');
+    
+    try {
+      recognitionRef.current.start();
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      setIsRecording(false);
+      setRadioStatus('idle');
+    }
+  }, []);
+
+  const handlePTTRelease = useCallback(() => {
+    if (recognitionRef.current && isRecording) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop recognition:', err);
+      }
+    }
+    setIsRecording(false);
+  }, [isRecording]);
 
   // Memoized scenarios data
   const scenarios = useMemo<Scenario[]>(() => [
@@ -510,28 +999,20 @@ export default function ShipBridgeSimulator() {
   const playVHFChatter = useCallback(() => {
     if (!vhfChatterEnabled || vhfPlayingRef.current) return;
 
-    // IMPORTANT: Move your vhfchatter folder to /public/vhfchatter/
-    // Browser can only access files from the public folder
-    // List the actual filenames of your MP3 files here
     const vhfFiles = [
       '/vhfchatter/chatter1.mp3',
       '/vhfchatter/chatter2.mp3'
     ];
 
-    // Pick a random file
     const randomFile = vhfFiles[Math.floor(Math.random() * vhfFiles.length)];
-    
-    // Mark as playing
     vhfPlayingRef.current = true;
     
-    // Create and play audio
     const audio = new Audio(randomFile);
-    audio.volume = 0.3; // Set volume to 30% so it's background noise
+    audio.volume = 0.3;
     
     audio.play().catch(err => {
       console.log('VHF chatter play failed:', randomFile, err);
       vhfPlayingRef.current = false;
-      // Schedule next on error
       if (vhfTimeoutRef.current) {
         clearTimeout(vhfTimeoutRef.current);
       }
@@ -540,23 +1021,19 @@ export default function ShipBridgeSimulator() {
       }, 30000);
     });
 
-    // When audio ends, wait 30s then schedule next
     audio.onended = () => {
       vhfPlayingRef.current = false;
-      // Wait 30 seconds before playing next
       if (vhfTimeoutRef.current) {
         clearTimeout(vhfTimeoutRef.current);
       }
       vhfTimeoutRef.current = setTimeout(() => {
         playVHFChatter();
-      }, 30000); // 30 seconds
+      }, 30000);
     };
 
-    // If audio fails to load, also schedule next
     audio.onerror = () => {
       console.log('VHF audio error for:', randomFile);
       vhfPlayingRef.current = false;
-      // Schedule next on error
       if (vhfTimeoutRef.current) {
         clearTimeout(vhfTimeoutRef.current);
       }
@@ -766,13 +1243,11 @@ export default function ShipBridgeSimulator() {
   // VHF Chatter system - start when component mounts
   useEffect(() => {
     if (vhfChatterEnabled && !vhfPlayingRef.current && !vhfTimeoutRef.current) {
-      // Start first chatter after 5 seconds (only if not already scheduled)
       vhfTimeoutRef.current = setTimeout(() => {
         playVHFChatter();
       }, 5000);
     }
 
-    // Cleanup on unmount only
     return () => {
       if (vhfTimeoutRef.current) {
         clearTimeout(vhfTimeoutRef.current);
@@ -784,12 +1259,10 @@ export default function ShipBridgeSimulator() {
       }
       vhfPlayingRef.current = false;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  // Separate effect to handle enable/disable toggle
   useEffect(() => {
     if (!vhfChatterEnabled) {
-      // Stop current audio and clear timeout when disabled
       if (vhfTimeoutRef.current) {
         clearTimeout(vhfTimeoutRef.current);
         vhfTimeoutRef.current = null;
@@ -928,11 +1401,9 @@ export default function ShipBridgeSimulator() {
   }), []);
 
   const handleHotspotClick = useCallback((hotspot: Hotspot) => {
-    // Log action only if it's a checklist item (not logbook opening)
     if (hotspot.action && hotspot.id !== 'logbook') {
       logAction(hotspot.label || hotspot.action, hotspot.id);
     }
-    // Open popup for items with images or logbook
     if (hotspot.popupImage || hotspot.id === 'logbook') {
       setActivePopup(hotspot.id);
     }
@@ -943,32 +1414,26 @@ export default function ShipBridgeSimulator() {
     
     setShowLookoutArrows(false);
     
-    // Determine exit direction based on current and target position
     const sceneOrder: Scene[] = ['port', 'center', 'starboard'];
     const currentIndex = sceneOrder.indexOf(lookoutPosition);
     const targetIndex = sceneOrder.indexOf(direction);
     const exitDir = targetIndex > currentIndex ? 'right' : 'left';
     
-    // Start exit animation
     setLookoutExitDirection(exitDir);
     setLookoutTransitioning(true);
     
-    // After exit animation, change position and enter from opposite side
     setTimeout(() => {
       setLookoutPosition(direction);
       setLookoutExitDirection(null);
       
-      // End transition after enter animation
       setTimeout(() => {
         setLookoutTransitioning(false);
       }, 600);
     }, 600);
     
-    // Log action and trigger lookout event if in scenario
     if (currentScenario) {
       logAction(`Move lookout to ${direction} wing`, `lookout-move-${direction}`);
       
-      // Trigger the appropriate lookout checklist item
       if (direction === 'port') {
         logAction('Post lookout on port wing', 'port-lookout');
       } else if (direction === 'starboard') {
@@ -987,7 +1452,6 @@ export default function ShipBridgeSimulator() {
       cursor: 'pointer'
     };
 
-    // Determine base position for each scene
     let baseLeft = '5%';
     
     switch (lookoutPosition) {
@@ -1002,25 +1466,20 @@ export default function ShipBridgeSimulator() {
         break;
     }
 
-    // Apply transition animation
     if (lookoutTransitioning) {
       if (lookoutExitDirection === 'left') {
-        // Exiting to the left
         return {
           ...baseStyle,
           left: '-20%',
           transition: 'left 0.6s ease-in-out',
         };
       } else if (lookoutExitDirection === 'right') {
-        // Exiting to the right
         return {
           ...baseStyle,
           left: '120%',
           transition: 'left 0.6s ease-in-out',
         };
       } else {
-        // Entering - determine entry direction based on previous exit
-        const isEnteringFromLeft = lookoutExitDirection === null;
         return {
           ...baseStyle,
           left: baseLeft,
@@ -1029,7 +1488,6 @@ export default function ShipBridgeSimulator() {
       }
     }
 
-    // Normal positioning (no transition)
     return {
       ...baseStyle,
       left: baseLeft,
@@ -1098,7 +1556,7 @@ export default function ShipBridgeSimulator() {
         />
       )}
 
-      {/* Lookout character - show on their assigned scene or during transitions */}
+      {/* Lookout character */}
       {(lookoutPosition === currentScene || (lookoutTransitioning && lookoutPosition === currentScene)) && (
         <div
           style={getLookoutStyle()}
@@ -1169,32 +1627,138 @@ export default function ShipBridgeSimulator() {
         {sceneLabels[currentScene]}
       </div>
 
-      {/* VHF Chatter Toggle */}
-      <div className="absolute top-5 left-5 z-20 flex gap-2">
-        <button
-          onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto ${
-            vhfChatterEnabled
-              ? 'bg-green-700 border-2 border-green-500 text-white hover:bg-green-600'
-              : 'bg-gray-700 border-2 border-gray-500 text-gray-300 hover:bg-gray-600'
-          }`}
-          title={vhfChatterEnabled ? 'VHF Chatter: ON' : 'VHF Chatter: OFF'}
-        >
-          📻 VHF {vhfChatterEnabled ? 'ON' : 'OFF'}
-        </button>
-        
-        {/* Test button to play chatter immediately */}
-        <button
-          onClick={() => {
-            console.log('Manual VHF test triggered');
-            playVHFChatter();
-          }}
-          className="px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto bg-blue-700 border-2 border-blue-500 text-white hover:bg-blue-600"
-          title="Test VHF Chatter Now"
-        >
-          🔊 Test VHF
-        </button>
+      {/* Push-to-Talk Radio Button */}
+      <div className="absolute top-5 left-5 z-20 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto ${
+              vhfChatterEnabled
+                ? 'bg-green-700 border-2 border-green-500 text-white hover:bg-green-600'
+                : 'bg-gray-700 border-2 border-gray-500 text-gray-300 hover:bg-gray-600'
+            }`}
+            title={vhfChatterEnabled ? 'VHF Chatter: ON' : 'VHF Chatter: OFF'}
+          >
+            📻 VHF {vhfChatterEnabled ? 'ON' : 'OFF'}
+          </button>
+          
+          <button
+            onClick={() => {
+              console.log('Manual VHF test triggered');
+              playVHFChatter();
+            }}
+            className="px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto bg-blue-700 border-2 border-blue-500 text-white hover:bg-blue-600"
+            title="Test VHF Chatter Now"
+          >
+            🔊 Test VHF
+          </button>
+        </div>
+
+        {/* Radio Push-to-Talk Button */}
+<div className="flex flex-col gap-2 bg-[rgba(0,40,60,0.95)] border-2 border-[#00d9ff] rounded-lg p-3">
+  <div className="text-[#00d9ff] text-sm font-bold text-center">
+    Radio Communication
+  </div>
+  <div className="text-[10px] text-gray-400 text-center -mt-1 mb-1">
+    Speech-to-text only • No audio recording
+  </div>
+  
+  {/* AI Settings */}
+  <div className="border-t border-[#00d9ff]/30 pt-2 mb-2">
+    <label className="flex items-center gap-2 text-xs text-white mb-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={useAI}
+        onChange={(e) => setUseAI(e.target.checked)}
+        className="w-4 h-4"
+      />
+      <span>🤖 Use AI (OpenAI API)</span>
+    </label>
+    
+    {useAI && (
+      <input
+        type="password"
+        placeholder="Enter OpenAI API Key (sk-...)"
+        value={openaiApiKey}
+        onChange={(e) => setOpenaiApiKey(e.target.value)}
+        className="w-full px-2 py-1 text-xs bg-[rgba(0,0,0,0.5)] border border-[#00d9ff] rounded text-white placeholder-gray-500"
+      />
+    )}
+  </div>
+  
+  <button
+    onMouseDown={handlePTTPress}
+    onMouseUp={handlePTTRelease}
+    onTouchStart={handlePTTPress}
+    onTouchEnd={handlePTTRelease}
+    disabled={radioStatus === 'responding'}
+    className={`px-6 py-4 rounded-lg text-base font-bold transition-all pointer-events-auto select-none ${
+      isRecording
+        ? 'bg-red-600 border-2 border-red-400 text-white animate-pulse'
+        : radioStatus === 'responding'
+        ? 'bg-yellow-600 border-2 border-yellow-400 text-white'
+        : 'bg-[rgba(0,100,150,0.8)] border-2 border-[#00d9ff] text-white hover:bg-[rgba(0,150,200,0.9)]'
+    }`}
+    title="Hold to talk"
+  >
+    {isRecording ? '🔴 TRANSMITTING...' : radioStatus === 'responding' ? '📻 RECEIVING...' : '🎤 PUSH TO TALK'}
+  </button>
+
+  {/* Status indicator with more details */}
+  <div className="text-center text-xs min-h-[40px]">
+    {radioStatus === 'idle' && !aiProcessingStatus && (
+      <span className="text-gray-400">Press and hold to talk</span>
+    )}
+    {radioStatus === 'listening' && (
+      <div className="flex flex-col gap-1">
+        <span className="text-red-400 font-bold">🎤 Listening...</span>
+        <span className="text-xs text-gray-400">Release when done speaking</span>
       </div>
+    )}
+    {radioStatus === 'processing' && aiProcessingStatus && (
+      <div className="flex flex-col gap-1">
+        <span className="text-yellow-400 font-bold">{aiProcessingStatus}</span>
+      </div>
+    )}
+    {radioStatus === 'responding' && (
+      <div className="flex flex-col gap-1">
+        <span className="text-green-400 font-bold">📻 Bosun responding...</span>
+        {lastBosunResponse && (
+          <span className="text-xs text-green-300">"{lastBosunResponse}"</span>
+        )}
+      </div>
+    )}
+  </div>
+
+  {/* Transcript display with what you said */}
+  {radioTranscript && (
+    <div className="mt-2 p-2 bg-[rgba(0,0,0,0.5)] rounded border border-[#00d9ff]">
+      <div className="text-xs text-gray-400">You said:</div>
+      <div className="text-sm text-white font-bold">"{radioTranscript}"</div>
+      {lastBosunResponse && (
+        <>
+          <div className="text-xs text-gray-400 mt-2">Bosun replied:</div>
+          <div className="text-sm text-green-400 font-bold">"{lastBosunResponse}"</div>
+        </>
+      )}
+      <div className="text-[10px] text-gray-500 mt-1">Temporary • Clears on refresh</div>
+    </div>
+  )}
+
+  {/* Test button for debugging */}
+  <button
+    onClick={() => {
+      const testPhrase = "bosun bosun bridge";
+      console.log('Testing with:', testPhrase);
+      setRadioTranscript(testPhrase);
+      processRadioMessage(testPhrase);
+    }}
+    className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+  >
+    🧪 Test: "bosun bosun bridge"
+  </button>
+</div>
+</div>
 
       {/* Scenario selector (when no scenario active) */}
       {!currentScenario && (
