@@ -105,8 +105,12 @@ export default function ShipBridgeSimulator() {
   const [radioStatus, setRadioStatus] = useState<'idle' | 'listening' | 'processing' | 'responding'>('idle');
   const recognitionRef = useRef<any>(null);
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
-const [useAI, setUseAI] = useState(false);
+const [openaiApiKey, setOpenaiApiKey] = useState(
+  process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
+);
+const [useAI, setUseAI] = useState(
+  !!process.env.NEXT_PUBLIC_OPENAI_API_KEY
+);
 const [aiProcessingStatus, setAiProcessingStatus] = useState('');
 const [lastBosunResponse, setLastBosunResponse] = useState('');
 
@@ -308,7 +312,33 @@ const [lastBosunResponse, setLastBosunResponse] = useState('');
     }
   }
 }, []);
+// REPLACE THE playRadioResponse FUNCTION (around line 667)
+// This ensures the radio image goes back to "awaiting" after bosun finishes talking
 
+const playRadioResponse = useCallback((audioFile: string) => {
+  setRadioStatus('responding'); // This will show uhf-bosun.png
+  
+  const audio = new Audio(audioFile);
+  audio.volume = 0.8;
+  
+  audio.onended = () => {
+    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
+    radioAudioRef.current = null;
+  };
+  
+  audio.onerror = (err) => {
+    console.error('Audio playback error:', audioFile, err);
+    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
+    radioAudioRef.current = null;
+  };
+  
+  audio.play().catch(err => {
+    console.error('Audio play failed:', err);
+    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
+  });
+  
+  radioAudioRef.current = audio;
+}, []);
   // Process radio message and find appropriate response using improved matching
  // Process radio message and find appropriate response using improved matching
 const processRadioMessage = useCallback(async (transcript: string) => {
@@ -316,7 +346,9 @@ const processRadioMessage = useCallback(async (transcript: string) => {
   setRadioStatus('processing');
   setAiProcessingStatus('🤖 Analyzing your message...');
   
-  // If AI is enabled and API key is set, use OpenAI
+  const lower = transcript.toLowerCase();
+  
+  // If AI is enabled and API key is set, use OpenAI with IMPROVED PROMPT
   if (useAI && openaiApiKey) {
     try {
       setAiProcessingStatus('☁️ Sending to OpenAI...');
@@ -328,80 +360,505 @@ const processRadioMessage = useCallback(async (transcript: string) => {
           "Authorization": `Bearer ${openaiApiKey}`
         },
         body: JSON.stringify({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o-mini",  // Using faster, cheaper model
           messages: [
             {
               role: "system",
-              content: `You are a maritime Bosun (deck crew leader) on a cargo ship. The Bridge Officer is communicating with you via radio.
+              content: `BOSUN RADIO RESPONSE PROTOCOL
 
-CONTEXT: You are currently on deck managing the crew during various situations including normal operations, fires, weather, and equipment issues.
+You are a bosun responding to bridge radio communications onboard a vessel.
+Your task is to interpret the intent, clarity, urgency, and required action of each bridge message, then reply using ONLY the approved standardized responses (1-29).
 
-YOUR ROLE: Analyze what the officer said and choose the MOST APPROPRIATE response number (1-29).
+CRITICAL RULES:
+- Interpret what the bridge is trying to achieve, NOT their exact words
+- Base responses on observed deck conditions, not assumptions
+- Bridge communications may be rushed, fragmented, or emotional during emergencies
+- Respond with ONLY the number (1-29). Nothing else.
+- Do not mirror bridge phrasing or add commentary
+- Prioritize safety and clarity over speed
 
-RESPONSE OPTIONS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-RADIO COMMUNICATION:
-1. "Go ahead" - Officer calls you (e.g., "bosun bosun bridge", "bosun do you copy")
-2. "We are on deck now" - Confirming arrival at location
-3. "Okay, copy" - Simple acknowledgment
-4. "Understood, proceeding" - Acknowledging orders to move/act
-5. "Repeat last message" - Message unclear or garbled
-6. "Wait, confirm instruction" - Need clarification before acting
+RADIO PROTOCOL (1-6):
 
-FIRE EMERGENCIES:
-7. "Fire party on deck" - Fire team is deployed
-8. "Fire contained" - Fire is under control
-9. "Fire spreading slightly" - Fire is worsening
-10. "Fire on main deck starboard side" - Reporting fire location
-11. "Heavy smoke, no flame" - Fire status report
-12. "Hoses charged" - Fire equipment ready
-13. "Replace leaky hose" - Equipment issue during firefighting
+1. "Go ahead"
+   USE WHEN: Bridge is attempting to establish contact only
+   EXAMPLES:
+   - "bosun bosun bridge"
+   - "bosun come in"
+   - "bosun do you copy"
+   - "bosun do you read"
+   - "bosun this is bridge"
+   - "bosun are you there"
+   - "calling bosun"
+   - "bridge calling bosun"
 
-CREW & SAFETY:
-14. "Crew safe, working hard" - Crew status positive
-15. "No injury, all crew accounted" - Safety/headcount report
-16. "All for now, will update" - Standby, will report later
+2. "We are on deck now"
+   USE WHEN: Bridge requests confirmation of your arrival or presence at a location
+   EXAMPLES:
+   - "are you on deck"
+   - "have you arrived"
+   - "are you in position"
+   - "are you at the foredeck yet"
+   - "have you reached the fire location"
+   - "confirm you're on station"
+   - "are you there now"
+   - "let me know when you're in position"
+   - "have you made it to starboard side"
 
-EQUIPMENT & OPERATIONS:
-17. "Anchor clear and ready" - Anchor operations ready
-18. "Mooring line chaffed but holding" - Line condition report
-19. "Checking for hotspots" - Inspection in progress
-20. "Slippery deck" - Deck condition warning
-21. "Need more light on deck" - Request for lighting
+3. "Okay, copy"
+   USE WHEN: Bridge gives information, updates, or instructions you understand that do NOT require immediate movement
+   EXAMPLES:
+   - "be advised the captain is on his way"
+   - "for your information we're changing course"
+   - "note that port authority has been notified"
+   - "stand by for now"
+   - "just so you know we've called the fire brigade"
+   - "we're monitoring from here"
+   - "chief engineer is aware"
+   - "keep doing what you're doing"
+   - "continue current operations"
+   - "we see you on deck"
+   - "understood, no change to your task"
 
-DAMAGE & ISSUES:
-22. "Damage to railing" - Structural damage report
-23. "Fcastle checked, no flooding" - Forward area inspection result
-24. "Boundary cooling started" - Fire prevention measure active
-25. "Cargo lashing loose, securing" - Cargo securing issue
+4. "Understood, proceeding"
+   USE WHEN: Bridge issues a clear, safe order to move, attend a location, or begin an action
+   EXAMPLES:
+   - "proceed to the foredeck"
+   - "go to starboard side immediately"
+   - "move to the fire location"
+   - "begin boundary cooling"
+   - "start securing the cargo"
+   - "check the forward compartments"
+   - "get your team to the anchor station"
+   - "commence fire patrol"
+   - "head to the engine room entrance"
+   - "deploy the fire party now"
+   - "secure all deck equipment"
+   - "investigate that smoke"
 
-WEATHER & CONDITIONS:
-26. "Strong wind, poor visibility" - Weather report
+5. "Repeat last message"
+   USE WHEN: Bridge message is unclear, broken, partially heard, contradictory, or affected by noise/stress
+   EXAMPLES:
+   - [Garbled]: "bosun... *static* ...deck... *static* ...now"
+   - [Incomplete]: "proceed to the... uh..."
+   - [Contradictory]: "go to port side... no wait starboard"
+   - [Overlapping voices or background noise]
+   - [Partial transmission]: "...fire spreading..."
+   - [Unclear instruction]: "do the thing with the... you know..."
+   - [Rushed/mumbled speech]
+   - [Radio cutting in and out]
+   - [Two instructions given at once unclear which is priority]
 
-GENERAL STATUS:
-27. "Situation under control" - Positive general status
-28. "Situation worsening" - Negative status, deteriorating
-29. "Please advise next action" - Requesting orders
+6. "Wait, confirm instruction"
+   USE WHEN: Bridge instruction is ambiguous, incomplete, unsafe, or conflicts with current situation
+   EXAMPLES:
+   - "enter the compartment" [when fire/smoke present]
+   - "proceed forward" [when path is blocked]
+   - "go below" [when flooding suspected]
+   - "just handle it" [instruction too vague]
+   - "do whatever you think" [unclear authority]
+   - "move the crew to..." [location not specified]
+   - "start the..." [equipment/action not specified]
+   - "use the backup..." [which backup not clear]
+   - [Order conflicts with safety procedure]
+   - [Order conflicts with visible deck conditions]
+   - [Instruction missing critical details for safe execution]
 
-IMPORTANT RULES:
-- Match the CONTEXT of what's happening (fire, weather, normal ops, etc.)
-- If it's a radio CALL ("bosun bosun bridge"), use 1
-- If given an ORDER to move/act, use 4
-- If asking for STATUS, choose appropriate status (7-29)
-- If asking about CREW, use 14 or 15
-- If asking about FIRE, use 7-13
-- If UNCLEAR or doesn't fit, use 3 (copy)
-- ALWAYS respond with ONLY a number 1-29, nothing else`
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FIRE EMERGENCY (7-13):
+
+7. "Fire party on deck"
+   USE WHEN: Bridge asks about fire team readiness or deployment status
+   EXAMPLES:
+   - "is the fire team ready"
+   - "fire party status"
+   - "is the response team in position"
+   - "do you have your fire crew"
+   - "are firefighters assembled"
+   - "is the team geared up"
+   - "fire party deployed?"
+   - "do you have personnel ready"
+   - "is everyone mustered"
+   - "fire team standing by?"
+
+8. "Fire contained"
+   USE WHEN: Bridge asks if fire is under control AND you observe containment
+   EXAMPLES:
+   - "is the fire under control"
+   - "fire status"
+   - "have you got it contained"
+   - "is the situation stable"
+   - "is it out"
+   - "how's the fire looking"
+   - "any progress on the fire"
+   - "is it spreading"
+   - "can you control it"
+   - "fire status update"
+   - "do you have it"
+
+9. "Fire spreading slightly"
+   USE WHEN: Bridge asks about fire progression AND you observe worsening conditions
+   EXAMPLES:
+   - "is the fire getting worse"
+   - "fire status update"
+   - "any change"
+   - "is it spreading"
+   - "is the situation deteriorating"
+   - "how's it progressing"
+   - "is it under control"
+   - "is the fire growing"
+   - "what's happening with the fire"
+   - "status on containment"
+
+10. "Fire on main deck starboard side"
+    USE WHEN: Bridge asks for fire location
+    EXAMPLES:
+    - "where is the fire"
+    - "fire location"
+    - "what's burning"
+    - "where's the seat of the fire"
+    - "which compartment"
+    - "where do you see flames"
+    - "location of fire"
+    - "where is it"
+    - "what area is affected"
+    - "where's the smoke coming from"
+    - "identify fire location"
+
+11. "Heavy smoke, no flame"
+    USE WHEN: Bridge asks about visible flames or smoke conditions
+    EXAMPLES:
+    - "do you see flames"
+    - "smoke status"
+    - "what do you see"
+    - "is there fire or just smoke"
+    - "are there visible flames"
+    - "what's the visibility"
+    - "can you see fire"
+    - "describe what you're seeing"
+    - "is it smoking or burning"
+    - "what are conditions like"
+
+12. "Hoses charged"
+    USE WHEN: Bridge asks about hose or water system readiness
+    EXAMPLES:
+    - "are the hoses ready"
+    - "water pressure okay"
+    - "firefighting equipment status"
+    - "do you have water"
+    - "are hoses charged"
+    - "is the water on"
+    - "pressure good"
+    - "can you fight the fire"
+    - "equipment ready"
+    - "do you have your hoses"
+    - "water supply okay"
+
+13. "Replace leaky hose"
+    USE WHEN: Bridge asks about equipment issues OR you observe firefighting equipment problems
+    EXAMPLES:
+    - "any equipment problems"
+    - "hose condition"
+    - "any issues with gear"
+    - "is everything working"
+    - "equipment status"
+    - "any malfunctions"
+    - "is your gear okay"
+    - "problems with equipment"
+    - "do you need anything"
+    - "any issues"
+    - "all equipment functional"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CREW & SAFETY (14-16):
+
+14. "Crew safe, working hard"
+    USE WHEN: Bridge asks about crew condition during operations
+    EXAMPLES:
+    - "how is the crew"
+    - "crew status"
+    - "how are your people"
+    - "are the crew okay"
+    - "how's your team doing"
+    - "crew welfare"
+    - "how are your men"
+    - "is everyone coping"
+    - "crew condition"
+    - "how's morale"
+    - "are they holding up"
+
+15. "No injury, all crew accounted"
+    USE WHEN: Bridge asks about injuries, headcount, or crew welfare/safety
+    EXAMPLES:
+    - "any injuries"
+    - "everyone okay"
+    - "headcount"
+    - "all personnel safe"
+    - "anybody hurt"
+    - "is everyone accounted for"
+    - "do you have all your people"
+    - "any casualties"
+    - "crew all present"
+    - "anyone missing"
+    - "medical issues"
+    - "is everyone safe"
+    - "roll call complete"
+
+16. "All for now, will update"
+    USE WHEN: Bridge asks if you need anything else OR you're ending current transmission
+    EXAMPLES:
+    - "anything else"
+    - "that's all for now"
+    - "any further requests"
+    - "stand by"
+    - "do you need anything"
+    - "anything more to report"
+    - "what else"
+    - "is that everything"
+    - "keep us posted"
+    - "update when you can"
+    - "continue and report back"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EQUIPMENT & OPERATIONS (17-21):
+
+17. "Anchor clear and ready"
+    USE WHEN: Bridge asks about anchor readiness or preparation status
+    EXAMPLES:
+    - "anchor ready"
+    - "prepare the anchor"
+    - "anchor status"
+    - "is the anchor clear"
+    - "can we drop anchor"
+    - "anchor station ready"
+    - "ready to anchor"
+    - "prepare for anchoring"
+    - "anchor clear"
+    - "windlass ready"
+    - "forward station status"
+
+18. "Mooring line chaffed but holding"
+    USE WHEN: Bridge asks about mooring line condition or security
+    EXAMPLES:
+    - "mooring status"
+    - "lines okay"
+    - "check the lines"
+    - "are the moorings secure"
+    - "line condition"
+    - "how are the mooring lines"
+    - "are we secure alongside"
+    - "any problems with lines"
+    - "mooring secure"
+    - "check for chaffing"
+    - "line status"
+
+19. "Checking for hotspots"
+    USE WHEN: Bridge requests fire inspection or verification of smoldering areas
+    EXAMPLES:
+    - "check for fire"
+    - "inspect the area"
+    - "any hotspots"
+    - "do a fire patrol"
+    - "check for smoldering"
+    - "look for heat"
+    - "inspect boundaries"
+    - "check adjacent spaces"
+    - "are there any hot spots"
+    - "thermal check"
+    - "reflash watch"
+
+20. "Slippery deck"
+    USE WHEN: Bridge asks about deck conditions or safety hazards
+    EXAMPLES:
+    - "deck conditions"
+    - "any hazards"
+    - "working surface okay"
+    - "is it safe up there"
+    - "what's the deck like"
+    - "any obstructions"
+    - "working conditions"
+    - "is the deck clear"
+    - "any dangers"
+    - "footing okay"
+    - "trip hazards"
+
+21. "Need more light on deck"
+    USE WHEN: Bridge asks about lighting or visibility concerns
+    EXAMPLES:
+    - "can you see"
+    - "lighting adequate"
+    - "need lights"
+    - "is there enough light"
+    - "visibility okay"
+    - "can you work safely"
+    - "do you need illumination"
+    - "is it dark up there"
+    - "can you see what you're doing"
+    - "lighting status"
+    - "bring out the floodlights"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DAMAGE & ISSUES (22-25):
+
+22. "Damage to railing"
+    USE WHEN: Bridge asks about structural damage or physical problems
+    EXAMPLES:
+    - "any damage"
+    - "structural problems"
+    - "is anything broken"
+    - "check for damage"
+    - "what's damaged"
+    - "assess the damage"
+    - "any structural issues"
+    - "impact damage"
+    - "visible damage"
+    - "what's the state of the deck"
+    - "any casualties to structure"
+
+23. "Fcastle checked, no flooding"
+    USE WHEN: Bridge asks about forward compartments or flooding status
+    EXAMPLES:
+    - "check forward"
+    - "flooding"
+    - "any water ingress"
+    - "check the fcastle"
+    - "is it dry forward"
+    - "check below"
+    - "forward compartments"
+    - "any flooding"
+    - "water tight"
+    - "check for leaks"
+    - "forward spaces clear"
+
+24. "Boundary cooling started"
+    USE WHEN: Bridge asks about cooling boundaries or fire prevention measures
+    EXAMPLES:
+    - "cooling boundaries"
+    - "fire prevention"
+    - "cool the bulkheads"
+    - "prevent spread"
+    - "are you cooling"
+    - "adjacent spaces"
+    - "boundary protection"
+    - "spray boundaries"
+    - "prevent fire spread"
+    - "protect neighboring compartments"
+
+25. "Cargo lashing loose, securing"
+    USE WHEN: Bridge asks about cargo security or lashing status
+    EXAMPLES:
+    - "cargo secure"
+    - "lashing"
+    - "check the cargo"
+    - "is the cargo tied down"
+    - "lashing status"
+    - "cargo shifted"
+    - "secure the containers"
+    - "check lashings"
+    - "cargo condition"
+    - "anything moving"
+    - "deck cargo status"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WEATHER & CONDITIONS (26):
+
+26. "Strong wind, poor visibility"
+    USE WHEN: Bridge asks about weather conditions or visibility
+    EXAMPLES:
+    - "weather conditions"
+    - "visibility"
+    - "what's it like out there"
+    - "how's the weather"
+    - "wind conditions"
+    - "can you see okay"
+    - "sea state"
+    - "what's the visibility"
+    - "weather on deck"
+    - "environmental conditions"
+    - "wind speed"
+    - "how rough is it"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENERAL STATUS (27-29):
+
+27. "Situation under control"
+    USE WHEN: Bridge asks about overall situation AND conditions are stable/manageable
+    EXAMPLES:
+    - "what's the situation"
+    - "all good"
+    - "overall status"
+    - "sitrep"
+    - "how are things"
+    - "everything okay"
+    - "what's happening"
+    - "status update"
+    - "how's it going"
+    - "general status"
+    - "are we good"
+
+28. "Situation worsening"
+    USE WHEN: Bridge asks about situation AND conditions are deteriorating
+    EXAMPLES:
+    - "getting worse"
+    - "deteriorating"
+    - "what's the situation"
+    - "status"
+    - "how are things now"
+    - "any change"
+    - "is it improving"
+    - "situation update"
+    - "how's it progressing"
+    - "current status"
+
+29. "Please advise next action"
+    USE WHEN: Bridge asks what you need OR you need guidance/orders
+    EXAMPLES:
+    - "what should we do"
+    - "awaiting orders"
+    - "what do you need"
+    - "what next"
+    - "instructions"
+    - "what are your orders"
+    - "tell me what to do"
+    - "waiting for direction"
+    - "what's the plan"
+    - "need guidance"
+    - "request instructions"
+    - "what do you want us to do"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RESPONSE FORMAT:
+Respond with ONLY the number (1-29). Nothing else.
+
+EXAMPLE EXCHANGES:
+Officer: "bosun bosun bridge" → 1
+Officer: "proceed to the foredeck now" → 4
+Officer: "is the fire under control" → 8 [if contained] OR 9 [if spreading]
+Officer: "how is the crew doing" → 14
+Officer: "what's the situation up there" → 27 [if stable] OR 28 [if deteriorating]
+Officer: "say that again" → 5
+Officer: "are you on deck yet" → 2
+Officer: "be advised captain is coming" → 3
+Officer: "enter the compartment" [unsafe conditions observed] → 6
+Officer: "do you need anything" → 16 [if no] OR 29 [if yes]
+
+Respond with ONLY the number 1-29. Nothing else.`
             },
             {
               role: "user",
-              content: `Officer said: "${transcript}"
-
-What's your response number (1-29)?`
+              content: `Officer said: "${transcript}"\n\nResponse number:`
             }
           ],
-          max_tokens: 10,
-          temperature: 0.2
+          max_tokens: 5,
+          temperature: 0.1
         })
       });
 
@@ -411,7 +868,7 @@ What's your response number (1-29)?`
       
       setAiProcessingStatus('✅ AI selected response #' + aiResponse);
       
-      // Map number to audio file - ALL 29 OPTIONS
+      // Map number to audio file
       const responseMap: { [key: string]: { file: string; desc: string } } = {
         '1': { file: '/audio/bosun/bsn_go_ahead.wav', desc: 'Go ahead' },
         '2': { file: '/audio/bosun/bsn_we_are_on_deck_now.wav', desc: 'We are on deck now' },
@@ -450,7 +907,6 @@ What's your response number (1-29)?`
       setAiProcessingStatus('🔊 Playing: ' + selected.desc);
       playRadioResponse(selected.file);
       
-      // Log to logbook
       setLogEntries(prev => {
         const newEntry: LogEntry = {
           time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
@@ -463,47 +919,157 @@ What's your response number (1-29)?`
         return [...prev, newEntry];
       });
       
-      // Clear status after 3 seconds
-      setTimeout(() => {
-        setAiProcessingStatus('');
-      }, 3000);
+      setTimeout(() => setAiProcessingStatus(''), 3000);
       
     } catch (error) {
       console.error('OpenAI API failed:', error);
       setAiProcessingStatus('❌ API Error - using fallback');
       
-      // Fallback to default
       const fallback = { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' };
       setLastBosunResponse(fallback.desc);
       playRadioResponse(fallback.file);
       
-      setTimeout(() => {
-        setAiProcessingStatus('');
-      }, 3000);
+      setTimeout(() => setAiProcessingStatus(''), 3000);
     }
   } else {
-    // No AI - use simple keyword matching
-    setAiProcessingStatus('🔍 Using keyword matching...');
+    // IMPROVED KEYWORD MATCHING - No AI
+    setAiProcessingStatus('🔍 Using improved keyword matching...');
     
-    const lower = transcript.toLowerCase();
     let selectedFile = '/audio/bosun/bsn_go_ahead.wav';
     let selectedDesc = 'Go ahead';
     
-    if (lower.includes('proceed') || lower.includes('go to') || lower.includes('move to')) {
+    // PRIORITY 1: Radio call detection (bosun + copy/read/come in)
+    if ((lower.includes('bosun') || lower.includes('boson') || lower.includes('both')) && 
+        (lower.includes('copy') || lower.includes('read') || lower.includes('come in') || 
+         lower.includes('bridge') || lower.includes('you there'))) {
+      selectedFile = '/audio/bosun/bsn_go_ahead.wav';
+      selectedDesc = 'Go ahead';
+    }
+    // PRIORITY 2: Movement orders
+    else if (lower.includes('proceed') || lower.includes('go to') || lower.includes('move to') ||
+             lower.includes('head to') || lower.includes('get to')) {
       selectedFile = '/audio/bosun/bsn_understood_proceeding.wav';
       selectedDesc = 'Understood, proceeding';
-    } else if (lower.includes('fire') && lower.includes('contain')) {
-      selectedFile = '/audio/bosun/bsn_fire_contained.wav';
-      selectedDesc = 'Fire contained';
-    } else if (lower.includes('okay') || lower.includes('copy')) {
+    }
+    // PRIORITY 3: Repeat/clarification requests
+    else if (lower.includes('repeat') || lower.includes('say again') || lower.includes('say that again') ||
+             lower.includes('didn\'t copy') || lower.includes('didn\'t catch')) {
+      selectedFile = '/audio/bosun/bsn_repeat_last_message.wav';
+      selectedDesc = 'Repeat last message';
+    }
+    // PRIORITY 4: Fire-related
+    else if (lower.includes('fire')) {
+      if (lower.includes('contain') || lower.includes('under control') || lower.includes('out')) {
+        selectedFile = '/audio/bosun/bsn_fire_contained.wav';
+        selectedDesc = 'Fire contained';
+      } else if (lower.includes('worse') || lower.includes('spread')) {
+        selectedFile = '/audio/bosun/bsn_fire_spreading_slightly.wav';
+        selectedDesc = 'Fire spreading slightly';
+      } else if (lower.includes('where') || lower.includes('location')) {
+        selectedFile = '/audio/bosun/bsn_fire_main_deck_stbd_side.wav';
+        selectedDesc = 'Fire on main deck starboard side';
+      } else if (lower.includes('party') || lower.includes('team') || lower.includes('ready')) {
+        selectedFile = '/audio/bosun/bsn_fire_party_on_deck.wav';
+        selectedDesc = 'Fire party on deck';
+      } else if (lower.includes('smoke')) {
+        selectedFile = '/audio/bosun/bsn_heavy_smoke_no_flame.wav';
+        selectedDesc = 'Heavy smoke, no flame';
+      } else {
+        selectedFile = '/audio/bosun/bsn_fire_contained.wav';
+        selectedDesc = 'Fire contained';
+      }
+    }
+    // PRIORITY 5: Crew/safety status
+    else if (lower.includes('crew') || lower.includes('people') || lower.includes('everyone')) {
+      if (lower.includes('injury') || lower.includes('injured') || lower.includes('hurt') || 
+          lower.includes('okay') || lower.includes('accounted')) {
+        selectedFile = '/audio/bosun/bsn_no_injury_all_crew_accounted.wav';
+        selectedDesc = 'No injury, all crew accounted';
+      } else {
+        selectedFile = '/audio/bosun/bsn_crew_safe_working_hard.wav';
+        selectedDesc = 'Crew safe, working hard';
+      }
+    }
+    // PRIORITY 6: Situation/status requests
+    else if (lower.includes('situation') || lower.includes('status') || lower.includes('how') ||
+             lower.includes('what\'s going') || lower.includes('update')) {
+      if (lower.includes('worse') || lower.includes('bad') || lower.includes('deteriorat')) {
+        selectedFile = '/audio/bosun/bsn_situation_worsening.wav';
+        selectedDesc = 'Situation worsening';
+      } else if (lower.includes('control') || lower.includes('good') || lower.includes('fine')) {
+        selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
+        selectedDesc = 'Situation under control';
+      } else {
+        selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
+        selectedDesc = 'Situation under control';
+      }
+    }
+    // PRIORITY 7: Equipment checks
+    else if (lower.includes('anchor')) {
+      selectedFile = '/audio/bosun/bsn_anchor_clear_and_ready.wav';
+      selectedDesc = 'Anchor clear and ready';
+    }
+    else if (lower.includes('hose') || lower.includes('water')) {
+      if (lower.includes('leak') || lower.includes('replace')) {
+        selectedFile = '/audio/bosun/bsn_replace_leaky_hose.wav';
+        selectedDesc = 'Replace leaky hose';
+      } else {
+        selectedFile = '/audio/bosun/bsn_hoses_charged.wav';
+        selectedDesc = 'Hoses charged';
+      }
+    }
+    else if (lower.includes('mooring') || lower.includes('line')) {
+      selectedFile = '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav';
+      selectedDesc = 'Mooring line chaffed but holding';
+    }
+    // PRIORITY 8: Damage/inspection
+    else if (lower.includes('damage') || lower.includes('broken')) {
+      selectedFile = '/audio/bosun/bsn_damage_railing.wav';
+      selectedDesc = 'Damage to railing';
+    }
+    else if (lower.includes('flood') || lower.includes('water') || lower.includes('fcastle') || 
+             lower.includes('forecastle')) {
+      selectedFile = '/audio/bosun/bsn_fcastle_checked_no_flooding.wav';
+      selectedDesc = 'Fcastle checked, no flooding';
+    }
+    else if (lower.includes('check') || lower.includes('inspect') || lower.includes('hotspot')) {
+      selectedFile = '/audio/bosun/bsn_checking_for_hotspots.wav';
+      selectedDesc = 'Checking for hotspots';
+    }
+    // PRIORITY 9: Conditions
+    else if (lower.includes('weather') || lower.includes('wind') || lower.includes('visibility')) {
+      selectedFile = '/audio/bosun/bsn_strong_wind_poor_vis.wav';
+      selectedDesc = 'Strong wind, poor visibility';
+    }
+    else if (lower.includes('deck') && (lower.includes('slip') || lower.includes('wet'))) {
+      selectedFile = '/audio/bosun/bsn_slippery_deck.wav';
+      selectedDesc = 'Slippery deck';
+    }
+    else if (lower.includes('light') || lower.includes('dark') || lower.includes('see')) {
+      selectedFile = '/audio/bosun/bsn_need_more_light_on_deck.wav';
+      selectedDesc = 'Need more light on deck';
+    }
+    // PRIORITY 10: Cargo
+    else if (lower.includes('cargo') || lower.includes('lash')) {
+      selectedFile = '/audio/bosun/bsn_cargo_lashing_loose_securing.wav';
+      selectedDesc = 'Cargo lashing loose, securing';
+    }
+    // PRIORITY 11: Standby/waiting
+    else if (lower.includes('stand by') || lower.includes('standby') || lower.includes('wait') ||
+             lower.includes('for now')) {
+      selectedFile = '/audio/bosun/bsn_all_for_now_will_update.wav';
+      selectedDesc = 'All for now, will update';
+    }
+    // PRIORITY 12: Asking for orders
+    else if (lower.includes('what should') || lower.includes('next') || lower.includes('advise') ||
+             lower.includes('what do')) {
+      selectedFile = '/audio/bosun/bsn_please_advise_next_action.wav';
+      selectedDesc = 'Please advise next action';
+    }
+    // DEFAULT: Simple acknowledgment
+    else {
       selectedFile = '/audio/bosun/bsn_okay_copy.wav';
       selectedDesc = 'Okay, copy';
-    } else if (lower.includes('crew') || lower.includes('safe')) {
-      selectedFile = '/audio/bosun/bsn_crew_safe_working_hard.wav';
-      selectedDesc = 'Crew safe, working hard';
-    } else if (lower.includes('status') || lower.includes('situation')) {
-      selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
-      selectedDesc = 'Situation under control';
     }
     
     console.log('Keyword match:', selectedDesc);
@@ -523,68 +1089,52 @@ What's your response number (1-29)?`
       return [...prev, newEntry];
     });
     
-    setTimeout(() => {
-      setAiProcessingStatus('');
-    }, 3000);
+    setTimeout(() => setAiProcessingStatus(''), 3000);
   }
-}, [useAI, openaiApiKey]);
+}, [useAI, openaiApiKey, playRadioResponse]);
 
   // Play radio response audio
-  const playRadioResponse = useCallback((audioFile: string) => {
-    setRadioStatus('responding');
-    
-    const audio = new Audio(audioFile);
-    audio.volume = 0.8;
-    
-    audio.onended = () => {
-      setRadioStatus('idle');
-      radioAudioRef.current = null;
-    };
-    
-    audio.onerror = (err) => {
-      console.error('Audio playback error:', audioFile, err);
-      setRadioStatus('idle');
-      radioAudioRef.current = null;
-    };
-    
-    audio.play().catch(err => {
-      console.error('Audio play failed:', err);
-      setRadioStatus('idle');
-    });
-    
-    radioAudioRef.current = audio;
-  }, []);
+  
 
-  // Handle push-to-talk button
-  const handlePTTPress = useCallback(() => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition not supported in this browser');
-      return;
-    }
-    
-    setIsRecording(true);
-    setRadioStatus('listening');
-    setRadioTranscript('');
-    
-    try {
-      recognitionRef.current.start();
-    } catch (err) {
-      console.error('Failed to start recognition:', err);
-      setIsRecording(false);
-      setRadioStatus('idle');
-    }
-  }, []);
+  // REPLACE THE handlePTTPress FUNCTION (around line 679)
+// This version plays a bleep sound when you start transmitting
 
-  const handlePTTRelease = useCallback(() => {
-    if (recognitionRef.current && isRecording) {
-      try {
-        recognitionRef.current.stop();
-      } catch (err) {
-        console.error('Failed to stop recognition:', err);
-      }
-    }
+const handlePTTPress = useCallback(() => {
+  if (!recognitionRef.current) {
+    alert('Speech recognition not supported in this browser');
+    return;
+  }
+  
+  // Play transmission bleep sound
+  const bleepAudio = new Audio('/audio/bleep.mp3'); // or .wav
+  bleepAudio.volume = 0.6;
+  bleepAudio.play().catch(err => console.log('Bleep sound failed:', err));
+  
+  setIsRecording(true);
+  setRadioStatus('listening');
+  setRadioTranscript('');
+  
+  try {
+    recognitionRef.current.start();
+  } catch (err) {
+    console.error('Failed to start recognition:', err);
     setIsRecording(false);
-  }, [isRecording]);
+    setRadioStatus('idle');
+  }
+}, []);
+// ADD THIS FUNCTION RIGHT AFTER handlePTTPress
+// (Around line 692, right after the handlePTTPress function ends)
+
+const handlePTTRelease = useCallback(() => {
+  if (recognitionRef.current && isRecording) {
+    try {
+      recognitionRef.current.stop();
+    } catch (err) {
+      console.error('Failed to stop recognition:', err);
+    }
+  }
+  setIsRecording(false);
+}, [isRecording]);
 
   // Memoized scenarios data
   const scenarios = useMemo<Scenario[]>(() => [
@@ -1622,346 +2172,396 @@ What's your response number (1-29)?`
         />
       )}
 
-      {/* Scene label */}
-      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 text-[#00d9ff] text-2xl font-bold pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.8)]">
-        {sceneLabels[currentScene]}
-      </div>
 
-      {/* Push-to-Talk Radio Button */}
-      <div className="absolute top-5 left-5 z-20 flex flex-col gap-2">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto ${
-              vhfChatterEnabled
-                ? 'bg-green-700 border-2 border-green-500 text-white hover:bg-green-600'
-                : 'bg-gray-700 border-2 border-gray-500 text-gray-300 hover:bg-gray-600'
-            }`}
-            title={vhfChatterEnabled ? 'VHF Chatter: ON' : 'VHF Chatter: OFF'}
-          >
-            📻 VHF {vhfChatterEnabled ? 'ON' : 'OFF'}
-          </button>
-          
-          <button
-            onClick={() => {
-              console.log('Manual VHF test triggered');
-              playVHFChatter();
-            }}
-            className="px-4 py-2 rounded-lg text-sm font-bold transition-all pointer-events-auto bg-blue-700 border-2 border-blue-500 text-white hover:bg-blue-600"
-            title="Test VHF Chatter Now"
-          >
-            🔊 Test VHF
-          </button>
+// INSERT THIS AFTER THE ALARM VISUAL EFFECT AND BEFORE THE SCENARIO SELECTOR
+// Around line 1183 (after the alarm flash div ends)
+
+{/* VHF Radio - Image-based with states */}
+<div className="absolute top-5 left-5 z-20 flex flex-col gap-3">
+  {/* VHF Chatter Toggle - Rocker Switch Style */}
+  <div className="flex gap-3">
+    <button
+      onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
+      className="relative w-32 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-auto overflow-hidden"
+    >
+      <div className={`absolute inset-0 flex transition-all duration-300 ${
+        vhfChatterEnabled ? 'translate-x-0' : 'translate-x-16'
+      }`}>
+        <div className="w-16 h-full bg-gradient-to-b from-green-600 to-green-700 flex items-center justify-center text-white text-xs font-bold shadow-inner">
+          ON
         </div>
+        <div className="w-16 h-full bg-gradient-to-b from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs font-bold">
+          OFF
+        </div>
+      </div>
+      <div className={`absolute top-1 ${vhfChatterEnabled ? 'left-1' : 'left-[68px]'} w-14 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded shadow-md transition-all duration-300 border border-gray-500`}>
+        <div className="absolute inset-1 bg-gradient-to-b from-gray-200 to-gray-300 rounded-sm" />
+      </div>
+      <div className="absolute top-0 left-0 w-full text-center text-[9px] text-gray-400 font-mono mt-0.5">
+        VHF CHATTER
+      </div>
+    </button>
 
-        {/* Radio Push-to-Talk Button */}
-<div className="flex flex-col gap-2 bg-[rgba(0,40,60,0.95)] border-2 border-[#00d9ff] rounded-lg p-3">
-  <div className="text-[#00d9ff] text-sm font-bold text-center">
-    Radio Communication
+    {/* Test VHF Button */}
+    <button
+      onClick={() => {
+        console.log('Manual VHF test triggered');
+        playVHFChatter();
+      }}
+      className="w-20 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 text-white text-[10px] font-mono hover:from-gray-700 hover:to-gray-800 transition-all pointer-events-auto active:shadow-inner"
+    >
+      TEST<br/>VHF
+    </button>
   </div>
-  <div className="text-[10px] text-gray-400 text-center -mt-1 mb-1">
-    Speech-to-text only • No audio recording
-  </div>
-  
-  {/* AI Settings */}
-  <div className="border-t border-[#00d9ff]/30 pt-2 mb-2">
-    <label className="flex items-center gap-2 text-xs text-white mb-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={useAI}
-        onChange={(e) => setUseAI(e.target.checked)}
-        className="w-4 h-4"
-      />
-      <span>🤖 Use AI (OpenAI API)</span>
-    </label>
+
+  {/* VHF Radio - State-based image display */}
+  <div className="flex flex-col items-center pointer-events-auto">
+    <button
+      onMouseDown={handlePTTPress}
+      onMouseUp={handlePTTRelease}
+      onTouchStart={handlePTTPress}
+      onTouchEnd={handlePTTRelease}
+      disabled={radioStatus === 'responding'}
+      className={`relative transition-all select-none ${
+        isRecording ? 'scale-95' : 'scale-100 hover:scale-105'
+      } ${radioStatus === 'responding' ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'}`}
+      style={{ 
+        filter: isRecording 
+          ? 'drop-shadow(0 0 20px rgba(255,0,0,0.8))' 
+          : radioStatus === 'responding'
+          ? 'drop-shadow(0 0 20px rgba(0,255,0,0.8))'
+          : 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))' 
+      }}
+    >
+      {/* Awaiting state - default */}
+      {radioStatus === 'idle' && (
+        <img 
+          src="/shipimages/uhf-awaiting.png"
+          alt="VHF Radio - Awaiting"
+          className="w-48 h-auto"
+        />
+      )}
+      
+      {/* Transmitting state - red light */}
+      {(radioStatus === 'listening' || radioStatus === 'processing') && (
+        <img 
+          src="/shipimages/uhf-transmitting.png"
+          alt="VHF Radio - Transmitting"
+          className="w-48 h-auto"
+        />
+      )}
+      
+      {/* Bosun responding state - green light */}
+      {radioStatus === 'responding' && (
+        <img 
+          src="/shipimages/uhf-bosun.png"
+          alt="VHF Radio - Receiving"
+          className="w-48 h-auto"
+        />
+      )}
+    </button>
     
-    {useAI && (
-      <input
-        type="password"
-        placeholder="Enter OpenAI API Key (sk-...)"
-        value={openaiApiKey}
-        onChange={(e) => setOpenaiApiKey(e.target.value)}
-        className="w-full px-2 py-1 text-xs bg-[rgba(0,0,0,0.5)] border border-[#00d9ff] rounded text-white placeholder-gray-500"
-      />
-    )}
-  </div>
-  
-  <button
-    onMouseDown={handlePTTPress}
-    onMouseUp={handlePTTRelease}
-    onTouchStart={handlePTTPress}
-    onTouchEnd={handlePTTRelease}
-    disabled={radioStatus === 'responding'}
-    className={`px-6 py-4 rounded-lg text-base font-bold transition-all pointer-events-auto select-none ${
-      isRecording
-        ? 'bg-red-600 border-2 border-red-400 text-white animate-pulse'
-        : radioStatus === 'responding'
-        ? 'bg-yellow-600 border-2 border-yellow-400 text-white'
-        : 'bg-[rgba(0,100,150,0.8)] border-2 border-[#00d9ff] text-white hover:bg-[rgba(0,150,200,0.9)]'
-    }`}
-    title="Hold to talk"
-  >
-    {isRecording ? '🔴 TRANSMITTING...' : radioStatus === 'responding' ? '📻 RECEIVING...' : '🎤 PUSH TO TALK'}
-  </button>
+    {/* Status text below radio */}
+    <div className="text-center text-[10px] font-mono mt-2 text-gray-400">
+      {isRecording && '🔴 TRANSMITTING'}
+      {radioStatus === 'idle' && !isRecording && 'HOLD TO TALK'}
+      {radioStatus === 'processing' && '⚡ PROCESSING'}
+      {radioStatus === 'responding' && '📻 RECEIVING'}
+    </div>
 
-  {/* Status indicator with more details */}
-  <div className="text-center text-xs min-h-[40px]">
-    {radioStatus === 'idle' && !aiProcessingStatus && (
-      <span className="text-gray-400">Press and hold to talk</span>
-    )}
-    {radioStatus === 'listening' && (
-      <div className="flex flex-col gap-1">
-        <span className="text-red-400 font-bold">🎤 Listening...</span>
-        <span className="text-xs text-gray-400">Release when done speaking</span>
-      </div>
-    )}
-    {radioStatus === 'processing' && aiProcessingStatus && (
-      <div className="flex flex-col gap-1">
-        <span className="text-yellow-400 font-bold">{aiProcessingStatus}</span>
-      </div>
-    )}
-    {radioStatus === 'responding' && (
-      <div className="flex flex-col gap-1">
-        <span className="text-green-400 font-bold">📻 Bosun responding...</span>
+    {/* Transcript display - minimal */}
+    {radioTranscript && (
+      <div className="mt-2 p-2 bg-black/80 rounded border border-gray-700 max-w-[200px]">
+        <div className="text-[9px] text-gray-500 font-mono">YOU:</div>
+        <div className="text-[10px] text-white font-mono truncate">"{radioTranscript}"</div>
         {lastBosunResponse && (
-          <span className="text-xs text-green-300">"{lastBosunResponse}"</span>
+          <>
+            <div className="text-[9px] text-gray-500 mt-1 font-mono">BOSUN:</div>
+            <div className="text-[10px] text-green-400 font-mono truncate">"{lastBosunResponse}"</div>
+          </>
         )}
       </div>
     )}
   </div>
+</div>
 
-  {/* Transcript display with what you said */}
-  {radioTranscript && (
-    <div className="mt-2 p-2 bg-[rgba(0,0,0,0.5)] rounded border border-[#00d9ff]">
-      <div className="text-xs text-gray-400">You said:</div>
-      <div className="text-sm text-white font-bold">"{radioTranscript}"</div>
-      {lastBosunResponse && (
-        <>
-          <div className="text-xs text-gray-400 mt-2">Bosun replied:</div>
-          <div className="text-sm text-green-400 font-bold">"{lastBosunResponse}"</div>
-        </>
-      )}
-      <div className="text-[10px] text-gray-500 mt-1">Temporary • Clears on refresh</div>
+{/* Scenario selector - Cleaner design */}
+{!currentScenario && (
+  <div className="absolute top-20 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 max-w-xs shadow-2xl border border-gray-700">
+    <h3 className="text-white text-lg font-bold mb-3 font-mono tracking-wider">EMERGENCY SCENARIOS</h3>
+    <div className="space-y-2">
+      {scenarios.map(scenario => (
+        <button
+          key={scenario.id}
+          onClick={() => startScenario(scenario)}
+          className="w-full px-4 py-3 bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-600 text-white rounded hover:from-gray-700 hover:to-gray-800 transition-all font-mono text-sm text-left shadow-md hover:shadow-lg"
+        >
+          {scenario.name}
+        </button>
+      ))}
     </div>
-  )}
+  </div>
+)}
 
-  {/* Test button for debugging */}
-  <button
-    onClick={() => {
-      const testPhrase = "bosun bosun bridge";
-      console.log('Testing with:', testPhrase);
-      setRadioTranscript(testPhrase);
-      processRadioMessage(testPhrase);
-    }}
-    className="px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
-  >
-    🧪 Test: "bosun bosun bridge"
-  </button>
-</div>
-</div>
-
-      {/* Scenario selector (when no scenario active) */}
-      {!currentScenario && (
-        <div className="absolute top-20 right-5 z-20 bg-[rgba(0,40,60,0.95)] border-2 border-[#00d9ff] rounded-lg p-4 max-w-xs">
-          <h3 className="text-[#00d9ff] text-lg font-bold mb-3">Emergency Scenarios</h3>
-          <div className="space-y-2">
-            {scenarios.map(scenario => (
-              <button
-                key={scenario.id}
-                onClick={() => startScenario(scenario)}
-                className="w-full px-4 py-2 bg-[rgba(0,100,150,0.8)] border border-[#00d9ff] text-white rounded hover:bg-[rgba(0,150,200,0.9)] transition-all"
-              >
-                {scenario.name}
-              </button>
-            ))}
+{/* Active scenario checklist - Notepad Style */}
+{currentScenario && !showResults && (
+  <div className="absolute top-20 right-5 z-20 max-w-md pointer-events-auto">
+    {/* Clipboard Top */}
+    <div className="relative">
+      {/* Metal Clip */}
+      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-8 bg-gradient-to-b from-gray-400 to-gray-500 rounded-t-lg shadow-lg z-10 border-t-2 border-gray-300">
+        <div className="absolute inset-1 bg-gradient-to-b from-gray-300 to-gray-400 rounded-t-md" />
+      </div>
+      
+      {/* Paper/Notepad */}
+      <div className="bg-white rounded-sm shadow-2xl border-l-2 border-r border-b border-gray-400 p-6 pt-8"
+     style={{
+       backgroundImage: `repeating-linear-gradient(
+         #ffffff
+       )`,
+       lineHeight: '32px'
+     }}>
+        
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4 -mt-2">
+          <div>
+            <h3 className="text-gray-800 text-xl font-bold" style={{ fontFamily: 'Courier New, monospace', lineHeight: '1.2' }}>
+              {currentScenario.name}
+            </h3>
+            <p className="text-gray-600 text-xs mt-1" style={{ fontFamily: 'Courier New, monospace', lineHeight: '1.3' }}>
+              {currentScenario.description}
+            </p>
           </div>
-        </div>
-      )}
-
-      {/* Active scenario checklist */}
-      {currentScenario && !showResults && (
-        <div className="absolute top-20 right-5 z-20 bg-[rgba(0,40,60,0.95)] border-2 border-[#00d9ff] rounded-lg p-4 max-w-md">
-          <div className="flex justify-between items-start mb-3">
-            <h3 className="text-[#00d9ff] text-lg font-bold">{currentScenario.name}</h3>
-            <button
-              onClick={() => setShowResults(true)}
-              className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
-            >
-              View Results
-            </button>
-          </div>
-          <p className="text-gray-300 text-sm mb-4">{currentScenario.description}</p>
-          
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {checklist.map((item, idx) => (
-              <div
-                key={item.id}
-                className={`p-2 rounded border ${
-                  item.completed 
-                    ? 'bg-green-900/30 border-green-500' 
-                    : 'bg-red-900/30 border-red-500'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{item.completed ? '✓' : '○'}</span>
-                  <span className="text-white text-sm flex-1">
-                    {idx + 1}. {item.action}
-                  </span>
-                  {item.completed && item.timeCompleted && scenarioStartTime && (
-                    <span className="text-xs text-green-400">
-                      {((item.timeCompleted - scenarioStartTime) / 1000).toFixed(1)}s
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {scenarioComplete && (
-            <div className="mt-4 p-3 bg-green-900/50 border border-green-500 rounded">
-              <p className="text-green-400 font-bold text-center">✓ Scenario Complete!</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Results view */}
-      {showResults && currentScenario && (() => {
-        const performance = calculatePerformance();
-        return performance && (
-          <div className="absolute top-20 right-5 z-20 bg-[rgba(0,40,60,0.98)] border-2 border-[#00d9ff] rounded-lg p-4 max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-[#00d9ff] text-xl font-bold">Scenario Results</h3>
-              <button
-                onClick={() => {
-                  setShowResults(false);
-                  setCurrentScenario(null);
-                  setActionLog([]);
-                  setChecklist([]);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[rgba(0,100,150,0.3)] p-3 rounded border border-[#00d9ff]">
-                  <div className="text-gray-400 text-sm">Total Time</div>
-                  <div className="text-white text-2xl font-bold">{performance.totalTime.toFixed(1)}s</div>
-                </div>
-                <div className="bg-[rgba(0,100,150,0.3)] p-3 rounded border border-[#00d9ff]">
-                  <div className="text-gray-400 text-sm">Score</div>
-                  <div className="text-white text-2xl font-bold">{performance.score.toFixed(0)}%</div>
-                </div>
-              </div>
-
-              <div className="bg-[rgba(0,100,150,0.3)] p-3 rounded border border-[#00d9ff]">
-                <div className="text-gray-400 text-sm mb-2">Actions Completed</div>
-                <div className="text-white text-lg">
-                  {performance.completedActions} / {performance.totalActions}
-                </div>
-              </div>
-
-              <div className="bg-[rgba(0,100,150,0.3)] p-3 rounded border border-[#00d9ff]">
-                <div className="text-gray-400 text-sm mb-2">Correct Order</div>
-                <div className={`text-lg font-bold ${performance.correctOrder ? 'text-green-400' : 'text-red-400'}`}>
-                  {performance.correctOrder ? '✓ Yes' : '✗ No'}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <h4 className="text-[#00d9ff] font-bold mb-3">Action Log</h4>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {actionLog.map((log, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-2 rounded text-sm ${
-                        log.correct 
-                          ? 'bg-green-900/30 border-l-4 border-green-500' 
-                          : 'bg-gray-800/50 border-l-4 border-gray-600'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="text-white font-medium">{log.action}</div>
-                          <div className="text-gray-400 text-xs">
-                            {log.location} • Order: #{log.actualOrder}
-                            {log.expectedOrder && ` (Expected: #${log.expectedOrder})`}
-                          </div>
-                        </div>
-                        <div className="text-gray-400 text-xs">
-                          {scenarioStartTime 
-                            ? `+${((log.timestamp - scenarioStartTime) / 1000).toFixed(1)}s`
-                            : ''}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Silence alarm button */}
-      {alarmActive && currentScene === 'center' && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
           <button
-            onClick={silenceAlarm}
-            className="px-8 py-4 rounded-[5px] text-xl font-bold transition-all duration-300 pointer-events-auto bg-red-700 border-2 border-red-500 text-white hover:bg-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.8)] animate-pulse"
+            onClick={() => setShowResults(true)}
+            className="px-2 py-1 bg-yellow-200 text-gray-800 text-xs rounded shadow-sm hover:bg-yellow-300 border border-yellow-400"
+            style={{ fontFamily: 'Courier New, monospace' }}
           >
-            🔔 SILENCE ALARM
+            Results
           </button>
         </div>
-      )}
+        
+        {/* Horizontal line */}
+        <div className="border-b-2 border-gray-400 mb-3" style={{ marginTop: '-8px' }} />
+        
+        {/* Checklist Items */}
+        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+          {checklist.map((item, idx) => (
+            <div
+              key={item.id}
+              className="flex items-start gap-2 py-1"
+              style={{ lineHeight: '32px' }}
+            >
+              {/* Checkbox - Hand-drawn style */}
+              <div className="flex-shrink-0 w-5 h-5 mt-1 relative">
+                {item.completed ? (
+                  // Checkmark - hand-drawn style
+                  <svg viewBox="0 0 20 20" className="w-5 h-5">
+                    <path
+                      d="M3 3 L17 3 L17 17 L3 17 Z"
+                      fill="none"
+                      stroke="#333"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M5 10 L9 14 L16 6"
+                      fill="none"
+                      stroke="#2563eb"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  // Empty box
+                  <svg viewBox="0 0 20 20" className="w-5 h-5">
+                    <path
+                      d="M3 3 L17 3 L17 17 L3 17 Z"
+                      fill="none"
+                      stroke="#666"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                )}
+              </div>
+              
+              {/* Text */}
+              <div className="flex-1">
+                <span 
+                  className={`text-sm ${item.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`}
+                  style={{ fontFamily: 'Courier New, monospace' }}
+                >
+                  {idx + 1}. {item.action}
+                </span>
+                {item.completed && item.timeCompleted && scenarioStartTime && (
+                  <span className="ml-2 text-xs text-blue-600" style={{ fontFamily: 'Courier New, monospace' }}>
+                    ({((item.timeCompleted - scenarioStartTime) / 1000).toFixed(1)}s)
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-      {/* Scene navigation buttons */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-[15px]">
+        {/* Completion Message */}
+        {scenarioComplete && (
+          <div className="mt-4 p-2 bg-green-100 border-2 border-green-600 rounded text-center">
+            <p className="text-green-800 font-bold" style={{ fontFamily: 'Courier New, monospace' }}>
+              ✓ SCENARIO COMPLETE
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Results view - Professional design */}
+{showResults && currentScenario && (() => {
+  const performance = calculatePerformance();
+  return performance && (
+    <div className="absolute top-20 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-5 max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl border border-gray-700">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-white text-xl font-bold font-mono tracking-wider">SCENARIO RESULTS</h3>
         <button
-          onClick={() => changeScene('port')}
-          className={`px-6 py-3 rounded-[5px] text-base font-bold transition-all duration-300 pointer-events-auto
-            ${currentScene === 'port' 
-              ? 'bg-[rgba(0,217,255,0.3)] border-2 border-white text-white' 
-              : 'bg-[rgba(0,40,60,0.8)] border-2 border-[#00d9ff] text-[#00d9ff] hover:bg-[rgba(0,100,150,0.9)] hover:shadow-[0_0_15px_rgba(0,217,255,0.5)]'
-            }`}
+          onClick={() => {
+            setShowResults(false);
+            setCurrentScenario(null);
+            setActionLog([]);
+            setChecklist([]);
+          }}
+          className="px-4 py-2 bg-red-900 text-white rounded hover:bg-red-800 font-mono text-sm border border-red-700"
         >
-          ← Port Wing
-        </button>
-        <button
-          onClick={() => changeScene('center')}
-          className={`px-6 py-3 rounded-[5px] text-base font-bold transition-all duration-300 pointer-events-auto
-            ${currentScene === 'center' 
-              ? 'bg-[rgba(0,217,255,0.3)] border-2 border-white text-white' 
-              : 'bg-[rgba(0,40,60,0.8)] border-2 border-[#00d9ff] text-[#00d9ff] hover:bg-[rgba(0,100,150,0.9)] hover:shadow-[0_0_15px_rgba(0,217,255,0.5)]'
-            }`}
-        >
-          Center
-        </button>
-        <button
-          onClick={() => changeScene('starboard')}
-          className={`px-6 py-3 rounded-[5px] text-base font-bold transition-all duration-300 pointer-events-auto
-            ${currentScene === 'starboard' 
-              ? 'bg-[rgba(0,217,255,0.3)] border-2 border-white text-white' 
-              : 'bg-[rgba(0,40,60,0.8)] border-2 border-[#00d9ff] text-[#00d9ff] hover:bg-[rgba(0,100,150,0.9)] hover:shadow-[0_0_15px_rgba(0,217,255,0.5)]'
-            }`}
-        >
-          Starboard Wing →
+          CLOSE
         </button>
       </div>
 
-      {/* Hotspots */}
-      {hotspots[currentScene].map((hotspot) => (
-        <div
-          key={hotspot.id}
-          className="absolute z-[12] cursor-pointer pointer-events-auto transition-all duration-200 hover:bg-[rgba(0,217,255,0.2)] border-2 border-transparent hover:border-[#00d9ff]"
-          style={hotspot.position}
-          onClick={() => handleHotspotClick(hotspot)}
-          title={hotspot.label}
-        />
-      ))}
+      <div className="space-y-4">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-gray-800 p-4 rounded border border-gray-600">
+            <div className="text-gray-400 text-xs font-mono mb-1">TOTAL TIME</div>
+            <div className="text-white text-3xl font-bold font-mono">{performance.totalTime.toFixed(1)}s</div>
+          </div>
+          <div className="bg-gray-800 p-4 rounded border border-gray-600">
+            <div className="text-gray-400 text-xs font-mono mb-1">SCORE</div>
+            <div className="text-white text-3xl font-bold font-mono">{performance.score.toFixed(0)}%</div>
+          </div>
+        </div>
+
+        {/* Completion Stats */}
+        <div className="bg-gray-800 p-4 rounded border border-gray-600">
+          <div className="text-gray-400 text-xs font-mono mb-2">ACTIONS COMPLETED</div>
+          <div className="text-white text-xl font-mono">
+            {performance.completedActions} / {performance.totalActions}
+          </div>
+        </div>
+
+        {/* Correct Order */}
+        <div className="bg-gray-800 p-4 rounded border border-gray-600">
+          <div className="text-gray-400 text-xs font-mono mb-2">CORRECT ORDER</div>
+          <div className={`text-xl font-bold font-mono ${performance.correctOrder ? 'text-green-400' : 'text-red-400'}`}>
+            {performance.correctOrder ? '✓ YES' : '✗ NO'}
+          </div>
+        </div>
+
+        {/* Action Log */}
+        <div className="mt-6">
+          <h4 className="text-white font-bold mb-3 font-mono tracking-wider">ACTION LOG</h4>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {actionLog.map((log, idx) => (
+              <div
+                key={idx}
+                className={`p-3 rounded text-sm border-l-4 ${
+                  log.correct 
+                    ? 'bg-green-900/20 border-green-500' 
+                    : 'bg-gray-800/50 border-gray-600'
+                }`}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-white font-medium font-mono">{log.action}</div>
+                    <div className="text-gray-400 text-xs font-mono mt-1">
+                      {log.location} • Order: #{log.actualOrder}
+                      {log.expectedOrder && ` (Expected: #${log.expectedOrder})`}
+                    </div>
+                  </div>
+                  <div className="text-gray-400 text-xs font-mono">
+                    {scenarioStartTime 
+                      ? `+${((log.timestamp - scenarioStartTime) / 1000).toFixed(1)}s`
+                      : ''}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+})()}
+
+{/* Silence alarm button - Realistic emergency button */}
+{alarmActive && currentScene === 'center' && (
+  <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+    <button
+      onClick={silenceAlarm}
+      className="relative px-10 py-6 rounded-full text-xl font-bold transition-all duration-100 pointer-events-auto bg-gradient-to-b from-red-600 to-red-800 border-4 border-red-900 text-white hover:from-red-500 hover:to-red-700 active:scale-95 shadow-2xl font-mono tracking-wider"
+      style={{
+        boxShadow: '0 0 30px rgba(220, 38, 38, 0.8), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.5)',
+        animation: 'pulse 1s ease-in-out infinite'
+      }}
+    >
+      <div className="absolute inset-2 rounded-full border-2 border-red-400/30" />
+      🔔 SILENCE ALARM
+    </button>
+  </div>
+)}
+
+
+{/* Scene navigation - Simple text-based */}
+<div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8 pointer-events-auto">
+  <button
+    onClick={() => changeScene('port')}
+    className="group flex items-center gap-2 transition-all"
+  >
+    <span className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">←</span>
+    <span className={`text-lg tracking-wider transition-all ${
+      currentScene === 'port' 
+        ? 'text-white font-bold' 
+        : 'text-gray-400 hover:text-gray-200'
+    }`}>
+      PORT WING
+    </span>
+  </button>
+  
+  <button
+  onClick={() => changeScene('center')}
+  className="group transition-all"
+>
+  <span className={`text-lg tracking-wider transition-all ${
+    currentScene === 'center' 
+      ? 'text-white font-bold' 
+      : 'text-gray-400 hover:text-gray-200'
+  }`}>
+    CENTER BRIDGE
+  </span>
+</button>
+  
+  <button
+    onClick={() => changeScene('starboard')}
+    className="group flex items-center gap-2 transition-all"
+  >
+    <span className={`text-lg tracking-wider transition-all ${
+      currentScene === 'starboard' 
+        ? 'text-white font-bold' 
+        : 'text-gray-400 hover:text-gray-200'
+    }`}>
+      STARBOARD WING
+    </span>
+    <span className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">→</span>
+  </button>
+</div>
 
       {/* Popup overlay */}
       {activePopup && (
