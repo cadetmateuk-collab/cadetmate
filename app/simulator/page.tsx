@@ -79,6 +79,9 @@ export default function ShipBridgeSimulator() {
   const [isFading, setIsFading] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
   const [activePopup, setActivePopup] = useState<string | null>(null);
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  const [selectedAlarm, setSelectedAlarm] = useState<string | null>(null);
+const alarmAudioRef = useRef<NodeJS.Timeout | null>(null);
   
   // Scenario system state
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(null);
@@ -87,7 +90,19 @@ export default function ShipBridgeSimulator() {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [scenarioComplete, setScenarioComplete] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  
+  const [phoneRinging, setPhoneRinging] = useState(false);
+const phoneAudioRef = useRef<HTMLAudioElement | null>(null);
+const [ambientEnabled, setAmbientEnabled] = useState(true);
+const ambientNodesRef = useRef<{
+  oscillators: OscillatorNode[];
+  gains: GainNode[];
+  filters: BiquadFilterNode[];
+} | null>(null);
+  const ensureAudioContext = useCallback(() => {
+  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+    audioContextRef.current.resume();
+  }
+}, []);
   // Visual effects state
   const [lightsLevel, setLightsLevel] = useState(1);
   const [visualEffects, setVisualEffects] = useState<string[]>([]);
@@ -1139,64 +1154,64 @@ const handlePTTRelease = useCallback(() => {
   // Memoized scenarios data
   const scenarios = useMemo<Scenario[]>(() => [
     {
-      id: "man-overboard",
-      name: "Man Overboard",
-      description: "Crew member has fallen overboard. Execute immediate rescue procedures.",
-      timeLimit: 300,
-      events: [
-        {
-          id: "mob-alarm",
-          type: "alarm",
-          trigger: "immediate",
-          data: { active: true }
-        }
-      ],
-      checklist: [
-        {
-          id: "mob-1",
-          action: "Sound alarm (General Alarm)",
-          location: "center",
-          buttonId: "silence-alarm-btn",
-          order: 1,
-          completed: false
-        },
+  id: "man-overboard",
+  name: "Man Overboard",
+  description: "Crew member has fallen overboard. Execute immediate rescue procedures.",
+  timeLimit: 300,
+  events: [
+    {
+      id: "mob-phone",
+      type: "alarm",
+      trigger: "immediate",
+      data: { active: true, type: "phone" }  // Added type: "phone"
+    }
+  ],
+  checklist: [
+    {
+      id: "mob-1",
+      action: "Answer emergency phone",
+      location: "center",
+      buttonId: "answer-phone-btn",  // Changed from "silence-alarm-btn"
+      order: 1,
+      completed: false
+    },
         {
           id: "mob-2",
-          action: "Deploy life buoy from port side",
-          location: "port",
-          buttonId: "lifebuoy-port",
+          action: "Activate GPS MOB Function",
+          location: "center",
+          buttonId: "ecdis",
           order: 2,
           completed: false
         },
         {
           id: "mob-3",
-          action: "Mark position on ECDIS",
-          location: "center",
-          buttonId: "ecdis",
+          action: "Deploy starboard bridge wing life buoy",
+          location: "starboard",
+          buttonId: "deploy-lifebuoy-starboard",
           order: 3,
           completed: false
         },
         {
           id: "mob-4",
-          action: "Hard turn to starboard (Williamson Turn)",
+          action: "Sound ship's MOB alarm",
           location: "center",
-          buttonId: "helm",
+          buttonId: "alarm-mob",
           order: 4,
           completed: false
         },
         {
           id: "mob-5",
-          action: "Reduce engine speed",
+          action: "Call Master",
           location: "center",
-          buttonId: "engine-telegraph",
+          buttonId: "phone-master",
           order: 5,
           completed: false
         },
         {
           id: "mob-6",
-          action: "Make VHF distress call",
+          action: "Inform ECR",
           location: "center",
-          buttonId: "vhf-radio",
+          buttonId: "phone-ecr",
           order: 6,
           completed: false
         },
@@ -1210,9 +1225,9 @@ const handlePTTRelease = useCallback(() => {
         },
         {
           id: "mob-8",
-          action: "Log incident in ship's log",
+          action: "Reduce speed",
           location: "center",
-          buttonId: "logbook",
+          buttonId: "helm",
           order: 8,
           completed: false
         }
@@ -1519,10 +1534,16 @@ const handlePTTRelease = useCallback(() => {
 
   // Execute a scenario event
   const executeEvent = useCallback((event: ScenarioEvent) => {
-    switch (event.type) {
-      case 'alarm':
+  switch (event.type) {
+    case 'alarm':
+      if (event.data.type === 'phone') {
+        setPhoneRinging(true);
+        // Phone ringing will be handled by useEffect
+      } else {
         setAlarmActive(event.data.active);
-        break;
+      }
+      break;
+    // ... rest of cases unchanged
       case 'lighting':
         setLightsLevel(event.data.level);
         break;
@@ -1780,7 +1801,317 @@ const handlePTTRelease = useCallback(() => {
       };
     }
   }, [alarmActive]);
+// Phone ringing sound effect
+// Phone ringing sound effect - Classic trilling phone
+useEffect(() => {
+  if (phoneRinging) {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    
+    const audioContext = audioContextRef.current;
+    const RING_VOLUME = 0.12;
 
+    const phoneRing = () => {
+      const now = audioContext.currentTime;
+      const ringDuration = 2.0; // Total ring duration
+
+      // Create the base tone oscillators (dual tone like old phones)
+      const osc1 = audioContext.createOscillator();
+      const osc2 = audioContext.createOscillator();
+      
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+      
+      // Classic phone frequencies
+      osc1.frequency.setValueAtTime(440, now); // A note
+      osc2.frequency.setValueAtTime(480, now); // Slightly higher for beating effect
+
+      // Create tremolo for the trill effect
+      const tremolo = audioContext.createOscillator();
+      tremolo.type = 'sine';
+      tremolo.frequency.setValueAtTime(25, now); // 25 Hz trill/warble
+      
+      const tremoloGain = audioContext.createGain();
+      tremoloGain.gain.setValueAtTime(RING_VOLUME * 0.6, now);
+      
+      tremolo.connect(tremoloGain);
+      tremoloGain.connect(audioContext.destination);
+
+      // Main gain envelope
+      const gain = audioContext.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(RING_VOLUME, now + 0.1);
+      gain.gain.setValueAtTime(RING_VOLUME, now + ringDuration - 0.2);
+      gain.gain.linearRampToValueAtTime(0, now + ringDuration);
+
+      // Connect tremolo to control gain
+      tremoloGain.connect(gain.gain);
+
+      // Connect oscillators
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(audioContext.destination);
+
+      // Start everything
+      osc1.start(now);
+      osc2.start(now);
+      tremolo.start(now);
+
+      // Stop everything
+      osc1.stop(now + ringDuration);
+      osc2.stop(now + ringDuration);
+      tremolo.stop(now + ringDuration);
+    };
+
+    // Ring every 4 seconds (2 second ring + 2 second pause)
+    alarmIntervalRef.current = setInterval(phoneRing, 4000);
+    phoneRing();
+
+    return () => {
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current);
+      }
+    };
+  }
+}, [phoneRinging]);
+// Ship's whistle morse code for Oscar (--- for MOB signal) - EXAGGERATED
+const playMorseOscar = useCallback(() => {
+  if (!audioContextRef.current) {
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  
+  const audioContext = audioContextRef.current;
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  
+  const WHISTLE_VOLUME = 0.4;
+  const DASH_DURATION = 1.5; // Much longer blast
+  const GAP_DURATION = 0.8; // Longer gap between blasts
+  
+  const playWhistleBlast = (startTime: number, duration: number) => {
+    const osc1 = audioContext.createOscillator();
+    const osc2 = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    
+    // Ship whistle frequencies (deep, resonant)
+    osc1.type = 'sine';
+    osc2.type = 'sine';
+    osc1.frequency.setValueAtTime(180, startTime); // Even deeper
+    osc2.frequency.setValueAtTime(187, startTime); // Slight detune for richness
+    
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(WHISTLE_VOLUME, startTime + 0.1);
+    gain.gain.setValueAtTime(WHISTLE_VOLUME, startTime + duration - 0.15);
+    gain.gain.linearRampToValueAtTime(0, startTime + duration);
+    
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(audioContext.destination);
+    
+    osc1.start(startTime);
+    osc2.start(startTime);
+    osc1.stop(startTime + duration);
+    osc2.stop(startTime + duration);
+  };
+  
+  const now = audioContext.currentTime;
+  
+  // Oscar = --- (three long dashes) - EXAGGERATED
+  playWhistleBlast(now, DASH_DURATION);
+  playWhistleBlast(now + DASH_DURATION + GAP_DURATION, DASH_DURATION);
+  playWhistleBlast(now + (DASH_DURATION + GAP_DURATION) * 2, DASH_DURATION);
+  
+  // Log to logbook
+  setLogEntries(prev => {
+    const newEntry: LogEntry = {
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      heading: '',
+      speed: '',
+      depth: '',
+      visibility: '',
+      event: 'Man Overboard alarm - Oscar signal sounded (--- --- ---)'
+    };
+    return [...prev, newEntry];
+  });
+}, []);
+// Ambient ship sounds - creaks, rumbles, mechanical hums
+// Ambient ship sounds - creaks, rumbles, mechanical hums - INSTANT START
+// Ambient ship sounds - creaks, rumbles, mechanical hums - INSTANT START
+useEffect(() => {
+  if (ambientEnabled) {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    
+    const audioContext = audioContextRef.current;
+    
+    // Resume context if suspended (browser autoplay policy)
+    if (audioContext.state === 'suspended') {
+      audioContext.resume().then(() => {
+        console.log('AudioContext resumed');
+      });
+    }
+    
+    console.log('Starting ambient sounds, context state:', audioContext.state);
+    // ... rest of the code stays the same
+    const oscillators: OscillatorNode[] = [];
+    const gains: GainNode[] = [];
+    const filters: BiquadFilterNode[] = [];
+
+    // Low hull rumble (engine vibration)
+    const rumble = audioContext.createOscillator();
+    const rumbleGain = audioContext.createGain();
+    const rumbleFilter = audioContext.createBiquadFilter();
+    
+    rumble.type = 'sawtooth';
+    rumble.frequency.setValueAtTime(55, audioContext.currentTime);
+    rumbleFilter.type = 'lowpass';
+    rumbleFilter.frequency.setValueAtTime(120, audioContext.currentTime);
+    rumbleGain.gain.setValueAtTime(0.03, audioContext.currentTime);
+    
+    rumble.connect(rumbleFilter);
+    rumbleFilter.connect(rumbleGain);
+    rumbleGain.connect(audioContext.destination);
+    rumble.start();
+    
+    oscillators.push(rumble);
+    gains.push(rumbleGain);
+    filters.push(rumbleFilter);
+
+    // Medium hull vibration
+    const vibration = audioContext.createOscillator();
+    const vibrationGain = audioContext.createGain();
+    const vibrationFilter = audioContext.createBiquadFilter();
+    
+    vibration.type = 'sawtooth';
+    vibration.frequency.setValueAtTime(82, audioContext.currentTime);
+    vibrationFilter.type = 'lowpass';
+    vibrationFilter.frequency.setValueAtTime(200, audioContext.currentTime);
+    vibrationGain.gain.setValueAtTime(0.03, audioContext.currentTime);
+    
+    vibration.connect(vibrationFilter);
+    vibrationFilter.connect(vibrationGain);
+    vibrationGain.connect(audioContext.destination);
+    vibration.start();
+    
+    oscillators.push(vibration);
+    gains.push(vibrationGain);
+    filters.push(vibrationFilter);
+
+    // White noise for general ambient
+    const bufferSize = audioContext.sampleRate * 2;
+    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    const whiteNoise = audioContext.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+    
+    const noiseFilter = audioContext.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(800, audioContext.currentTime);
+    noiseFilter.Q.setValueAtTime(0.5, audioContext.currentTime);
+    
+    const noiseGain = audioContext.createGain();
+    noiseGain.gain.setValueAtTime(0.03, audioContext.currentTime);
+    
+    whiteNoise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioContext.destination);
+    whiteNoise.start();
+    
+    filters.push(noiseFilter);
+    gains.push(noiseGain);
+
+    // Function to make creak sounds
+    const makeCreak = () => {
+      if (Math.random() > 0.5) { // 50% chance
+        console.log('Creak!'); // DEBUG
+        const now = audioContext.currentTime;
+        
+        const creak = audioContext.createOscillator();
+        const creakGain = audioContext.createGain();
+        const creakFilter = audioContext.createBiquadFilter();
+        
+        creak.type = 'square';
+        const startFreq = 180 + Math.random() * 120;
+        const endFreq = startFreq - 30 - Math.random() * 40;
+        
+        creak.frequency.setValueAtTime(startFreq, now);
+        creak.frequency.linearRampToValueAtTime(endFreq, now + 0.3);
+        
+        creakFilter.type = 'bandpass';
+        creakFilter.frequency.setValueAtTime(250, now);
+        creakFilter.Q.setValueAtTime(2, now);
+        
+        creakGain.gain.setValueAtTime(0, now);
+        creakGain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+        creakGain.gain.linearRampToValueAtTime(0, now + 0.4);
+        
+        creak.connect(creakFilter);
+        creakFilter.connect(creakGain);
+        creakGain.connect(audioContext.destination);
+        
+        creak.start(now);
+        creak.stop(now + 0.5);
+      }
+    };
+
+    // Function to make clank sounds
+    const makeClank = () => {
+      if (Math.random() > 0.6) { // 40% chance
+        console.log('Clank!'); // DEBUG
+        const now = audioContext.currentTime;
+        
+        const clank = audioContext.createOscillator();
+        const clankGain = audioContext.createGain();
+        
+        clank.type = 'square';
+        clank.frequency.setValueAtTime(1200 + Math.random() * 400, now);
+        
+        clankGain.gain.setValueAtTime(0, now);
+        clankGain.gain.linearRampToValueAtTime(0.08, now + 0.01);
+        clankGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        
+        clank.connect(clankGain);
+        clankGain.connect(audioContext.destination);
+        
+        clank.start(now);
+        clank.stop(now + 0.2);
+      }
+    };
+
+    // Start immediately - trigger first sounds right away
+    makeCreak();
+    setTimeout(makeClank, 1000); // Clank 1 second after start
+    
+    // Then continue at intervals
+    const creakInterval = setInterval(makeCreak, 5000); // Every 5 seconds
+    const clankInterval = setInterval(makeClank, 7000); // Every 7 seconds
+
+    ambientNodesRef.current = { oscillators, gains, filters };
+
+    return () => {
+      console.log('Stopping ambient sounds...'); // DEBUG
+      oscillators.forEach(osc => osc.stop());
+      if (whiteNoise) whiteNoise.stop();
+      clearInterval(creakInterval);
+      clearInterval(clankInterval);
+      ambientNodesRef.current = null;
+    };
+  } else {
+    if (ambientNodesRef.current) {
+      ambientNodesRef.current.oscillators.forEach(osc => osc.stop());
+      ambientNodesRef.current = null;
+    }
+  }
+}, [ambientEnabled]);
   // Cleanup audio context on unmount
   useEffect(() => {
     return () => {
@@ -1839,10 +2170,7 @@ const handlePTTRelease = useCallback(() => {
   }, [shipProgress, currentScene]);
 
   const getShipSize = useCallback(() => {
-    const baseSize = 50;
-    const baseProgress = Math.min(shipProgress, 100) / 100;
-    const growthFactor = 1 + (1 - Math.cos(baseProgress * Math.PI / 2)) * 0.8;
-    return baseSize * growthFactor;
+    return 50;
   }, [shipProgress]);
 
   const sceneLabels: Record<Scene, string> = useMemo(() => ({
@@ -1873,7 +2201,16 @@ const handlePTTRelease = useCallback(() => {
     setAlarmActive(false);
     logAction('Silence alarm', 'silence-alarm-btn');
   }, [logAction]);
-
+const answerPhone = useCallback(() => {
+  setPhoneRinging(false);
+  
+  // Play MOB message
+  const mobAudio = new Audio('/audio/mob.wav');
+  mobAudio.volume = 0.8;
+  mobAudio.play().catch(err => console.error('MOB audio failed:', err));
+  
+  logAction('Answer emergency phone', 'answer-phone-btn');
+}, [logAction]);
   // Interactive hotspots with actions - memoized
   const hotspots: Record<Scene, Hotspot[]> = useMemo(() => ({
     center: [
@@ -1935,15 +2272,8 @@ const handlePTTRelease = useCallback(() => {
     ],
     starboard: [
       {
-        id: 'starboard-lookout',
-        position: { left: '50%', top: '40%', width: '30%', height: '25%' },
-        popupImage: '/shipimages/starboard-view-closeup.png',
-        label: 'Starboard Lookout',
-        action: 'starboard-lookout'
-      },
-      {
-        id: 'lifebuoy-starboard',
-        position: { left: '75%', top: '70%', width: '10%', height: '15%' },
+        id: 'deploy-lifebuoy-starboard',
+        position: { left: '50%', top: '60%', width: '20%', height: '25%' },
         label: 'Life Buoy',
         action: 'deploy-lifebuoy-starboard'
       }
@@ -1997,7 +2327,7 @@ const handlePTTRelease = useCallback(() => {
       position: 'absolute',
       bottom: '0%',
       height: '100%',
-      zIndex: 11,
+      zIndex: 16,
       pointerEvents: lookoutTransitioning ? 'none' : 'auto',
       cursor: 'pointer'
     };
@@ -2070,7 +2400,24 @@ const handlePTTRelease = useCallback(() => {
           style={{ backgroundImage: "url('/shipimages/ocean4.png')" }}
         />
       </div>
-
+{/* Audio initialization prompt - appears on first load */}
+{!audioInitialized && (
+  <div 
+    className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center pointer-events-auto"
+    onClick={() => {
+      if (audioContextRef.current) {
+        audioContextRef.current.resume();
+      }
+      setAudioInitialized(true);
+    }}
+  >
+    <div className="bg-gradient-to-b from-gray-900 to-black border-2 border-gray-600 rounded-lg p-8 text-center">
+      <h2 className="text-white text-2xl font-bold mb-4 font-mono">SHIP BRIDGE SIMULATOR</h2>
+      <p className="text-gray-300 mb-6">Click anywhere to enable audio</p>
+      <div className="text-4xl">🎧</div>
+    </div>
+  </div>
+)}
       {/* Ship on horizon */}
       <div className="absolute top-[33%] left-0 w-full h-[20%] z-[3] pointer-events-none animate-ocean-motion">
         <img
@@ -2105,7 +2452,38 @@ const handlePTTRelease = useCallback(() => {
           style={{ backgroundImage: `url('${bridgeMedia[currentScene].src}')` }}
         />
       )}
-
+{/* Interactive Hotspots */}
+{hotspots[currentScene].map((hotspot) => (
+  <div
+    key={hotspot.id}
+    onClick={() => handleHotspotClick(hotspot)}
+    onMouseEnter={(e) => {
+      const label = e.currentTarget.querySelector('.hotspot-label');
+      if (label) label.classList.remove('opacity-0');
+    }}
+    onMouseLeave={(e) => {
+      const label = e.currentTarget.querySelector('.hotspot-label');
+      if (label) label.classList.add('opacity-0');
+    }}
+    className="absolute z-[15] cursor-pointer pointer-events-auto group"
+    style={{
+      left: hotspot.position.left,
+      top: hotspot.position.top,
+      width: hotspot.position.width,
+      height: hotspot.position.height,
+    }}
+  >
+    {/* Hover highlight effect */}
+    <div className="absolute inset-0 border-2 border-yellow-400 bg-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded" />
+    
+    {/* Label that appears on hover */}
+    {hotspot.label && (
+      <div className="hotspot-label absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 px-3 py-1 bg-black/90 text-white text-sm rounded whitespace-nowrap opacity-0 transition-opacity duration-200 pointer-events-none">
+        {hotspot.label}
+      </div>
+    )}
+  </div>
+))}
       {/* Lookout character */}
       {(lookoutPosition === currentScene || (lookoutTransitioning && lookoutPosition === currentScene)) && (
         <div
@@ -2130,164 +2508,254 @@ const handlePTTRelease = useCallback(() => {
           />
           
           {showLookoutArrows && !lookoutTransitioning && (
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-2 bg-[rgba(0,40,60,0.95)] border-2 border-[#00d9ff] rounded-lg p-3 shadow-[0_0_30px_rgba(0,217,255,0.8)]">
-              <div className="text-[#00d9ff] text-sm font-bold text-center mb-1 whitespace-nowrap">
-                Move Lookout To:
-              </div>
-              <button
-                onClick={() => moveLookout('port')}
-                className="px-4 py-2 bg-[rgba(0,100,150,0.8)] border border-[#00d9ff] text-white rounded hover:bg-[rgba(0,150,200,0.9)] transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={lookoutPosition === 'port'}
-              >
-                ← Port Wing
-              </button>
-              <button
-                onClick={() => moveLookout('center')}
-                className="px-4 py-2 bg-[rgba(0,100,150,0.8)] border border-[#00d9ff] text-white rounded hover:bg-[rgba(0,150,200,0.9)] transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={lookoutPosition === 'center'}
-              >
-                Center Bridge
-              </button>
-              <button
-                onClick={() => moveLookout('starboard')}
-                className="px-4 py-2 bg-[rgba(0,100,150,0.8)] border border-[#00d9ff] text-white rounded hover:bg-[rgba(0,150,200,0.9)] transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={lookoutPosition === 'starboard'}
-              >
-                Starboard Wing →
-              </button>
-            </div>
-          )}
+  <div className="absolute top-35 left-53 -translate-x-1/2 flex gap-1 bg-black/80 border border-gray-600 rounded p-1 shadow-lg z-30">
+    <button
+      onClick={() => moveLookout('port')}
+      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
+      disabled={lookoutPosition === 'port'}
+      title="Port Wing"
+    >
+      ←
+    </button>
+    <button
+      onClick={() => moveLookout('center')}
+      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
+      disabled={lookoutPosition === 'center'}
+      title="Center Bridge"
+    >
+      ⚓
+    </button>
+    <button
+      onClick={() => moveLookout('starboard')}
+      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
+      disabled={lookoutPosition === 'starboard'}
+      title="Starboard Wing"
+    >
+      →
+    </button>
+  </div>
+)}
         </div>
       )}
 
-      {/* Alarm visual effect */}
-      {alarmActive && currentScene === 'center' && (
-        <div 
-          className="absolute top-0 left-0 w-full h-full z-[15] pointer-events-none animate-flash"
-          style={{ 
-            backgroundImage: "url('/shipimages/alarm.png')", 
-            backgroundSize: 'cover', 
-            backgroundPosition: 'center' 
-          }}
-        />
-      )}
+      {/* Phone Ringing Effect - replaces alarm for MOB */}
+{phoneRinging && currentScene === 'center' && (
+  <div className="absolute top-0 left-0 w-full h-full z-[15] pointer-events-none">
+    {/* Red flash effect */}
+    <div className="absolute inset-0 bg-red-600/30 animate-flash" />
+    
+    {/* Phone icon pulsing */}
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl animate-pulse">
+      📞
+    </div>
+  </div>
+)}
+
+{/* Answer Phone button - replaces silence alarm for MOB */}
+{phoneRinging && currentScene === 'center' && (
+  <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+    <button
+      onClick={answerPhone}
+      className="relative px-10 py-6 rounded-full text-xl font-bold transition-all duration-100 pointer-events-auto bg-gradient-to-b from-green-600 to-green-800 border-4 border-green-900 text-white hover:from-green-500 hover:to-green-700 active:scale-95 shadow-2xl font-mono tracking-wider animate-pulse"
+      style={{
+        boxShadow: '0 0 30px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div className="absolute inset-2 rounded-full border-2 border-green-400/30" />
+      📞 PICK UP PHONE
+    </button>
+  </div>
+)}
 
 
 // INSERT THIS AFTER THE ALARM VISUAL EFFECT AND BEFORE THE SCENARIO SELECTOR
 // Around line 1183 (after the alarm flash div ends)
 
-{/* VHF Radio - Image-based with states */}
-<div className="absolute top-5 left-5 z-20 flex flex-col gap-3">
+{/* VHF Chatter Toggle - Top Left */}
+<div className="absolute top-5 left-5 z-20 flex gap-3">
   {/* VHF Chatter Toggle - Rocker Switch Style */}
-  <div className="flex gap-3">
-    <button
-      onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
-      className="relative w-32 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-auto overflow-hidden"
-    >
-      <div className={`absolute inset-0 flex transition-all duration-300 ${
-        vhfChatterEnabled ? 'translate-x-0' : 'translate-x-16'
-      }`}>
-        <div className="w-16 h-full bg-gradient-to-b from-green-600 to-green-700 flex items-center justify-center text-white text-xs font-bold shadow-inner">
-          ON
-        </div>
-        <div className="w-16 h-full bg-gradient-to-b from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs font-bold">
-          OFF
-        </div>
+  <button
+    onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
+    className="relative w-32 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-auto overflow-hidden"
+  >
+    <div className={`absolute inset-0 flex transition-all duration-300 ${
+      vhfChatterEnabled ? 'translate-x-0' : 'translate-x-16'
+    }`}>
+      <div className="w-16 h-full bg-gradient-to-b from-green-600 to-green-700 flex items-center justify-center text-white text-xs font-bold shadow-inner">
+        ON
       </div>
-      <div className={`absolute top-1 ${vhfChatterEnabled ? 'left-1' : 'left-[68px]'} w-14 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded shadow-md transition-all duration-300 border border-gray-500`}>
-        <div className="absolute inset-1 bg-gradient-to-b from-gray-200 to-gray-300 rounded-sm" />
+      <div className="w-16 h-full bg-gradient-to-b from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs font-bold">
+        OFF
       </div>
-      <div className="absolute top-0 left-0 w-full text-center text-[9px] text-gray-400 font-mono mt-0.5">
-        VHF CHATTER
-      </div>
-    </button>
-
-    {/* Test VHF Button */}
-    <button
-      onClick={() => {
-        console.log('Manual VHF test triggered');
-        playVHFChatter();
-      }}
-      className="w-20 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 text-white text-[10px] font-mono hover:from-gray-700 hover:to-gray-800 transition-all pointer-events-auto active:shadow-inner"
-    >
-      TEST<br/>VHF
-    </button>
-  </div>
-
-  {/* VHF Radio - State-based image display */}
-  <div className="flex flex-col items-center pointer-events-auto">
-    <button
-      onMouseDown={handlePTTPress}
-      onMouseUp={handlePTTRelease}
-      onTouchStart={handlePTTPress}
-      onTouchEnd={handlePTTRelease}
-      disabled={radioStatus === 'responding'}
-      className={`relative transition-all select-none ${
-        isRecording ? 'scale-95' : 'scale-100 hover:scale-105'
-      } ${radioStatus === 'responding' ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'}`}
-      style={{ 
-        filter: isRecording 
-          ? 'drop-shadow(0 0 20px rgba(255,0,0,0.8))' 
-          : radioStatus === 'responding'
-          ? 'drop-shadow(0 0 20px rgba(0,255,0,0.8))'
-          : 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))' 
-      }}
-    >
-      {/* Awaiting state - default */}
-      {radioStatus === 'idle' && (
-        <img 
-          src="/shipimages/uhf-awaiting.png"
-          alt="VHF Radio - Awaiting"
-          className="w-48 h-auto"
-        />
-      )}
-      
-      {/* Transmitting state - red light */}
-      {(radioStatus === 'listening' || radioStatus === 'processing') && (
-        <img 
-          src="/shipimages/uhf-transmitting.png"
-          alt="VHF Radio - Transmitting"
-          className="w-48 h-auto"
-        />
-      )}
-      
-      {/* Bosun responding state - green light */}
-      {radioStatus === 'responding' && (
-        <img 
-          src="/shipimages/uhf-bosun.png"
-          alt="VHF Radio - Receiving"
-          className="w-48 h-auto"
-        />
-      )}
-    </button>
-    
-    {/* Status text below radio */}
-    <div className="text-center text-[10px] font-mono mt-2 text-gray-400">
-      {isRecording && '🔴 TRANSMITTING'}
-      {radioStatus === 'idle' && !isRecording && 'HOLD TO TALK'}
-      {radioStatus === 'processing' && '⚡ PROCESSING'}
-      {radioStatus === 'responding' && '📻 RECEIVING'}
     </div>
+    <div className={`absolute top-1 ${vhfChatterEnabled ? 'left-1' : 'left-[68px]'} w-14 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded shadow-md transition-all duration-300 border border-gray-500`}>
+      <div className="absolute inset-1 bg-gradient-to-b from-gray-200 to-gray-300 rounded-sm" />
+    </div>
+    <div className="absolute top-0 left-0 w-full text-center text-[9px] text-gray-400 font-mono mt-0.5">
+      VHF CHATTER
+    </div>
+  </button>
 
-    {/* Transcript display - minimal */}
-    {radioTranscript && (
-      <div className="mt-2 p-2 bg-black/80 rounded border border-gray-700 max-w-[200px]">
-        <div className="text-[9px] text-gray-500 font-mono">YOU:</div>
-        <div className="text-[10px] text-white font-mono truncate">"{radioTranscript}"</div>
-        {lastBosunResponse && (
-          <>
-            <div className="text-[9px] text-gray-500 mt-1 font-mono">BOSUN:</div>
-            <div className="text-[10px] text-green-400 font-mono truncate">"{lastBosunResponse}"</div>
-          </>
-        )}
-      </div>
-    )}
+  {/* Test VHF Button */}
+  <button
+    onClick={() => {
+      console.log('Manual VHF test triggered');
+      playVHFChatter();
+    }}
+    className="w-20 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 text-white text-[10px] font-mono hover:from-gray-700 hover:to-gray-800 transition-all pointer-events-auto active:shadow-inner"
+  >
+    TEST<br/>VHF
+  </button>
+</div>
+{/* Ship Alarm Selector Bar - Bottom Center */}
+<div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
+  <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-700 rounded-lg p-3 shadow-xl">
+    <div className="text-white text-xs font-mono mb-2 text-center">SHIP ALARMS</div>
+    <div className="flex gap-2">
+      <button
+  id="alarm-mob"
+  onClick={() => {
+    playMorseOscar();
+    setSelectedAlarm('alarm-mob');
+    setTimeout(() => setSelectedAlarm(null), 6000);
+    logAction('Sound Man Overboard alarm', 'alarm-mob'); // Add this line
+  }}
+  className={`px-4 py-2 rounded font-mono text-sm transition-all ${
+    selectedAlarm === 'alarm-mob'
+      ? 'bg-red-600 text-white border-2 border-red-400'
+      : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
+  }`}
+>
+  ALARM-MOB<br/>
+  <span className="text-[10px]">- - -</span>
+</button>
+      
+      <button
+        onClick={() => {
+          setAlarmActive(true);
+          setSelectedAlarm('GENERAL');
+          setTimeout(() => {
+            setSelectedAlarm(null);
+            setAlarmActive(false);
+          }, 5000);
+        }}
+        className={`px-4 py-2 rounded font-mono text-sm transition-all ${
+          selectedAlarm === 'GENERAL'
+            ? 'bg-red-600 text-white border-2 border-red-400'
+            : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
+        }`}
+      >
+        GENERAL<br/>
+        <span className="text-[10px]">7 SHORT+1 LONG</span>
+      </button>
+      
+      <button
+        onClick={() => {
+          // Fire alarm - continuous bell
+          setAlarmActive(true);
+          setSelectedAlarm('FIRE');
+          setTimeout(() => {
+            setSelectedAlarm(null);
+            setAlarmActive(false);
+          }, 10000);
+          
+          setLogEntries(prev => {
+            const newEntry: LogEntry = {
+              time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+              heading: '',
+              speed: '',
+              depth: '',
+              visibility: '',
+              event: 'Fire alarm activated'
+            };
+            return [...prev, newEntry];
+          });
+        }}
+        className={`px-4 py-2 rounded font-mono text-sm transition-all ${
+          selectedAlarm === 'FIRE'
+            ? 'bg-red-600 text-white border-2 border-red-400'
+            : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
+        }`}
+      >
+        FIRE<br/>
+        <span className="text-[10px]">CONTINUOUS</span>
+      </button>
+    </div>
   </div>
 </div>
+{/* VHF Radio - Bottom Left */}
+<div className="absolute bottom-5 left-5 z-20 flex flex-col items-center pointer-events-auto">
+  <button
+    onMouseDown={handlePTTPress}
+    onMouseUp={handlePTTRelease}
+    onTouchStart={handlePTTPress}
+    onTouchEnd={handlePTTRelease}
+    disabled={radioStatus === 'responding'}
+    className={`relative transition-all select-none ${
+      isRecording ? 'scale-95' : 'scale-100 hover:scale-105'
+    } ${radioStatus === 'responding' ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'}`}
+    style={{ 
+      filter: isRecording 
+        ? 'drop-shadow(0 0 20px rgba(255,0,0,0.8))' 
+        : radioStatus === 'responding'
+        ? 'drop-shadow(0 0 20px rgba(0,255,0,0.8))'
+        : 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))' 
+    }}
+  >
+    {/* Awaiting state - default */}
+    {radioStatus === 'idle' && (
+      <img 
+        src="/shipimages/uhf-awaiting.png"
+        alt="VHF Radio - Awaiting"
+        className="w-48 h-auto"
+      />
+    )}
+    
+    {/* Transmitting state - red light */}
+    {(radioStatus === 'listening' || radioStatus === 'processing') && (
+      <img 
+        src="/shipimages/uhf-transmitting.png"
+        alt="VHF Radio - Transmitting"
+        className="w-48 h-auto"
+      />
+    )}
+    
+    {/* Bosun responding state - green light */}
+    {radioStatus === 'responding' && (
+      <img 
+        src="/shipimages/uhf-bosun.png"
+        alt="VHF Radio - Receiving"
+        className="w-48 h-auto"
+      />
+    )}
+  </button>
+  
+  {/* Status text below radio */}
+  <div className="text-center text-[10px] font-mono mt-2 text-gray-400">
+    {isRecording && '🔴 TRANSMITTING'}
+    {radioStatus === 'idle' && !isRecording && 'HOLD TO TALK'}
+    {radioStatus === 'processing' && '⚡ PROCESSING'}
+    {radioStatus === 'responding' && '📻 RECEIVING'}
+  </div>
 
-{/* Scenario selector - Cleaner design */}
+  {/* Transcript display - minimal */}
+  {radioTranscript && (
+    <div className="mt-2 p-2 bg-black/80 rounded border border-gray-700 max-w-[200px]">
+      <div className="text-[9px] text-gray-500 font-mono">YOU:</div>
+      <div className="text-[10px] text-white font-mono truncate">"{radioTranscript}"</div>
+      {lastBosunResponse && (
+        <>
+          <div className="text-[9px] text-gray-500 mt-1 font-mono">BOSUN:</div>
+          <div className="text-[10px] text-green-400 font-mono truncate">"{lastBosunResponse}"</div>
+        </>
+      )}
+    </div>
+  )}
+</div>
+
+{/* Emergency Scenarios - Bottom Right */}
 {!currentScenario && (
-  <div className="absolute top-20 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 max-w-xs shadow-2xl border border-gray-700">
+  <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 max-w-xs shadow-2xl border border-gray-700 pointer-events-auto">
     <h3 className="text-white text-lg font-bold mb-3 font-mono tracking-wider">EMERGENCY SCENARIOS</h3>
     <div className="space-y-2">
       {scenarios.map(scenario => (
@@ -2303,9 +2771,9 @@ const handlePTTRelease = useCallback(() => {
   </div>
 )}
 
-{/* Active scenario checklist - Notepad Style */}
+{/* Active scenario checklist - Notepad Style - Bottom Right */}
 {currentScenario && !showResults && (
-  <div className="absolute top-20 right-5 z-20 max-w-md pointer-events-auto">
+  <div className="absolute bottom-5 right-5 z-20 max-w-md pointer-events-auto">
     {/* Clipboard Top */}
     <div className="relative">
       {/* Metal Clip */}
@@ -2416,11 +2884,11 @@ const handlePTTRelease = useCallback(() => {
   </div>
 )}
 
-{/* Results view - Professional design */}
+{/* Results view - Bottom Right */}
 {showResults && currentScenario && (() => {
   const performance = calculatePerformance();
   return performance && (
-    <div className="absolute top-20 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-5 max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl border border-gray-700">
+    <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-5 max-w-2xl max-h-[70vh] overflow-y-auto shadow-2xl border border-gray-700 pointer-events-auto">
       <div className="flex justify-between items-start mb-4">
         <h3 className="text-white text-xl font-bold font-mono tracking-wider">SCENARIO RESULTS</h3>
         <button
@@ -2578,7 +3046,7 @@ const handlePTTRelease = useCallback(() => {
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
                     <h1 className="text-2xl font-bold text-center mb-2">SHIP'S DECK LOG SHEET</h1>
-                    <div className="text-xs text-right">Vessel Name: MV Warsash<br/>IMO: 16348275<br/>Callsign: D1WX7</div>
+                    <div className="text-xs text-right">Vessel Name: MV Soho<br/>IMO: 16348275<br/>Callsign: D1WX7</div>
                   </div>
                   <button
                     onClick={() => setActivePopup(null)}
