@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type Scene = 'port' | 'center' | 'starboard';
 
-// Logbook entry structure
 interface LogEntry {
   time: string;
   heading: string;
@@ -14,7 +15,6 @@ interface LogEntry {
   event: string;
 }
 
-// Action log structure
 interface ActionLog {
   timestamp: number;
   action: string;
@@ -24,16 +24,14 @@ interface ActionLog {
   actualOrder: number;
 }
 
-// Scenario event structure
 interface ScenarioEvent {
   id: string;
   type: 'alarm' | 'visual' | 'ship_movement' | 'lighting' | 'sound';
   trigger: 'immediate' | 'delayed';
   delay?: number;
-  data: any;
+  data: Record<string, unknown>;
 }
 
-// Checklist item structure
 interface ChecklistItem {
   id: string;
   action: string;
@@ -44,7 +42,6 @@ interface ChecklistItem {
   timeCompleted?: number;
 }
 
-// Scenario structure
 interface Scenario {
   id: string;
   name: string;
@@ -54,7 +51,6 @@ interface Scenario {
   timeLimit?: number;
 }
 
-// Hotspot structure
 interface Hotspot {
   id: string;
   position: { left: string; top: string; width: string; height: string };
@@ -63,1457 +59,350 @@ interface Hotspot {
   action?: string;
 }
 
-// Radio response mapping
-interface RadioResponse {
-  keywords: string[];
+interface PhoneContact {
+  id: string;
+  buttonId: string;
+  name: string;
+  title: string;
+  extension: string;
+  icon: string;
   audioFile: string;
-  description: string;
 }
 
+// ─── Audio Helpers ────────────────────────────────────────────────────────────
+
+function playTone(
+  ctx: AudioContext,
+  freq: number,
+  startTime: number,
+  duration: number,
+  volume = 0.08,
+  type: OscillatorType = 'sine'
+) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(volume, startTime + 0.04);
+  gain.gain.linearRampToValueAtTime(0, startTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.05);
+}
+
+function playAudioFile(src: string, volume = 0.8): HTMLAudioElement {
+  const audio = new Audio(src);
+  audio.volume = volume;
+  audio.play().catch(() => {});
+  return audio;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function ShipBridgeSimulator() {
+  // Scene
   const [currentScene, setCurrentScene] = useState<Scene>('center');
-  const [alarmActive, setAlarmActive] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const alarmIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [shipProgress, setShipProgress] = useState(0);
   const [isFading, setIsFading] = useState(false);
-  const startTimeRef = useRef<number>(Date.now());
-  const [activePopup, setActivePopup] = useState<string | null>(null);
+
+  // Audio
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const [audioInitialized, setAudioInitialized] = useState(false);
+
+  // Alarms
+  const [alarmActive, setAlarmActive] = useState(false);
+  const [phoneRinging, setPhoneRinging] = useState(false);
   const [selectedAlarm, setSelectedAlarm] = useState<string | null>(null);
-const alarmAudioRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Scenario system state
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Ship animation
+  const [shipProgress, setShipProgress] = useState(0);
+  const startTimeRef = useRef(Date.now());
+
+  // Popups
+  const [activePopup, setActivePopup] = useState<string | null>(null);
+
+  // Scenario system
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(null);
   const [scenarioStartTime, setScenarioStartTime] = useState<number | null>(null);
   const [actionLog, setActionLog] = useState<ActionLog[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [scenarioComplete, setScenarioComplete] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [phoneRinging, setPhoneRinging] = useState(false);
-const phoneAudioRef = useRef<HTMLAudioElement | null>(null);
-const [ambientEnabled, setAmbientEnabled] = useState(true);
-const ambientNodesRef = useRef<{
-  oscillators: OscillatorNode[];
-  gains: GainNode[];
-  filters: BiquadFilterNode[];
-} | null>(null);
-  const ensureAudioContext = useCallback(() => {
-  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-    audioContextRef.current.resume();
-  }
-}, []);
-  // Visual effects state
+
+  // Visual effects
   const [lightsLevel, setLightsLevel] = useState(1);
-  const [visualEffects, setVisualEffects] = useState<string[]>([]);
 
-  // VHF Chatter system
-  const [vhfAudioElement, setVhfAudioElement] = useState<HTMLAudioElement | null>(null);
-  const vhfTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // VHF chatter
   const [vhfChatterEnabled, setVhfChatterEnabled] = useState(true);
-  const vhfPlayingRef = useRef<boolean>(false);
+  const vhfPlayingRef = useRef(false);
+  const vhfTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const vhfAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Radio communication system - NO VOICE RECORDING, only speech-to-text in memory
-  // Text transcript is temporary and cleared on page refresh
+  // Radio / PTT
   const [isRecording, setIsRecording] = useState(false);
   const [radioTranscript, setRadioTranscript] = useState('');
   const [radioStatus, setRadioStatus] = useState<'idle' | 'listening' | 'processing' | 'responding'>('idle');
-  const recognitionRef = useRef<any>(null);
+  const [lastBosunResponse, setLastBosunResponse] = useState('');
+  const [aiProcessingStatus, setAiProcessingStatus] = useState('');
+  const recognitionRef = useRef<unknown>(null);
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
-const [openaiApiKey, setOpenaiApiKey] = useState(
-  process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
-);
-const [useAI, setUseAI] = useState(
-  !!process.env.NEXT_PUBLIC_OPENAI_API_KEY
-);
-const [aiProcessingStatus, setAiProcessingStatus] = useState('');
-const [lastBosunResponse, setLastBosunResponse] = useState('');
+  const [openaiApiKey] = useState(process.env.NEXT_PUBLIC_OPENAI_API_KEY || '');
+  const [useAI] = useState(!!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
 
-  // Lookout positioning state - matches scene positions
+  // Lookout
   const [lookoutPosition, setLookoutPosition] = useState<Scene>('center');
   const [showLookoutArrows, setShowLookoutArrows] = useState(false);
   const [lookoutTransitioning, setLookoutTransitioning] = useState(false);
   const [lookoutExitDirection, setLookoutExitDirection] = useState<'left' | 'right' | null>(null);
 
-  // Radio response database - maps keywords to audio files
-  const radioResponses: RadioResponse[] = useMemo(() => [
-    {
-      keywords: ['for now', 'will update', 'standby', 'stand by', 'later'],
-      audioFile: '/audio/bosun/bsn_all_for_now_will_update.wav',
-      description: 'All for now, will update'
-    },
-    {
-      keywords: ['anchor', 'clear', 'ready', 'anchoring'],
-      audioFile: '/audio/bosun/bsn_anchor_clear_and_ready.wav',
-      description: 'Anchor clear and ready'
-    },
-    {
-      keywords: ['boundary', 'cooling', 'started'],
-      audioFile: '/audio/bosun/bsn_boundary_cooling_started.wav',
-      description: 'Boundary cooling started'
-    },
-    {
-      keywords: ['cargo', 'lashing', 'loose', 'securing'],
-      audioFile: '/audio/bosun/bsn_cargo_lashing_loose_securing.wav',
-      description: 'Cargo lashing loose, securing'
-    },
-    {
-      keywords: ['checking', 'hotspots', 'check'],
-      audioFile: '/audio/bosun/bsn_checking_for_hotspots.wav',
-      description: 'Checking for hotspots'
-    },
-    {
-      keywords: ['crew', 'safe', 'working', 'hard'],
-      audioFile: '/audio/bosun/bsn_crew_safe_working_hard.wav',
-      description: 'Crew safe, working hard'
-    },
-    {
-      keywords: ['damage', 'railing'],
-      audioFile: '/audio/bosun/bsn_damage_railing.wav',
-      description: 'Damage to railing'
-    },
-    {
-      keywords: ['fcastle', 'checked', 'flooding', 'no flooding'],
-      audioFile: '/audio/bosun/bsn_fcastle_checked_no_flooding.wav',
-      description: 'Fcastle checked, no flooding'
-    },
-    {
-      keywords: ['fire', 'contained'],
-      audioFile: '/audio/bosun/bsn_fire_contained.wav',
-      description: 'Fire contained'
-    },
-    {
-      keywords: ['fire', 'main deck', 'starboard'],
-      audioFile: '/audio/bosun/bsn_fire_main_deck_stbd_side.wav',
-      description: 'Fire on main deck starboard side'
-    },
-    {
-      keywords: ['fire', 'party', 'deck'],
-      audioFile: '/audio/bosun/bsn_fire_party_on_deck.wav',
-      description: 'Fire party on deck'
-    },
-    {
-      keywords: ['fire', 'spreading', 'slightly'],
-      audioFile: '/audio/bosun/bsn_fire_spreading_slightly.wav',
-      description: 'Fire spreading slightly'
-    },
-    {
-      keywords: ['go ahead', 'ahead'],
-      audioFile: '/audio/bosun/bsn_go_ahead.wav',
-      description: 'Go ahead'
-    },
-    {
-      keywords: ['heavy smoke', 'no flame'],
-      audioFile: '/audio/bosun/bsn_heavy_smoke_no_flame.wav',
-      description: 'Heavy smoke, no flame'
-    },
-    {
-      keywords: ['hoses', 'charged'],
-      audioFile: '/audio/bosun/bsn_hoses_charged.wav',
-      description: 'Hoses charged'
-    },
-    {
-      keywords: ['mooring', 'line', 'chaffed', 'holding'],
-      audioFile: '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav',
-      description: 'Mooring line chaffed but holding'
-    },
-    {
-      keywords: ['need', 'more light', 'deck'],
-      audioFile: '/audio/bosun/bsn_need_more_light_on_deck.wav',
-      description: 'Need more light on deck'
-    },
-    {
-      keywords: ['no injury', 'all crew', 'accounted'],
-      audioFile: '/audio/bosun/bsn_no_injury_all_crew_accounted.wav',
-      description: 'No injury, all crew accounted'
-    },
-    {
-      keywords: ['okay', 'copy'],
-      audioFile: '/audio/bosun/bsn_okay_copy.wav',
-      description: 'Okay, copy'
-    },
-    {
-      keywords: ['please', 'advise', 'next action'],
-      audioFile: '/audio/bosun/bsn_please_advise_next_action.wav',
-      description: 'Please advise next action'
-    },
-    {
-      keywords: ['repeat', 'last message'],
-      audioFile: '/audio/bosun/bsn_repeat_last_message.wav',
-      description: 'Repeat last message'
-    },
-    {
-      keywords: ['replace', 'leaky', 'hose'],
-      audioFile: '/bosun/bsn_replace_leaky_hose.wav',
-      description: 'Replace leaky hose'
-    },
-    {
-      keywords: ['situation', 'under control'],
-      audioFile: '/audio/bosun/bsn_situation_under_control.wav',
-      description: 'Situation under control'
-    },
-    {
-      keywords: ['situation', 'worsening', 'worse'],
-      audioFile: '/audio/bosun/bsn_situation_worsening.wav',
-      description: 'Situation worsening'
-    },
-    {
-      keywords: ['slippery', 'deck'],
-      audioFile: '/audio/bosun/bsn_slippery_deck.wav',
-      description: 'Slippery deck'
-    },
-    {
-      keywords: ['strong wind', 'poor vis', 'visibility'],
-      audioFile: '/audio/bosun/bsn_strong_wind_poor_vis.wav',
-      description: 'Strong wind, poor visibility'
-    },
-    {
-      keywords: ['understood', 'proceeding'],
-      audioFile: '/audio/bosun/bsn_understood_proceeding.wav',
-      description: 'Understood, proceeding'
-    },
-    {
-      keywords: ['wait', 'confirm', 'instruction'],
-      audioFile: '/audio/bosun/bsn_wait_confirm_instruction.wav',
-      description: 'Wait, confirm instruction'
-    },
-    {
-      keywords: ['we are', 'on deck', 'now'],
-      audioFile: '/audio/bosun/bsn_we_are_on_deck_now.wav',
-      description: 'We are on deck now'
-    }
-  ], []);
+  // Ambient
+  const [ambientEnabled, setAmbientEnabled] = useState(true);
+  const ambientCleanupRef = useRef<(() => void) | null>(null);
 
-  // Initialize speech recognition
-  // NOTE: This uses the browser's Web Speech API for speech-to-text conversion
-  // NO audio recording is performed - only text transcription in memory
-  // All data is cleared when the page refreshes
-  useEffect(() => {
-  if (typeof window !== 'undefined') {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        console.log('Transcript received:', transcript); // DEBUG
-        setRadioTranscript(transcript);
-        setRadioStatus('processing');
-        processRadioMessage(transcript);
-      };
-      
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setRadioStatus('idle');
-        setIsRecording(false);
-        alert(`Speech recognition error: ${event.error}`); // DEBUG
-      };
-      
-      recognition.onend = () => {
-        console.log('Recognition ended'); // DEBUG
-        setRadioStatus('idle');
-        setIsRecording(false);
-      };
-      
-      recognitionRef.current = recognition;
-      console.log('Speech recognition initialized'); // DEBUG
-    } else {
-      console.error('Speech recognition not supported');
-      alert('Speech recognition is not supported in this browser. Please use Chrome or Edge.');
-    }
-  }
-}, []);
-// REPLACE THE playRadioResponse FUNCTION (around line 667)
-// This ensures the radio image goes back to "awaiting" after bosun finishes talking
+  // Phone panel
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const [activeCall, setActiveCall] = useState<string | null>(null);
+  const [dialingContact, setDialingContact] = useState<string | null>(null);
+  const [callTimer, setCallTimer] = useState(0);
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-const playRadioResponse = useCallback((audioFile: string) => {
-  setRadioStatus('responding'); // This will show uhf-bosun.png
-  
-  const audio = new Audio(audioFile);
-  audio.volume = 0.8;
-  
-  audio.onended = () => {
-    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
-    radioAudioRef.current = null;
-  };
-  
-  audio.onerror = (err) => {
-    console.error('Audio playback error:', audioFile, err);
-    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
-    radioAudioRef.current = null;
-  };
-  
-  audio.play().catch(err => {
-    console.error('Audio play failed:', err);
-    setRadioStatus('idle'); // Goes back to uhf-awaiting.png
-  });
-  
-  radioAudioRef.current = audio;
-}, []);
-  // Process radio message and find appropriate response using improved matching
- // Process radio message and find appropriate response using improved matching
-const processRadioMessage = useCallback(async (transcript: string) => {
-  console.log('Processing message:', transcript);
-  setRadioStatus('processing');
-  setAiProcessingStatus('🤖 Analyzing your message...');
-  
-  const lower = transcript.toLowerCase();
-  
-  // If AI is enabled and API key is set, use OpenAI with IMPROVED PROMPT
-  if (useAI && openaiApiKey) {
-    try {
-      setAiProcessingStatus('☁️ Sending to OpenAI...');
-      
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openaiApiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",  // Using faster, cheaper model
-          messages: [
-            {
-              role: "system",
-              content: `BOSUN RADIO RESPONSE PROTOCOL
-
-You are a bosun responding to bridge radio communications onboard a vessel.
-Your task is to interpret the intent, clarity, urgency, and required action of each bridge message, then reply using ONLY the approved standardized responses (1-29).
-
-CRITICAL RULES:
-- Interpret what the bridge is trying to achieve, NOT their exact words
-- Base responses on observed deck conditions, not assumptions
-- Bridge communications may be rushed, fragmented, or emotional during emergencies
-- Respond with ONLY the number (1-29). Nothing else.
-- Do not mirror bridge phrasing or add commentary
-- Prioritize safety and clarity over speed
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-RADIO PROTOCOL (1-6):
-
-1. "Go ahead"
-   USE WHEN: Bridge is attempting to establish contact only
-   EXAMPLES:
-   - "bosun bosun bridge"
-   - "bosun come in"
-   - "bosun do you copy"
-   - "bosun do you read"
-   - "bosun this is bridge"
-   - "bosun are you there"
-   - "calling bosun"
-   - "bridge calling bosun"
-
-2. "We are on deck now"
-   USE WHEN: Bridge requests confirmation of your arrival or presence at a location
-   EXAMPLES:
-   - "are you on deck"
-   - "have you arrived"
-   - "are you in position"
-   - "are you at the foredeck yet"
-   - "have you reached the fire location"
-   - "confirm you're on station"
-   - "are you there now"
-   - "let me know when you're in position"
-   - "have you made it to starboard side"
-
-3. "Okay, copy"
-   USE WHEN: Bridge gives information, updates, or instructions you understand that do NOT require immediate movement
-   EXAMPLES:
-   - "be advised the captain is on his way"
-   - "for your information we're changing course"
-   - "note that port authority has been notified"
-   - "stand by for now"
-   - "just so you know we've called the fire brigade"
-   - "we're monitoring from here"
-   - "chief engineer is aware"
-   - "keep doing what you're doing"
-   - "continue current operations"
-   - "we see you on deck"
-   - "understood, no change to your task"
-
-4. "Understood, proceeding"
-   USE WHEN: Bridge issues a clear, safe order to move, attend a location, or begin an action
-   EXAMPLES:
-   - "proceed to the foredeck"
-   - "go to starboard side immediately"
-   - "move to the fire location"
-   - "begin boundary cooling"
-   - "start securing the cargo"
-   - "check the forward compartments"
-   - "get your team to the anchor station"
-   - "commence fire patrol"
-   - "head to the engine room entrance"
-   - "deploy the fire party now"
-   - "secure all deck equipment"
-   - "investigate that smoke"
-
-5. "Repeat last message"
-   USE WHEN: Bridge message is unclear, broken, partially heard, contradictory, or affected by noise/stress
-   EXAMPLES:
-   - [Garbled]: "bosun... *static* ...deck... *static* ...now"
-   - [Incomplete]: "proceed to the... uh..."
-   - [Contradictory]: "go to port side... no wait starboard"
-   - [Overlapping voices or background noise]
-   - [Partial transmission]: "...fire spreading..."
-   - [Unclear instruction]: "do the thing with the... you know..."
-   - [Rushed/mumbled speech]
-   - [Radio cutting in and out]
-   - [Two instructions given at once unclear which is priority]
-
-6. "Wait, confirm instruction"
-   USE WHEN: Bridge instruction is ambiguous, incomplete, unsafe, or conflicts with current situation
-   EXAMPLES:
-   - "enter the compartment" [when fire/smoke present]
-   - "proceed forward" [when path is blocked]
-   - "go below" [when flooding suspected]
-   - "just handle it" [instruction too vague]
-   - "do whatever you think" [unclear authority]
-   - "move the crew to..." [location not specified]
-   - "start the..." [equipment/action not specified]
-   - "use the backup..." [which backup not clear]
-   - [Order conflicts with safety procedure]
-   - [Order conflicts with visible deck conditions]
-   - [Instruction missing critical details for safe execution]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-FIRE EMERGENCY (7-13):
-
-7. "Fire party on deck"
-   USE WHEN: Bridge asks about fire team readiness or deployment status
-   EXAMPLES:
-   - "is the fire team ready"
-   - "fire party status"
-   - "is the response team in position"
-   - "do you have your fire crew"
-   - "are firefighters assembled"
-   - "is the team geared up"
-   - "fire party deployed?"
-   - "do you have personnel ready"
-   - "is everyone mustered"
-   - "fire team standing by?"
-
-8. "Fire contained"
-   USE WHEN: Bridge asks if fire is under control AND you observe containment
-   EXAMPLES:
-   - "is the fire under control"
-   - "fire status"
-   - "have you got it contained"
-   - "is the situation stable"
-   - "is it out"
-   - "how's the fire looking"
-   - "any progress on the fire"
-   - "is it spreading"
-   - "can you control it"
-   - "fire status update"
-   - "do you have it"
-
-9. "Fire spreading slightly"
-   USE WHEN: Bridge asks about fire progression AND you observe worsening conditions
-   EXAMPLES:
-   - "is the fire getting worse"
-   - "fire status update"
-   - "any change"
-   - "is it spreading"
-   - "is the situation deteriorating"
-   - "how's it progressing"
-   - "is it under control"
-   - "is the fire growing"
-   - "what's happening with the fire"
-   - "status on containment"
-
-10. "Fire on main deck starboard side"
-    USE WHEN: Bridge asks for fire location
-    EXAMPLES:
-    - "where is the fire"
-    - "fire location"
-    - "what's burning"
-    - "where's the seat of the fire"
-    - "which compartment"
-    - "where do you see flames"
-    - "location of fire"
-    - "where is it"
-    - "what area is affected"
-    - "where's the smoke coming from"
-    - "identify fire location"
-
-11. "Heavy smoke, no flame"
-    USE WHEN: Bridge asks about visible flames or smoke conditions
-    EXAMPLES:
-    - "do you see flames"
-    - "smoke status"
-    - "what do you see"
-    - "is there fire or just smoke"
-    - "are there visible flames"
-    - "what's the visibility"
-    - "can you see fire"
-    - "describe what you're seeing"
-    - "is it smoking or burning"
-    - "what are conditions like"
-
-12. "Hoses charged"
-    USE WHEN: Bridge asks about hose or water system readiness
-    EXAMPLES:
-    - "are the hoses ready"
-    - "water pressure okay"
-    - "firefighting equipment status"
-    - "do you have water"
-    - "are hoses charged"
-    - "is the water on"
-    - "pressure good"
-    - "can you fight the fire"
-    - "equipment ready"
-    - "do you have your hoses"
-    - "water supply okay"
-
-13. "Replace leaky hose"
-    USE WHEN: Bridge asks about equipment issues OR you observe firefighting equipment problems
-    EXAMPLES:
-    - "any equipment problems"
-    - "hose condition"
-    - "any issues with gear"
-    - "is everything working"
-    - "equipment status"
-    - "any malfunctions"
-    - "is your gear okay"
-    - "problems with equipment"
-    - "do you need anything"
-    - "any issues"
-    - "all equipment functional"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-CREW & SAFETY (14-16):
-
-14. "Crew safe, working hard"
-    USE WHEN: Bridge asks about crew condition during operations
-    EXAMPLES:
-    - "how is the crew"
-    - "crew status"
-    - "how are your people"
-    - "are the crew okay"
-    - "how's your team doing"
-    - "crew welfare"
-    - "how are your men"
-    - "is everyone coping"
-    - "crew condition"
-    - "how's morale"
-    - "are they holding up"
-
-15. "No injury, all crew accounted"
-    USE WHEN: Bridge asks about injuries, headcount, or crew welfare/safety
-    EXAMPLES:
-    - "any injuries"
-    - "everyone okay"
-    - "headcount"
-    - "all personnel safe"
-    - "anybody hurt"
-    - "is everyone accounted for"
-    - "do you have all your people"
-    - "any casualties"
-    - "crew all present"
-    - "anyone missing"
-    - "medical issues"
-    - "is everyone safe"
-    - "roll call complete"
-
-16. "All for now, will update"
-    USE WHEN: Bridge asks if you need anything else OR you're ending current transmission
-    EXAMPLES:
-    - "anything else"
-    - "that's all for now"
-    - "any further requests"
-    - "stand by"
-    - "do you need anything"
-    - "anything more to report"
-    - "what else"
-    - "is that everything"
-    - "keep us posted"
-    - "update when you can"
-    - "continue and report back"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-EQUIPMENT & OPERATIONS (17-21):
-
-17. "Anchor clear and ready"
-    USE WHEN: Bridge asks about anchor readiness or preparation status
-    EXAMPLES:
-    - "anchor ready"
-    - "prepare the anchor"
-    - "anchor status"
-    - "is the anchor clear"
-    - "can we drop anchor"
-    - "anchor station ready"
-    - "ready to anchor"
-    - "prepare for anchoring"
-    - "anchor clear"
-    - "windlass ready"
-    - "forward station status"
-
-18. "Mooring line chaffed but holding"
-    USE WHEN: Bridge asks about mooring line condition or security
-    EXAMPLES:
-    - "mooring status"
-    - "lines okay"
-    - "check the lines"
-    - "are the moorings secure"
-    - "line condition"
-    - "how are the mooring lines"
-    - "are we secure alongside"
-    - "any problems with lines"
-    - "mooring secure"
-    - "check for chaffing"
-    - "line status"
-
-19. "Checking for hotspots"
-    USE WHEN: Bridge requests fire inspection or verification of smoldering areas
-    EXAMPLES:
-    - "check for fire"
-    - "inspect the area"
-    - "any hotspots"
-    - "do a fire patrol"
-    - "check for smoldering"
-    - "look for heat"
-    - "inspect boundaries"
-    - "check adjacent spaces"
-    - "are there any hot spots"
-    - "thermal check"
-    - "reflash watch"
-
-20. "Slippery deck"
-    USE WHEN: Bridge asks about deck conditions or safety hazards
-    EXAMPLES:
-    - "deck conditions"
-    - "any hazards"
-    - "working surface okay"
-    - "is it safe up there"
-    - "what's the deck like"
-    - "any obstructions"
-    - "working conditions"
-    - "is the deck clear"
-    - "any dangers"
-    - "footing okay"
-    - "trip hazards"
-
-21. "Need more light on deck"
-    USE WHEN: Bridge asks about lighting or visibility concerns
-    EXAMPLES:
-    - "can you see"
-    - "lighting adequate"
-    - "need lights"
-    - "is there enough light"
-    - "visibility okay"
-    - "can you work safely"
-    - "do you need illumination"
-    - "is it dark up there"
-    - "can you see what you're doing"
-    - "lighting status"
-    - "bring out the floodlights"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-DAMAGE & ISSUES (22-25):
-
-22. "Damage to railing"
-    USE WHEN: Bridge asks about structural damage or physical problems
-    EXAMPLES:
-    - "any damage"
-    - "structural problems"
-    - "is anything broken"
-    - "check for damage"
-    - "what's damaged"
-    - "assess the damage"
-    - "any structural issues"
-    - "impact damage"
-    - "visible damage"
-    - "what's the state of the deck"
-    - "any casualties to structure"
-
-23. "Fcastle checked, no flooding"
-    USE WHEN: Bridge asks about forward compartments or flooding status
-    EXAMPLES:
-    - "check forward"
-    - "flooding"
-    - "any water ingress"
-    - "check the fcastle"
-    - "is it dry forward"
-    - "check below"
-    - "forward compartments"
-    - "any flooding"
-    - "water tight"
-    - "check for leaks"
-    - "forward spaces clear"
-
-24. "Boundary cooling started"
-    USE WHEN: Bridge asks about cooling boundaries or fire prevention measures
-    EXAMPLES:
-    - "cooling boundaries"
-    - "fire prevention"
-    - "cool the bulkheads"
-    - "prevent spread"
-    - "are you cooling"
-    - "adjacent spaces"
-    - "boundary protection"
-    - "spray boundaries"
-    - "prevent fire spread"
-    - "protect neighboring compartments"
-
-25. "Cargo lashing loose, securing"
-    USE WHEN: Bridge asks about cargo security or lashing status
-    EXAMPLES:
-    - "cargo secure"
-    - "lashing"
-    - "check the cargo"
-    - "is the cargo tied down"
-    - "lashing status"
-    - "cargo shifted"
-    - "secure the containers"
-    - "check lashings"
-    - "cargo condition"
-    - "anything moving"
-    - "deck cargo status"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-WEATHER & CONDITIONS (26):
-
-26. "Strong wind, poor visibility"
-    USE WHEN: Bridge asks about weather conditions or visibility
-    EXAMPLES:
-    - "weather conditions"
-    - "visibility"
-    - "what's it like out there"
-    - "how's the weather"
-    - "wind conditions"
-    - "can you see okay"
-    - "sea state"
-    - "what's the visibility"
-    - "weather on deck"
-    - "environmental conditions"
-    - "wind speed"
-    - "how rough is it"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-GENERAL STATUS (27-29):
-
-27. "Situation under control"
-    USE WHEN: Bridge asks about overall situation AND conditions are stable/manageable
-    EXAMPLES:
-    - "what's the situation"
-    - "all good"
-    - "overall status"
-    - "sitrep"
-    - "how are things"
-    - "everything okay"
-    - "what's happening"
-    - "status update"
-    - "how's it going"
-    - "general status"
-    - "are we good"
-
-28. "Situation worsening"
-    USE WHEN: Bridge asks about situation AND conditions are deteriorating
-    EXAMPLES:
-    - "getting worse"
-    - "deteriorating"
-    - "what's the situation"
-    - "status"
-    - "how are things now"
-    - "any change"
-    - "is it improving"
-    - "situation update"
-    - "how's it progressing"
-    - "current status"
-
-29. "Please advise next action"
-    USE WHEN: Bridge asks what you need OR you need guidance/orders
-    EXAMPLES:
-    - "what should we do"
-    - "awaiting orders"
-    - "what do you need"
-    - "what next"
-    - "instructions"
-    - "what are your orders"
-    - "tell me what to do"
-    - "waiting for direction"
-    - "what's the plan"
-    - "need guidance"
-    - "request instructions"
-    - "what do you want us to do"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-RESPONSE FORMAT:
-Respond with ONLY the number (1-29). Nothing else.
-
-EXAMPLE EXCHANGES:
-Officer: "bosun bosun bridge" → 1
-Officer: "proceed to the foredeck now" → 4
-Officer: "is the fire under control" → 8 [if contained] OR 9 [if spreading]
-Officer: "how is the crew doing" → 14
-Officer: "what's the situation up there" → 27 [if stable] OR 28 [if deteriorating]
-Officer: "say that again" → 5
-Officer: "are you on deck yet" → 2
-Officer: "be advised captain is coming" → 3
-Officer: "enter the compartment" [unsafe conditions observed] → 6
-Officer: "do you need anything" → 16 [if no] OR 29 [if yes]
-
-Respond with ONLY the number 1-29. Nothing else.`
-            },
-            {
-              role: "user",
-              content: `Officer said: "${transcript}"\n\nResponse number:`
-            }
-          ],
-          max_tokens: 5,
-          temperature: 0.1
-        })
-      });
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content.trim();
-      console.log('AI selected:', aiResponse);
-      
-      setAiProcessingStatus('✅ AI selected response #' + aiResponse);
-      
-      // Map number to audio file
-      const responseMap: { [key: string]: { file: string; desc: string } } = {
-        '1': { file: '/audio/bosun/bsn_go_ahead.wav', desc: 'Go ahead' },
-        '2': { file: '/audio/bosun/bsn_we_are_on_deck_now.wav', desc: 'We are on deck now' },
-        '3': { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' },
-        '4': { file: '/audio/bosun/bsn_understood_proceeding.wav', desc: 'Understood, proceeding' },
-        '5': { file: '/audio/bosun/bsn_repeat_last_message.wav', desc: 'Repeat last message' },
-        '6': { file: '/audio/bosun/bsn_wait_confirm_instruction.wav', desc: 'Wait, confirm instruction' },
-        '7': { file: '/audio/bosun/bsn_fire_party_on_deck.wav', desc: 'Fire party on deck' },
-        '8': { file: '/audio/bosun/bsn_fire_contained.wav', desc: 'Fire contained' },
-        '9': { file: '/audio/bosun/bsn_fire_spreading_slightly.wav', desc: 'Fire spreading slightly' },
-        '10': { file: '/audio/bosun/bsn_fire_main_deck_stbd_side.wav', desc: 'Fire on main deck starboard side' },
-        '11': { file: '/audio/bosun/bsn_heavy_smoke_no_flame.wav', desc: 'Heavy smoke, no flame' },
-        '12': { file: '/audio/bosun/bsn_hoses_charged.wav', desc: 'Hoses charged' },
-        '13': { file: '/audio/bosun/bsn_replace_leaky_hose.wav', desc: 'Replace leaky hose' },
-        '14': { file: '/audio/bosun/bsn_crew_safe_working_hard.wav', desc: 'Crew safe, working hard' },
-        '15': { file: '/audio/bosun/bsn_no_injury_all_crew_accounted.wav', desc: 'No injury, all crew accounted' },
-        '16': { file: '/audio/bosun/bsn_all_for_now_will_update.wav', desc: 'All for now, will update' },
-        '17': { file: '/audio/bosun/bsn_anchor_clear_and_ready.wav', desc: 'Anchor clear and ready' },
-        '18': { file: '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav', desc: 'Mooring line chaffed but holding' },
-        '19': { file: '/audio/bosun/bsn_checking_for_hotspots.wav', desc: 'Checking for hotspots' },
-        '20': { file: '/audio/bosun/bsn_slippery_deck.wav', desc: 'Slippery deck' },
-        '21': { file: '/audio/bosun/bsn_need_more_light_on_deck.wav', desc: 'Need more light on deck' },
-        '22': { file: '/audio/bosun/bsn_damage_railing.wav', desc: 'Damage to railing' },
-        '23': { file: '/audio/bosun/bsn_fcastle_checked_no_flooding.wav', desc: 'Fcastle checked, no flooding' },
-        '24': { file: '/audio/bosun/bsn_boundary_cooling_started.wav', desc: 'Boundary cooling started' },
-        '25': { file: '/audio/bosun/bsn_cargo_lashing_loose_securing.wav', desc: 'Cargo lashing loose, securing' },
-        '26': { file: '/audio/bosun/bsn_strong_wind_poor_vis.wav', desc: 'Strong wind, poor visibility' },
-        '27': { file: '/audio/bosun/bsn_situation_under_control.wav', desc: 'Situation under control' },
-        '28': { file: '/audio/bosun/bsn_situation_worsening.wav', desc: 'Situation worsening' },
-        '29': { file: '/audio/bosun/bsn_please_advise_next_action.wav', desc: 'Please advise next action' }
-      };
-      
-      const selected = responseMap[aiResponse] || responseMap['3'];
-      console.log('Playing:', selected.desc);
-      setLastBosunResponse(selected.desc);
-      setAiProcessingStatus('🔊 Playing: ' + selected.desc);
-      playRadioResponse(selected.file);
-      
-      setLogEntries(prev => {
-        const newEntry: LogEntry = {
-          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-          heading: '',
-          speed: '',
-          depth: '',
-          visibility: '',
-          event: `Radio: "${transcript}" → Bosun: "${selected.desc}"`
-        };
-        return [...prev, newEntry];
-      });
-      
-      setTimeout(() => setAiProcessingStatus(''), 3000);
-      
-    } catch (error) {
-      console.error('OpenAI API failed:', error);
-      setAiProcessingStatus('❌ API Error - using fallback');
-      
-      const fallback = { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' };
-      setLastBosunResponse(fallback.desc);
-      playRadioResponse(fallback.file);
-      
-      setTimeout(() => setAiProcessingStatus(''), 3000);
-    }
-  } else {
-    // IMPROVED KEYWORD MATCHING - No AI
-    setAiProcessingStatus('🔍 Using improved keyword matching...');
-    
-    let selectedFile = '/audio/bosun/bsn_go_ahead.wav';
-    let selectedDesc = 'Go ahead';
-    
-    // PRIORITY 1: Radio call detection (bosun + copy/read/come in)
-    if ((lower.includes('bosun') || lower.includes('boson') || lower.includes('both')) && 
-        (lower.includes('copy') || lower.includes('read') || lower.includes('come in') || 
-         lower.includes('bridge') || lower.includes('you there'))) {
-      selectedFile = '/audio/bosun/bsn_go_ahead.wav';
-      selectedDesc = 'Go ahead';
-    }
-    // PRIORITY 2: Movement orders
-    else if (lower.includes('proceed') || lower.includes('go to') || lower.includes('move to') ||
-             lower.includes('head to') || lower.includes('get to')) {
-      selectedFile = '/audio/bosun/bsn_understood_proceeding.wav';
-      selectedDesc = 'Understood, proceeding';
-    }
-    // PRIORITY 3: Repeat/clarification requests
-    else if (lower.includes('repeat') || lower.includes('say again') || lower.includes('say that again') ||
-             lower.includes('didn\'t copy') || lower.includes('didn\'t catch')) {
-      selectedFile = '/audio/bosun/bsn_repeat_last_message.wav';
-      selectedDesc = 'Repeat last message';
-    }
-    // PRIORITY 4: Fire-related
-    else if (lower.includes('fire')) {
-      if (lower.includes('contain') || lower.includes('under control') || lower.includes('out')) {
-        selectedFile = '/audio/bosun/bsn_fire_contained.wav';
-        selectedDesc = 'Fire contained';
-      } else if (lower.includes('worse') || lower.includes('spread')) {
-        selectedFile = '/audio/bosun/bsn_fire_spreading_slightly.wav';
-        selectedDesc = 'Fire spreading slightly';
-      } else if (lower.includes('where') || lower.includes('location')) {
-        selectedFile = '/audio/bosun/bsn_fire_main_deck_stbd_side.wav';
-        selectedDesc = 'Fire on main deck starboard side';
-      } else if (lower.includes('party') || lower.includes('team') || lower.includes('ready')) {
-        selectedFile = '/audio/bosun/bsn_fire_party_on_deck.wav';
-        selectedDesc = 'Fire party on deck';
-      } else if (lower.includes('smoke')) {
-        selectedFile = '/audio/bosun/bsn_heavy_smoke_no_flame.wav';
-        selectedDesc = 'Heavy smoke, no flame';
-      } else {
-        selectedFile = '/audio/bosun/bsn_fire_contained.wav';
-        selectedDesc = 'Fire contained';
-      }
-    }
-    // PRIORITY 5: Crew/safety status
-    else if (lower.includes('crew') || lower.includes('people') || lower.includes('everyone')) {
-      if (lower.includes('injury') || lower.includes('injured') || lower.includes('hurt') || 
-          lower.includes('okay') || lower.includes('accounted')) {
-        selectedFile = '/audio/bosun/bsn_no_injury_all_crew_accounted.wav';
-        selectedDesc = 'No injury, all crew accounted';
-      } else {
-        selectedFile = '/audio/bosun/bsn_crew_safe_working_hard.wav';
-        selectedDesc = 'Crew safe, working hard';
-      }
-    }
-    // PRIORITY 6: Situation/status requests
-    else if (lower.includes('situation') || lower.includes('status') || lower.includes('how') ||
-             lower.includes('what\'s going') || lower.includes('update')) {
-      if (lower.includes('worse') || lower.includes('bad') || lower.includes('deteriorat')) {
-        selectedFile = '/audio/bosun/bsn_situation_worsening.wav';
-        selectedDesc = 'Situation worsening';
-      } else if (lower.includes('control') || lower.includes('good') || lower.includes('fine')) {
-        selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
-        selectedDesc = 'Situation under control';
-      } else {
-        selectedFile = '/audio/bosun/bsn_situation_under_control.wav';
-        selectedDesc = 'Situation under control';
-      }
-    }
-    // PRIORITY 7: Equipment checks
-    else if (lower.includes('anchor')) {
-      selectedFile = '/audio/bosun/bsn_anchor_clear_and_ready.wav';
-      selectedDesc = 'Anchor clear and ready';
-    }
-    else if (lower.includes('hose') || lower.includes('water')) {
-      if (lower.includes('leak') || lower.includes('replace')) {
-        selectedFile = '/audio/bosun/bsn_replace_leaky_hose.wav';
-        selectedDesc = 'Replace leaky hose';
-      } else {
-        selectedFile = '/audio/bosun/bsn_hoses_charged.wav';
-        selectedDesc = 'Hoses charged';
-      }
-    }
-    else if (lower.includes('mooring') || lower.includes('line')) {
-      selectedFile = '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav';
-      selectedDesc = 'Mooring line chaffed but holding';
-    }
-    // PRIORITY 8: Damage/inspection
-    else if (lower.includes('damage') || lower.includes('broken')) {
-      selectedFile = '/audio/bosun/bsn_damage_railing.wav';
-      selectedDesc = 'Damage to railing';
-    }
-    else if (lower.includes('flood') || lower.includes('water') || lower.includes('fcastle') || 
-             lower.includes('forecastle')) {
-      selectedFile = '/audio/bosun/bsn_fcastle_checked_no_flooding.wav';
-      selectedDesc = 'Fcastle checked, no flooding';
-    }
-    else if (lower.includes('check') || lower.includes('inspect') || lower.includes('hotspot')) {
-      selectedFile = '/audio/bosun/bsn_checking_for_hotspots.wav';
-      selectedDesc = 'Checking for hotspots';
-    }
-    // PRIORITY 9: Conditions
-    else if (lower.includes('weather') || lower.includes('wind') || lower.includes('visibility')) {
-      selectedFile = '/audio/bosun/bsn_strong_wind_poor_vis.wav';
-      selectedDesc = 'Strong wind, poor visibility';
-    }
-    else if (lower.includes('deck') && (lower.includes('slip') || lower.includes('wet'))) {
-      selectedFile = '/audio/bosun/bsn_slippery_deck.wav';
-      selectedDesc = 'Slippery deck';
-    }
-    else if (lower.includes('light') || lower.includes('dark') || lower.includes('see')) {
-      selectedFile = '/audio/bosun/bsn_need_more_light_on_deck.wav';
-      selectedDesc = 'Need more light on deck';
-    }
-    // PRIORITY 10: Cargo
-    else if (lower.includes('cargo') || lower.includes('lash')) {
-      selectedFile = '/audio/bosun/bsn_cargo_lashing_loose_securing.wav';
-      selectedDesc = 'Cargo lashing loose, securing';
-    }
-    // PRIORITY 11: Standby/waiting
-    else if (lower.includes('stand by') || lower.includes('standby') || lower.includes('wait') ||
-             lower.includes('for now')) {
-      selectedFile = '/audio/bosun/bsn_all_for_now_will_update.wav';
-      selectedDesc = 'All for now, will update';
-    }
-    // PRIORITY 12: Asking for orders
-    else if (lower.includes('what should') || lower.includes('next') || lower.includes('advise') ||
-             lower.includes('what do')) {
-      selectedFile = '/audio/bosun/bsn_please_advise_next_action.wav';
-      selectedDesc = 'Please advise next action';
-    }
-    // DEFAULT: Simple acknowledgment
-    else {
-      selectedFile = '/audio/bosun/bsn_okay_copy.wav';
-      selectedDesc = 'Okay, copy';
-    }
-    
-    console.log('Keyword match:', selectedDesc);
-    setLastBosunResponse(selectedDesc);
-    setAiProcessingStatus('🔊 Playing: ' + selectedDesc);
-    playRadioResponse(selectedFile);
-    
-    setLogEntries(prev => {
-      const newEntry: LogEntry = {
-        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        heading: '',
-        speed: '',
-        depth: '',
-        visibility: '',
-        event: `Radio: "${transcript}" → Bosun: "${selectedDesc}"`
-      };
-      return [...prev, newEntry];
-    });
-    
-    setTimeout(() => setAiProcessingStatus(''), 3000);
-  }
-}, [useAI, openaiApiKey, playRadioResponse]);
-
-  // Play radio response audio
-  
-
-  // REPLACE THE handlePTTPress FUNCTION (around line 679)
-// This version plays a bleep sound when you start transmitting
-
-const handlePTTPress = useCallback(() => {
-  if (!recognitionRef.current) {
-    alert('Speech recognition not supported in this browser');
-    return;
-  }
-  
-  // Play transmission bleep sound
-  const bleepAudio = new Audio('/audio/bleep.mp3'); // or .wav
-  bleepAudio.volume = 0.6;
-  bleepAudio.play().catch(err => console.log('Bleep sound failed:', err));
-  
-  setIsRecording(true);
-  setRadioStatus('listening');
-  setRadioTranscript('');
-  
-  try {
-    recognitionRef.current.start();
-  } catch (err) {
-    console.error('Failed to start recognition:', err);
-    setIsRecording(false);
-    setRadioStatus('idle');
-  }
-}, []);
-// ADD THIS FUNCTION RIGHT AFTER handlePTTPress
-// (Around line 692, right after the handlePTTPress function ends)
-
-const handlePTTRelease = useCallback(() => {
-  if (recognitionRef.current && isRecording) {
-    try {
-      recognitionRef.current.stop();
-    } catch (err) {
-      console.error('Failed to stop recognition:', err);
-    }
-  }
-  setIsRecording(false);
-}, [isRecording]);
-
-  // Memoized scenarios data
-  const scenarios = useMemo<Scenario[]>(() => [
-    {
-  id: "man-overboard",
-  name: "Man Overboard",
-  description: "Crew member has fallen overboard. Execute immediate rescue procedures.",
-  timeLimit: 300,
-  events: [
-    {
-      id: "mob-phone",
-      type: "alarm",
-      trigger: "immediate",
-      data: { active: true, type: "phone" }  // Added type: "phone"
-    }
-  ],
-  checklist: [
-    {
-      id: "mob-1",
-      action: "Answer emergency phone",
-      location: "center",
-      buttonId: "answer-phone-btn",  // Changed from "silence-alarm-btn"
-      order: 1,
-      completed: false
-    },
-        {
-          id: "mob-2",
-          action: "Activate GPS MOB Function",
-          location: "center",
-          buttonId: "ecdis",
-          order: 2,
-          completed: false
-        },
-        {
-          id: "mob-3",
-          action: "Deploy starboard bridge wing life buoy",
-          location: "starboard",
-          buttonId: "deploy-lifebuoy-starboard",
-          order: 3,
-          completed: false
-        },
-        {
-          id: "mob-4",
-          action: "Sound ship's MOB alarm",
-          location: "center",
-          buttonId: "alarm-mob",
-          order: 4,
-          completed: false
-        },
-        {
-          id: "mob-5",
-          action: "Call Master",
-          location: "center",
-          buttonId: "phone-master",
-          order: 5,
-          completed: false
-        },
-        {
-          id: "mob-6",
-          action: "Inform ECR",
-          location: "center",
-          buttonId: "phone-ecr",
-          order: 6,
-          completed: false
-        },
-        {
-          id: "mob-7",
-          action: "Post lookout on starboard wing",
-          location: "starboard",
-          buttonId: "starboard-lookout",
-          order: 7,
-          completed: false
-        },
-        {
-          id: "mob-8",
-          action: "Reduce speed",
-          location: "center",
-          buttonId: "helm",
-          order: 8,
-          completed: false
-        }
-      ]
-    },
-    {
-      id: "blackout",
-      name: "Total Blackout",
-      description: "Complete power failure. Restore emergency systems and ensure vessel safety.",
-      timeLimit: 600,
-      events: [
-        {
-          id: "blackout-lights",
-          type: "lighting",
-          trigger: "immediate",
-          data: { level: 0.1 }
-        },
-        {
-          id: "blackout-alarm",
-          type: "alarm",
-          trigger: "delayed",
-          delay: 2000,
-          data: { active: true }
-        },
-        {
-          id: "restore-emergency-lights",
-          type: "lighting",
-          trigger: "delayed",
-          delay: 5000,
-          data: { level: 0.3 }
-        }
-      ],
-      checklist: [
-        {
-          id: "blackout-1",
-          action: "Acknowledge blackout alarm",
-          location: "center",
-          buttonId: "silence-alarm-btn",
-          order: 1,
-          completed: false
-        },
-        {
-          id: "blackout-2",
-          action: "Check radar for traffic",
-          location: "center",
-          buttonId: "radar",
-          order: 2,
-          completed: false
-        },
-        {
-          id: "blackout-3",
-          action: "Switch to manual steering",
-          location: "center",
-          buttonId: "helm",
-          order: 3,
-          completed: false
-        },
-        {
-          id: "blackout-4",
-          action: "Verify position on ECDIS backup",
-          location: "center",
-          buttonId: "ecdis",
-          order: 4,
-          completed: false
-        },
-        {
-          id: "blackout-5",
-          action: "Post lookouts port and starboard",
-          location: "port",
-          buttonId: "port-lookout",
-          order: 5,
-          completed: false
-        },
-        {
-          id: "blackout-6",
-          action: "Verify starboard lookout posted",
-          location: "starboard",
-          buttonId: "starboard-lookout",
-          order: 6,
-          completed: false
-        },
-        {
-          id: "blackout-7",
-          action: "Make Pan-Pan call on VHF",
-          location: "center",
-          buttonId: "vhf-radio",
-          order: 7,
-          completed: false
-        },
-        {
-          id: "blackout-8",
-          action: "Log blackout in deck log",
-          location: "center",
-          buttonId: "logbook",
-          order: 8,
-          completed: false
-        }
-      ]
-    },
-    {
-      id: "fire-alarm",
-      name: "Fire in Engine Room",
-      description: "Fire detected in engine room. Implement fire response procedures.",
-      timeLimit: 420,
-      events: [
-        {
-          id: "fire-alarm",
-          type: "alarm",
-          trigger: "immediate",
-          data: { active: true }
-        }
-      ],
-      checklist: [
-        {
-          id: "fire-1",
-          action: "Sound general alarm",
-          location: "center",
-          buttonId: "silence-alarm-btn",
-          order: 1,
-          completed: false
-        },
-        {
-          id: "fire-2",
-          action: "Check ECDIS position",
-          location: "center",
-          buttonId: "ecdis",
-          order: 2,
-          completed: false
-        },
-        {
-          id: "fire-3",
-          action: "Stop engines",
-          location: "center",
-          buttonId: "engine-telegraph",
-          order: 3,
-          completed: false
-        },
-        {
-          id: "fire-4",
-          action: "Make Mayday call",
-          location: "center",
-          buttonId: "vhf-radio",
-          order: 4,
-          completed: false
-        },
-        {
-          id: "fire-5",
-          action: "Prepare to abandon ship - check port side",
-          location: "port",
-          buttonId: "port-lookout",
-          order: 5,
-          completed: false
-        },
-        {
-          id: "fire-6",
-          action: "Check starboard evacuation route",
-          location: "starboard",
-          buttonId: "starboard-lookout",
-          order: 6,
-          completed: false
-        },
-        {
-          id: "fire-7",
-          action: "Log emergency in deck log",
-          location: "center",
-          buttonId: "logbook",
-          order: 7,
-          completed: false
-        }
-      ]
-    },
-    {
-      id: "collision-avoidance",
-      name: "Collision Avoidance",
-      description: "Vessel on collision course detected. Execute evasive maneuvers.",
-      timeLimit: 180,
-      events: [
-        {
-          id: "collision-alarm",
-          type: "alarm",
-          trigger: "delayed",
-          delay: 3000,
-          data: { active: true }
-        }
-      ],
-      checklist: [
-        {
-          id: "collision-1",
-          action: "Check radar for CPA/TCPA",
-          location: "center",
-          buttonId: "radar",
-          order: 1,
-          completed: false
-        },
-        {
-          id: "collision-2",
-          action: "Verify position on ECDIS",
-          location: "center",
-          buttonId: "ecdis",
-          order: 2,
-          completed: false
-        },
-        {
-          id: "collision-3",
-          action: "Execute starboard turn",
-          location: "center",
-          buttonId: "helm",
-          order: 3,
-          completed: false
-        },
-        {
-          id: "collision-4",
-          action: "Sound 5 short blasts",
-          location: "center",
-          buttonId: "silence-alarm-btn",
-          order: 4,
-          completed: false
-        },
-        {
-          id: "collision-5",
-          action: "Call other vessel on VHF Ch 16",
-          location: "center",
-          buttonId: "vhf-radio",
-          order: 5,
-          completed: false
-        },
-        {
-          id: "collision-6",
-          action: "Post lookout on starboard wing",
-          location: "starboard",
-          buttonId: "starboard-lookout",
-          order: 6,
-          completed: false
-        },
-        {
-          id: "collision-7",
-          action: "Log incident",
-          location: "center",
-          buttonId: "logbook",
-          order: 7,
-          completed: false
-        }
-      ]
-    }
-  ], []);
-  
-  // Initialize logbook with default entries
+  // Logbook
   const [logEntries, setLogEntries] = useState<LogEntry[]>([
-    {
-      time: '1100',
-      heading: '120 deg',
-      speed: '15.6 kts',
-      depth: '62.8m',
-      visibility: 'Clear',
-      event: 'Hourly Position 45° 34.8′ N 22° 03.6′ W'
-    },
-    {
-      time: '1200',
-      heading: '130 deg',
-      speed: '15.0kts',
-      depth: '100.1m',
-      visibility: 'Clear',
-      event: 'Noon Position 46° 12.4′ N 23° 01.2′ W Compass Error 3 E, Wind Force 5, Direction 235, Sea State 4, Swell 3, Visibility 12NM, Barometer 1001, Temp +19'
-    },
-    {
-      time: '1207',
-      heading: '131 deg',
-      speed: '15.1kts',
-      depth: '98.6m',
-      visibility: 'Clear',
-      event: 'Watch Handover Completed to Deck Cadet'
-    }
+    { time: '1100', heading: '120 deg', speed: '15.6 kts', depth: '62.8m', visibility: 'Clear', event: "Hourly Position 45° 34.8′ N 22° 03.6′ W" },
+    { time: '1200', heading: '130 deg', speed: '15.0kts', depth: '100.1m', visibility: 'Clear', event: "Noon Position 46° 12.4′ N 23° 01.2′ W Compass Error 3 E, Wind Force 5, Direction 235, Sea State 4, Swell 3, Visibility 12NM, Barometer 1001, Temp +19" },
+    { time: '1207', heading: '131 deg', speed: '15.1kts', depth: '98.6m', visibility: 'Clear', event: "Watch Handover Completed to Deck Cadet" },
   ]);
-
   const [shipInfo, setShipInfo] = useState(() => {
-    const today = new Date();
+    const d = new Date();
     return {
       shipType: 'C.G.',
       hullNumber: '',
-      date: today.getDate().toString().padStart(2, '0'),
-      month: (today.getMonth() + 1).toString().padStart(2, '0'),
-      year: today.getFullYear().toString()
+      date: d.getDate().toString().padStart(2, '0'),
+      month: (d.getMonth() + 1).toString().padStart(2, '0'),
+      year: d.getFullYear().toString(),
     };
   });
 
-  // Start a scenario
+  // ─── Parallax / Head-movement ───────────────────────────────────────────────
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const PARALLAX_MAX_PX = 18;
+  const PARALLAX_SCALE = 1.07;
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const { clientWidth, clientHeight } = e.currentTarget;
+    setMousePos({
+      x: (e.clientX / clientWidth) - 0.5,
+      y: (e.clientY / clientHeight) - 0.5,
+    });
+  }, []);
+
+  // ─── Audio Context ──────────────────────────────────────────────────────────
+
+  const ensureAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  // ─── Static Data ────────────────────────────────────────────────────────────
+
+  const sceneLabels: Record<Scene, string> = useMemo(() => ({
+    port: 'Port Wing',
+    center: 'Center Bridge',
+    starboard: 'Starboard Wing',
+  }), []);
+
+  const bridgeMedia: Record<Scene, { type: 'video' | 'image'; src: string }> = useMemo(() => ({
+    port: { type: 'image', src: '/shipimages/PS-Wing.png' },
+    center: { type: 'image', src: '/shipimages/bridge.png' },
+    starboard: { type: 'image', src: '/shipimages/SBWind.png' },
+  }), []);
+
+  const hotspots: Record<Scene, Hotspot[]> = useMemo(() => ({
+    center: [
+      { id: 'radar', position: { left: '62%', top: '55%', width: '15%', height: '20%' }, popupImage: '/shipimages/celest.jpeg', label: 'Radar Console', action: 'check-radar' },
+      { id: 'logbook', position: { left: '65%', top: '72%', width: '15%', height: '15%' }, label: 'Logbook', action: 'open-logbook' },
+      { id: 'helm', position: { left: '40%', top: '60%', width: '10%', height: '15%' }, popupImage: '/shipimages/helm-closeup.png', label: 'Helm Controls', action: 'check-helm' },
+      { id: 'ecdis', position: { left: '24%', top: '55%', width: '15%', height: '20%' }, popupImage: '/shipimages/ecdis.png', label: 'ECDIS', action: 'check-ecdis' },
+      { id: 'vhf-radio', position: { left: '78%', top: '48%', width: '8%', height: '12%' }, label: 'VHF Radio', action: 'use-vhf' },
+      { id: 'engine-telegraph', position: { left: '48%', top: '65%', width: '6%', height: '10%' }, label: 'Engine Telegraph', action: 'adjust-engine' },
+    ],
+    port: [
+      { id: 'port-lookout', position: { left: '20%', top: '40%', width: '30%', height: '25%' }, popupImage: '/shipimages/port-view-closeup.png', label: 'Port Lookout', action: 'port-lookout' },
+      { id: 'lifebuoy-port', position: { left: '15%', top: '70%', width: '10%', height: '15%' }, label: 'Life Buoy', action: 'deploy-lifebuoy-port' },
+    ],
+    starboard: [
+      { id: 'deploy-lifebuoy-starboard', position: { left: '50%', top: '60%', width: '20%', height: '25%' }, label: 'Life Buoy', action: 'deploy-lifebuoy-starboard' },
+    ],
+  }), []);
+
+  const phoneContacts: PhoneContact[] = useMemo(() => [
+    { id: 'master', buttonId: 'phone-master', name: 'MASTER', title: 'Capt. R. Voss', extension: '501', icon: '🎖️', audioFile: '/audio/phone/master_response.wav' },
+    { id: 'ecr', buttonId: 'phone-ecr', name: 'ENGINE CONTROL ROOM', title: 'Ch. Eng. M. Santos', extension: '301', icon: '⚙️', audioFile: '/audio/phone/ecr_response.wav' },
+    { id: 'chief-officer', buttonId: 'phone-chief-officer', name: 'CHIEF OFFICER', title: '1st Off. K. Brennan', extension: '502', icon: '📋', audioFile: '/audio/phone/chief_officer_response.wav' },
+    { id: 'security', buttonId: 'phone-security', name: 'SECURITY', title: 'Security Officer', extension: '601', icon: '🔒', audioFile: '/audio/phone/security_response.wav' },
+  ], []);
+
+  const scenarios = useMemo<Scenario[]>(() => [
+    {
+      id: 'man-overboard', name: 'Man Overboard',
+      description: 'Crew member has fallen overboard. Execute immediate rescue procedures.',
+      timeLimit: 300,
+      events: [{ id: 'mob-phone', type: 'alarm', trigger: 'immediate', data: { active: true, type: 'phone' } }],
+      checklist: [
+        { id: 'mob-1', action: 'Answer emergency phone', location: 'center', buttonId: 'answer-phone-btn', order: 1, completed: false },
+        { id: 'mob-2', action: 'Activate GPS MOB Function', location: 'center', buttonId: 'ecdis', order: 2, completed: false },
+        { id: 'mob-3', action: 'Deploy starboard bridge wing life buoy', location: 'starboard', buttonId: 'deploy-lifebuoy-starboard', order: 3, completed: false },
+        { id: 'mob-4', action: "Sound ship's MOB alarm", location: 'center', buttonId: 'alarm-mob', order: 4, completed: false },
+        { id: 'mob-5', action: 'Call Master', location: 'center', buttonId: 'phone-master', order: 5, completed: false },
+        { id: 'mob-6', action: 'Inform ECR', location: 'center', buttonId: 'phone-ecr', order: 6, completed: false },
+        { id: 'mob-7', action: 'Post lookout on starboard wing', location: 'starboard', buttonId: 'starboard-lookout', order: 7, completed: false },
+        { id: 'mob-8', action: 'Reduce speed', location: 'center', buttonId: 'helm', order: 8, completed: false },
+      ],
+    },
+    {
+      id: 'blackout', name: 'Total Blackout',
+      description: 'Complete power failure. Restore emergency systems and ensure vessel safety.',
+      timeLimit: 600,
+      events: [
+        { id: 'blackout-lights', type: 'lighting', trigger: 'immediate', data: { level: 0.1 } },
+        { id: 'blackout-alarm', type: 'alarm', trigger: 'delayed', delay: 2000, data: { active: true } },
+        { id: 'restore-lights', type: 'lighting', trigger: 'delayed', delay: 5000, data: { level: 0.3 } },
+      ],
+      checklist: [
+        { id: 'bo-1', action: 'Acknowledge blackout alarm', location: 'center', buttonId: 'silence-alarm-btn', order: 1, completed: false },
+        { id: 'bo-2', action: 'Check radar for traffic', location: 'center', buttonId: 'radar', order: 2, completed: false },
+        { id: 'bo-3', action: 'Switch to manual steering', location: 'center', buttonId: 'helm', order: 3, completed: false },
+        { id: 'bo-4', action: 'Verify position on ECDIS backup', location: 'center', buttonId: 'ecdis', order: 4, completed: false },
+        { id: 'bo-5', action: 'Post lookouts port and starboard', location: 'port', buttonId: 'port-lookout', order: 5, completed: false },
+        { id: 'bo-6', action: 'Verify starboard lookout posted', location: 'starboard', buttonId: 'starboard-lookout', order: 6, completed: false },
+        { id: 'bo-7', action: 'Make Pan-Pan call on VHF', location: 'center', buttonId: 'vhf-radio', order: 7, completed: false },
+        { id: 'bo-8', action: 'Log blackout in deck log', location: 'center', buttonId: 'logbook', order: 8, completed: false },
+      ],
+    },
+    {
+      id: 'fire-alarm', name: 'Fire in Engine Room',
+      description: 'Fire detected in engine room. Implement fire response procedures.',
+      timeLimit: 420,
+      events: [{ id: 'fire-alarm', type: 'alarm', trigger: 'immediate', data: { active: true } }],
+      checklist: [
+        { id: 'fire-1', action: 'Sound general alarm', location: 'center', buttonId: 'silence-alarm-btn', order: 1, completed: false },
+        { id: 'fire-2', action: 'Check ECDIS position', location: 'center', buttonId: 'ecdis', order: 2, completed: false },
+        { id: 'fire-3', action: 'Stop engines', location: 'center', buttonId: 'engine-telegraph', order: 3, completed: false },
+        { id: 'fire-4', action: 'Make Mayday call', location: 'center', buttonId: 'vhf-radio', order: 4, completed: false },
+        { id: 'fire-5', action: 'Prepare to abandon ship - check port side', location: 'port', buttonId: 'port-lookout', order: 5, completed: false },
+        { id: 'fire-6', action: 'Check starboard evacuation route', location: 'starboard', buttonId: 'starboard-lookout', order: 6, completed: false },
+        { id: 'fire-7', action: 'Log emergency in deck log', location: 'center', buttonId: 'logbook', order: 7, completed: false },
+      ],
+    },
+    {
+      id: 'collision-avoidance', name: 'Collision Avoidance',
+      description: 'Vessel on collision course detected. Execute evasive maneuvers.',
+      timeLimit: 180,
+      events: [{ id: 'collision-alarm', type: 'alarm', trigger: 'delayed', delay: 3000, data: { active: true } }],
+      checklist: [
+        { id: 'col-1', action: 'Check radar for CPA/TCPA', location: 'center', buttonId: 'radar', order: 1, completed: false },
+        { id: 'col-2', action: 'Verify position on ECDIS', location: 'center', buttonId: 'ecdis', order: 2, completed: false },
+        { id: 'col-3', action: 'Execute starboard turn', location: 'center', buttonId: 'helm', order: 3, completed: false },
+        { id: 'col-4', action: 'Sound 5 short blasts', location: 'center', buttonId: 'silence-alarm-btn', order: 4, completed: false },
+        { id: 'col-5', action: 'Call other vessel on VHF Ch 16', location: 'center', buttonId: 'vhf-radio', order: 5, completed: false },
+        { id: 'col-6', action: 'Post lookout on starboard wing', location: 'starboard', buttonId: 'starboard-lookout', order: 6, completed: false },
+        { id: 'col-7', action: 'Log incident', location: 'center', buttonId: 'logbook', order: 7, completed: false },
+      ],
+    },
+  ], []);
+
+  // ─── Log helpers ────────────────────────────────────────────────────────────
+
+  const addEventToLog = useCallback((event: string) => {
+    setLogEntries(prev => [...prev, {
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      heading: '', speed: '', depth: '', visibility: '', event,
+    }]);
+  }, []);
+
+  // ─── Action logging ─────────────────────────────────────────────────────────
+
+  const logAction = useCallback((action: string, buttonId: string) => {
+    if (!currentScenario) return;
+    const timestamp = Date.now();
+
+    setActionLog(prev => {
+      const checklistItem = checklist.find(item => item.buttonId === buttonId);
+      return [...prev, {
+        timestamp, action, location: currentScene,
+        correct: checklistItem ? !checklistItem.completed : false,
+        expectedOrder: checklistItem?.order,
+        actualOrder: prev.length + 1,
+      }];
+    });
+
+    setChecklist(prev => {
+      const item = prev.find(i => i.buttonId === buttonId);
+      if (!item || item.completed) return prev;
+      const updated = prev.map(i => i.id === item.id ? { ...i, completed: true, timeCompleted: timestamp } : i);
+      if (updated.every(i => i.completed)) setTimeout(() => {
+        setScenarioComplete(true);
+        setAlarmActive(false);
+        addEventToLog(`Scenario "${currentScenario?.name}" completed`);
+      }, 100);
+      return updated;
+    });
+  }, [currentScenario, currentScene, checklist, addEventToLog]);
+
+  // ─── Phone ──────────────────────────────────────────────────────────────────
+
+  const endCall = useCallback(() => {
+    if (callTimerRef.current) clearInterval(callTimerRef.current);
+    setActiveCall(null);
+    setCallTimer(0);
+    setDialingContact(null);
+  }, []);
+
+  const makeCall = useCallback((contact: PhoneContact) => {
+    if (activeCall || dialingContact) return;
+    setDialingContact(contact.id);
+    setCallTimer(0);
+
+    const ctx = ensureAudioCtx();
+    const now = ctx.currentTime;
+    [0, 0.5, 1.0].forEach(offset => playTone(ctx, 425, now + offset, 0.4, 0.08, 'sine'));
+
+    setTimeout(() => {
+      setDialingContact(null);
+      setActiveCall(contact.id);
+      logAction(`Called ${contact.name}`, contact.buttonId);
+      callTimerRef.current = setInterval(() => setCallTimer(p => p + 1), 1000);
+      playAudioFile(contact.audioFile, 0.85);
+    }, 1800);
+  }, [activeCall, dialingContact, ensureAudioCtx, logAction]);
+
+  const formatCallTime = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  // ─── Scenario execution ─────────────────────────────────────────────────────
+
+  const executeEvent = useCallback((event: ScenarioEvent) => {
+    switch (event.type) {
+      case 'alarm':
+        if ((event.data as { type?: string }).type === 'phone') setPhoneRinging(true);
+        else setAlarmActive(!!(event.data as { active: boolean }).active);
+        break;
+      case 'lighting':
+        setLightsLevel((event.data as { level: number }).level);
+        break;
+      case 'sound':
+        playAudioFile((event.data as { soundFile: string }).soundFile);
+        break;
+    }
+  }, []);
+
   const startScenario = useCallback((scenario: Scenario) => {
     setCurrentScenario(scenario);
     setScenarioStartTime(Date.now());
@@ -1521,1694 +410,865 @@ const handlePTTRelease = useCallback(() => {
     setChecklist(scenario.checklist.map(item => ({ ...item, completed: false })));
     setScenarioComplete(false);
     setShowResults(false);
-    
-    // Trigger immediate events
     scenario.events.forEach(event => {
-      if (event.trigger === 'immediate') {
-        executeEvent(event);
-      } else if (event.trigger === 'delayed' && event.delay) {
-        setTimeout(() => executeEvent(event), event.delay);
-      }
+      if (event.trigger === 'immediate') executeEvent(event);
+      else if (event.delay) setTimeout(() => executeEvent(event), event.delay);
     });
-  }, []);
+  }, [executeEvent]);
 
-  // Execute a scenario event
-  const executeEvent = useCallback((event: ScenarioEvent) => {
-  switch (event.type) {
-    case 'alarm':
-      if (event.data.type === 'phone') {
-        setPhoneRinging(true);
-        // Phone ringing will be handled by useEffect
-      } else {
-        setAlarmActive(event.data.active);
-      }
-      break;
-    // ... rest of cases unchanged
-      case 'lighting':
-        setLightsLevel(event.data.level);
-        break;
-      case 'ship_movement':
-        // Could trigger ship movement animation
-        break;
-      case 'visual':
-        setVisualEffects(prev => [...prev, event.data.effect]);
-        break;
-      case 'sound':
-        // Play sound effect
-        playSound(event.data.soundFile);
-        break;
-    }
-  }, []);
-
-  // Play sound effect
-  const playSound = useCallback((soundFile: string) => {
-    const audio = new Audio(soundFile);
-    audio.play().catch(err => console.error('Sound play failed:', err));
-  }, []);
-
-  // VHF Chatter system - plays random radio chatter
-  const playVHFChatter = useCallback(() => {
-    if (!vhfChatterEnabled || vhfPlayingRef.current) return;
-
-    const vhfFiles = [
-      '/vhfchatter/chatter1.mp3',
-      '/vhfchatter/chatter2.mp3'
-    ];
-
-    const randomFile = vhfFiles[Math.floor(Math.random() * vhfFiles.length)];
-    vhfPlayingRef.current = true;
-    
-    const audio = new Audio(randomFile);
-    audio.volume = 0.3;
-    
-    audio.play().catch(err => {
-      console.log('VHF chatter play failed:', randomFile, err);
-      vhfPlayingRef.current = false;
-      if (vhfTimeoutRef.current) {
-        clearTimeout(vhfTimeoutRef.current);
-      }
-      vhfTimeoutRef.current = setTimeout(() => {
-        playVHFChatter();
-      }, 30000);
-    });
-
-    audio.onended = () => {
-      vhfPlayingRef.current = false;
-      if (vhfTimeoutRef.current) {
-        clearTimeout(vhfTimeoutRef.current);
-      }
-      vhfTimeoutRef.current = setTimeout(() => {
-        playVHFChatter();
-      }, 30000);
-    };
-
-    audio.onerror = () => {
-      console.log('VHF audio error for:', randomFile);
-      vhfPlayingRef.current = false;
-      if (vhfTimeoutRef.current) {
-        clearTimeout(vhfTimeoutRef.current);
-      }
-      vhfTimeoutRef.current = setTimeout(() => {
-        playVHFChatter();
-      }, 30000);
-    };
-
-    setVhfAudioElement(audio);
-  }, [vhfChatterEnabled]);
-
-  // Log an action
-  const logAction = useCallback((action: string, buttonId: string) => {
-    if (!currentScenario) return;
-
-    const timestamp = Date.now();
-    
-    setActionLog(prev => {
-      const checklistItem = checklist.find(item => item.buttonId === buttonId);
-      
-      const newLog: ActionLog = {
-        timestamp,
-        action,
-        location: currentScene,
-        correct: checklistItem ? !checklistItem.completed : false,
-        expectedOrder: checklistItem?.order,
-        actualOrder: prev.length + 1
-      };
-
-      return [...prev, newLog];
-    });
-
-    // Update checklist if this was a checklist action
-    setChecklist(prev => {
-      const checklistItem = prev.find(item => item.buttonId === buttonId);
-      
-      if (checklistItem && !checklistItem.completed) {
-        const updatedChecklist = prev.map(item => 
-          item.id === checklistItem.id 
-            ? { ...item, completed: true, timeCompleted: timestamp }
-            : item
-        );
-
-        // Check if scenario is complete
-        if (updatedChecklist.every(item => item.completed)) {
-          setTimeout(completeScenario, 100);
-        }
-
-        return updatedChecklist;
-      }
-      return prev;
-    });
-  }, [currentScenario, currentScene, checklist]);
-
-  // Complete the scenario
-  const completeScenario = useCallback(() => {
-    setScenarioComplete(true);
-    setAlarmActive(false);
-    
-    // Add completion to logbook
-    setLogEntries(prev => {
-      const newEntry: LogEntry = {
-        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        heading: '',
-        speed: '',
-        depth: '',
-        visibility: '',
-        event: `Scenario "${currentScenario?.name}" completed`
-      };
-      return [...prev, newEntry];
-    });
-  }, [currentScenario]);
-
-  // Calculate scenario performance
   const calculatePerformance = useCallback(() => {
-    if (!currentScenario || !scenarioStartTime) return null;
-
-    const totalTime = actionLog.length > 0 
-      ? (actionLog[actionLog.length - 1].timestamp - scenarioStartTime) / 1000
-      : 0;
-
-    const correctOrder = actionLog.every((log, idx) => {
-      if (log.expectedOrder === undefined) return true;
-      return log.expectedOrder === log.actualOrder;
-    });
-
-    const completedActions = checklist.filter(item => item.completed).length;
-    const totalActions = checklist.length;
-
-    return {
-      totalTime,
-      correctOrder,
-      completedActions,
-      totalActions,
-      score: (completedActions / totalActions) * 100
-    };
+    if (!currentScenario || !scenarioStartTime || !actionLog.length) return null;
+    const totalTime = (actionLog[actionLog.length - 1].timestamp - scenarioStartTime) / 1000;
+    const correctOrder = actionLog.every(log => log.expectedOrder === undefined || log.expectedOrder === log.actualOrder);
+    const completedActions = checklist.filter(i => i.completed).length;
+    return { totalTime, correctOrder, completedActions, totalActions: checklist.length, score: (completedActions / checklist.length) * 100 };
   }, [currentScenario, scenarioStartTime, actionLog, checklist]);
 
-  // Add new log entry
-  const addLogEntry = useCallback(() => {
-    const newEntry: LogEntry = {
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      heading: '',
-      speed: '',
-      depth: '',
-      visibility: '',
-      event: ''
-    };
-    setLogEntries(prev => [...prev, newEntry]);
-  }, []);
-
-  const updateLogEntry = useCallback((index: number, field: keyof LogEntry, value: string) => {
-    setLogEntries(prev => {
-      const newEntries = [...prev];
-      newEntries[index][field] = value;
-      return newEntries;
-    });
-  }, []);
-
-  const deleteLogEntry = useCallback((index: number) => {
-    setLogEntries(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  // Ship animation effect
-  useEffect(() => {
-    const animationInterval = setInterval(() => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      const progress = elapsed * 2;
-      setShipProgress(progress);
-    }, 50);
-
-    return () => clearInterval(animationInterval);
-  }, []);
-
-  // Alarm sound effect
-  useEffect(() => {
-    if (alarmActive) {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      
-      const audioContext = audioContextRef.current;
-      const ALARM_VOLUME = 0.05;
-
-      const shipAlarm = () => {
-        const now = audioContext.currentTime;
-
-        const osc1 = audioContext.createOscillator();
-        const osc2 = audioContext.createOscillator();
-
-        osc1.type = 'square';
-        osc2.type = 'sine';
-
-        osc1.frequency.setValueAtTime(700, now);
-        osc2.frequency.setValueAtTime(800, now);
-
-        const gain = audioContext.createGain();
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(ALARM_VOLUME, now + 0.04);
-        gain.gain.linearRampToValueAtTime(0, now + 0.45);
-
-        const tremolo = audioContext.createOscillator();
-        const tremoloGain = audioContext.createGain();
-
-        tremolo.frequency.value = 5;
-        tremoloGain.gain.value = ALARM_VOLUME * 0.25;
-
-        tremolo.connect(tremoloGain);
-        tremoloGain.connect(gain.gain);
-
-        osc1.frequency.linearRampToValueAtTime(840, now + 0.25);
-        osc2.frequency.linearRampToValueAtTime(820, now + 0.25);
-
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(audioContext.destination);
-
-        osc1.start(now);
-        osc2.start(now);
-        tremolo.start(now);
-
-        osc1.stop(now + 0.5);
-        osc2.stop(now + 0.5);
-        tremolo.stop(now + 0.5);
-      };
-
-      alarmIntervalRef.current = setInterval(shipAlarm, 700);
-      shipAlarm();
-
-      return () => {
-        if (alarmIntervalRef.current) {
-          clearInterval(alarmIntervalRef.current);
-        }
-      };
-    }
-  }, [alarmActive]);
-// Phone ringing sound effect
-// Phone ringing sound effect - Classic trilling phone
-useEffect(() => {
-  if (phoneRinging) {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    
-    const audioContext = audioContextRef.current;
-    const RING_VOLUME = 0.12;
-
-    const phoneRing = () => {
-      const now = audioContext.currentTime;
-      const ringDuration = 2.0; // Total ring duration
-
-      // Create the base tone oscillators (dual tone like old phones)
-      const osc1 = audioContext.createOscillator();
-      const osc2 = audioContext.createOscillator();
-      
-      osc1.type = 'sine';
-      osc2.type = 'sine';
-      
-      // Classic phone frequencies
-      osc1.frequency.setValueAtTime(440, now); // A note
-      osc2.frequency.setValueAtTime(480, now); // Slightly higher for beating effect
-
-      // Create tremolo for the trill effect
-      const tremolo = audioContext.createOscillator();
-      tremolo.type = 'sine';
-      tremolo.frequency.setValueAtTime(25, now); // 25 Hz trill/warble
-      
-      const tremoloGain = audioContext.createGain();
-      tremoloGain.gain.setValueAtTime(RING_VOLUME * 0.6, now);
-      
-      tremolo.connect(tremoloGain);
-      tremoloGain.connect(audioContext.destination);
-
-      // Main gain envelope
-      const gain = audioContext.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(RING_VOLUME, now + 0.1);
-      gain.gain.setValueAtTime(RING_VOLUME, now + ringDuration - 0.2);
-      gain.gain.linearRampToValueAtTime(0, now + ringDuration);
-
-      // Connect tremolo to control gain
-      tremoloGain.connect(gain.gain);
-
-      // Connect oscillators
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(audioContext.destination);
-
-      // Start everything
-      osc1.start(now);
-      osc2.start(now);
-      tremolo.start(now);
-
-      // Stop everything
-      osc1.stop(now + ringDuration);
-      osc2.stop(now + ringDuration);
-      tremolo.stop(now + ringDuration);
-    };
-
-    // Ring every 4 seconds (2 second ring + 2 second pause)
-    alarmIntervalRef.current = setInterval(phoneRing, 4000);
-    phoneRing();
-
-    return () => {
-      if (alarmIntervalRef.current) {
-        clearInterval(alarmIntervalRef.current);
-      }
-    };
-  }
-}, [phoneRinging]);
-// Ship's whistle morse code for Oscar (--- for MOB signal) - EXAGGERATED
-const playMorseOscar = useCallback(() => {
-  if (!audioContextRef.current) {
-    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  
-  const audioContext = audioContextRef.current;
-  if (audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
-  
-  const WHISTLE_VOLUME = 0.4;
-  const DASH_DURATION = 1.5; // Much longer blast
-  const GAP_DURATION = 0.8; // Longer gap between blasts
-  
-  const playWhistleBlast = (startTime: number, duration: number) => {
-    const osc1 = audioContext.createOscillator();
-    const osc2 = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    
-    // Ship whistle frequencies (deep, resonant)
-    osc1.type = 'sine';
-    osc2.type = 'sine';
-    osc1.frequency.setValueAtTime(180, startTime); // Even deeper
-    osc2.frequency.setValueAtTime(187, startTime); // Slight detune for richness
-    
-    gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(WHISTLE_VOLUME, startTime + 0.1);
-    gain.gain.setValueAtTime(WHISTLE_VOLUME, startTime + duration - 0.15);
-    gain.gain.linearRampToValueAtTime(0, startTime + duration);
-    
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(audioContext.destination);
-    
-    osc1.start(startTime);
-    osc2.start(startTime);
-    osc1.stop(startTime + duration);
-    osc2.stop(startTime + duration);
-  };
-  
-  const now = audioContext.currentTime;
-  
-  // Oscar = --- (three long dashes) - EXAGGERATED
-  playWhistleBlast(now, DASH_DURATION);
-  playWhistleBlast(now + DASH_DURATION + GAP_DURATION, DASH_DURATION);
-  playWhistleBlast(now + (DASH_DURATION + GAP_DURATION) * 2, DASH_DURATION);
-  
-  // Log to logbook
-  setLogEntries(prev => {
-    const newEntry: LogEntry = {
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      heading: '',
-      speed: '',
-      depth: '',
-      visibility: '',
-      event: 'Man Overboard alarm - Oscar signal sounded (--- --- ---)'
-    };
-    return [...prev, newEntry];
-  });
-}, []);
-// Ambient ship sounds - creaks, rumbles, mechanical hums
-// Ambient ship sounds - creaks, rumbles, mechanical hums - INSTANT START
-// Ambient ship sounds - creaks, rumbles, mechanical hums - INSTANT START
-useEffect(() => {
-  if (ambientEnabled) {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    
-    const audioContext = audioContextRef.current;
-    
-    // Resume context if suspended (browser autoplay policy)
-    if (audioContext.state === 'suspended') {
-      audioContext.resume().then(() => {
-        console.log('AudioContext resumed');
-      });
-    }
-    
-    console.log('Starting ambient sounds, context state:', audioContext.state);
-    // ... rest of the code stays the same
-    const oscillators: OscillatorNode[] = [];
-    const gains: GainNode[] = [];
-    const filters: BiquadFilterNode[] = [];
-
-    // Low hull rumble (engine vibration)
-    const rumble = audioContext.createOscillator();
-    const rumbleGain = audioContext.createGain();
-    const rumbleFilter = audioContext.createBiquadFilter();
-    
-    rumble.type = 'sawtooth';
-    rumble.frequency.setValueAtTime(55, audioContext.currentTime);
-    rumbleFilter.type = 'lowpass';
-    rumbleFilter.frequency.setValueAtTime(120, audioContext.currentTime);
-    rumbleGain.gain.setValueAtTime(0.03, audioContext.currentTime);
-    
-    rumble.connect(rumbleFilter);
-    rumbleFilter.connect(rumbleGain);
-    rumbleGain.connect(audioContext.destination);
-    rumble.start();
-    
-    oscillators.push(rumble);
-    gains.push(rumbleGain);
-    filters.push(rumbleFilter);
-
-    // Medium hull vibration
-    const vibration = audioContext.createOscillator();
-    const vibrationGain = audioContext.createGain();
-    const vibrationFilter = audioContext.createBiquadFilter();
-    
-    vibration.type = 'sawtooth';
-    vibration.frequency.setValueAtTime(82, audioContext.currentTime);
-    vibrationFilter.type = 'lowpass';
-    vibrationFilter.frequency.setValueAtTime(200, audioContext.currentTime);
-    vibrationGain.gain.setValueAtTime(0.03, audioContext.currentTime);
-    
-    vibration.connect(vibrationFilter);
-    vibrationFilter.connect(vibrationGain);
-    vibrationGain.connect(audioContext.destination);
-    vibration.start();
-    
-    oscillators.push(vibration);
-    gains.push(vibrationGain);
-    filters.push(vibrationFilter);
-
-    // White noise for general ambient
-    const bufferSize = audioContext.sampleRate * 2;
-    const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-    
-    const whiteNoise = audioContext.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    whiteNoise.loop = true;
-    
-    const noiseFilter = audioContext.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(800, audioContext.currentTime);
-    noiseFilter.Q.setValueAtTime(0.5, audioContext.currentTime);
-    
-    const noiseGain = audioContext.createGain();
-    noiseGain.gain.setValueAtTime(0.03, audioContext.currentTime);
-    
-    whiteNoise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioContext.destination);
-    whiteNoise.start();
-    
-    filters.push(noiseFilter);
-    gains.push(noiseGain);
-
-    // Function to make creak sounds
-    const makeCreak = () => {
-      if (Math.random() > 0.5) { // 50% chance
-        console.log('Creak!'); // DEBUG
-        const now = audioContext.currentTime;
-        
-        const creak = audioContext.createOscillator();
-        const creakGain = audioContext.createGain();
-        const creakFilter = audioContext.createBiquadFilter();
-        
-        creak.type = 'square';
-        const startFreq = 180 + Math.random() * 120;
-        const endFreq = startFreq - 30 - Math.random() * 40;
-        
-        creak.frequency.setValueAtTime(startFreq, now);
-        creak.frequency.linearRampToValueAtTime(endFreq, now + 0.3);
-        
-        creakFilter.type = 'bandpass';
-        creakFilter.frequency.setValueAtTime(250, now);
-        creakFilter.Q.setValueAtTime(2, now);
-        
-        creakGain.gain.setValueAtTime(0, now);
-        creakGain.gain.linearRampToValueAtTime(0.1, now + 0.05);
-        creakGain.gain.linearRampToValueAtTime(0, now + 0.4);
-        
-        creak.connect(creakFilter);
-        creakFilter.connect(creakGain);
-        creakGain.connect(audioContext.destination);
-        
-        creak.start(now);
-        creak.stop(now + 0.5);
-      }
-    };
-
-    // Function to make clank sounds
-    const makeClank = () => {
-      if (Math.random() > 0.6) { // 40% chance
-        console.log('Clank!'); // DEBUG
-        const now = audioContext.currentTime;
-        
-        const clank = audioContext.createOscillator();
-        const clankGain = audioContext.createGain();
-        
-        clank.type = 'square';
-        clank.frequency.setValueAtTime(1200 + Math.random() * 400, now);
-        
-        clankGain.gain.setValueAtTime(0, now);
-        clankGain.gain.linearRampToValueAtTime(0.08, now + 0.01);
-        clankGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-        
-        clank.connect(clankGain);
-        clankGain.connect(audioContext.destination);
-        
-        clank.start(now);
-        clank.stop(now + 0.2);
-      }
-    };
-
-    // Start immediately - trigger first sounds right away
-    makeCreak();
-    setTimeout(makeClank, 1000); // Clank 1 second after start
-    
-    // Then continue at intervals
-    const creakInterval = setInterval(makeCreak, 5000); // Every 5 seconds
-    const clankInterval = setInterval(makeClank, 7000); // Every 7 seconds
-
-    ambientNodesRef.current = { oscillators, gains, filters };
-
-    return () => {
-      console.log('Stopping ambient sounds...'); // DEBUG
-      oscillators.forEach(osc => osc.stop());
-      if (whiteNoise) whiteNoise.stop();
-      clearInterval(creakInterval);
-      clearInterval(clankInterval);
-      ambientNodesRef.current = null;
-    };
-  } else {
-    if (ambientNodesRef.current) {
-      ambientNodesRef.current.oscillators.forEach(osc => osc.stop());
-      ambientNodesRef.current = null;
-    }
-  }
-}, [ambientEnabled]);
-  // Cleanup audio context on unmount
-  useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // VHF Chatter system - start when component mounts
-  useEffect(() => {
-    if (vhfChatterEnabled && !vhfPlayingRef.current && !vhfTimeoutRef.current) {
-      vhfTimeoutRef.current = setTimeout(() => {
-        playVHFChatter();
-      }, 5000);
-    }
-
-    return () => {
-      if (vhfTimeoutRef.current) {
-        clearTimeout(vhfTimeoutRef.current);
-        vhfTimeoutRef.current = null;
-      }
-      if (vhfAudioElement) {
-        vhfAudioElement.pause();
-        vhfAudioElement.currentTime = 0;
-      }
-      vhfPlayingRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!vhfChatterEnabled) {
-      if (vhfTimeoutRef.current) {
-        clearTimeout(vhfTimeoutRef.current);
-        vhfTimeoutRef.current = null;
-      }
-      if (vhfAudioElement) {
-        vhfAudioElement.pause();
-        vhfAudioElement.currentTime = 0;
-      }
-      vhfPlayingRef.current = false;
-    }
-  }, [vhfChatterEnabled, vhfAudioElement]);
-
-  const getShipPosition = useCallback(() => {
-    const perspectiveOffsets: Record<Scene, number> = {
-      port: 27,
-      center: 0,
-      starboard: -27
-    };
-    
-    const basePosition = 50 + (shipProgress * 0.5);
-    const finalPosition = basePosition + perspectiveOffsets[currentScene];
-    
-    return `${finalPosition}%`;
-  }, [shipProgress, currentScene]);
-
-  const getShipSize = useCallback(() => {
-    return 50;
-  }, [shipProgress]);
-
-  const sceneLabels: Record<Scene, string> = useMemo(() => ({
-    port: 'Port Wing',
-    center: 'Center Bridge',
-    starboard: 'Starboard Wing'
-  }), []);
-
-  const bridgeMedia: Record<Scene, { type: 'video' | 'image'; src: string }> = useMemo(() => ({
-    port: { type: 'image', src: '/shipimages/PS-Wing.png' },
-    center: { type: 'video', src: '/shipimages/bridge_anim.webm' },
-    starboard: { type: 'image', src: '/shipimages/SBWind.png' }
-  }), []);
-
-  const changeScene = useCallback((scene: Scene) => {
-    setIsFading(true);
-    
-    setTimeout(() => {
-      setCurrentScene(scene);
-    }, 150);
-    
-    setTimeout(() => {
-      setIsFading(false);
-    }, 300);
-  }, []);
+  // ─── Alarm actions ──────────────────────────────────────────────────────────
 
   const silenceAlarm = useCallback(() => {
     setAlarmActive(false);
     logAction('Silence alarm', 'silence-alarm-btn');
   }, [logAction]);
-const answerPhone = useCallback(() => {
-  setPhoneRinging(false);
-  
-  // Play MOB message
-  const mobAudio = new Audio('/audio/mob.wav');
-  mobAudio.volume = 0.8;
-  mobAudio.play().catch(err => console.error('MOB audio failed:', err));
-  
-  logAction('Answer emergency phone', 'answer-phone-btn');
-}, [logAction]);
-  // Interactive hotspots with actions - memoized
-  const hotspots: Record<Scene, Hotspot[]> = useMemo(() => ({
-    center: [
-      {
-        id: 'radar',
-        position: { left: '62%', top: '55%', width: '15%', height: '20%' },
-        popupImage: '/shipimages/celest.jpeg',
-        label: 'Radar Console',
-        action: 'check-radar'
-      },
-      {
-        id: 'logbook',
-        position: { left: '65%', top: '72%', width: '15%', height: '15%' },
-        popupImage: '/shipimages/celest.jpeg',
-        label: 'Logbook',
-        action: 'open-logbook'
-      },
-      {
-        id: 'helm',
-        position: { left: '40%', top: '60%', width: '10%', height: '15%' },
-        popupImage: '/shipimages/helm-closeup.png',
-        label: 'Helm Controls',
-        action: 'check-helm'
-      },
-      {
-        id: 'ecdis',
-        position: { left: '24%', top: '55%', width: '15%', height: '20%' },
-        popupImage: '/shipimages/ecdis.png',
-        label: 'ECDIS',
-        action: 'check-ecdis'
-      },
-      {
-        id: 'vhf-radio',
-        position: { left: '78%', top: '48%', width: '8%', height: '12%' },
-        label: 'VHF Radio',
-        action: 'use-vhf'
-      },
-      {
-        id: 'engine-telegraph',
-        position: { left: '48%', top: '65%', width: '6%', height: '10%' },
-        label: 'Engine Telegraph',
-        action: 'adjust-engine'
-      }
-    ],
-    port: [
-      {
-        id: 'port-lookout',
-        position: { left: '20%', top: '40%', width: '30%', height: '25%' },
-        popupImage: '/shipimages/port-view-closeup.png',
-        label: 'Port Lookout',
-        action: 'port-lookout'
-      },
-      {
-        id: 'lifebuoy-port',
-        position: { left: '15%', top: '70%', width: '10%', height: '15%' },
-        label: 'Life Buoy',
-        action: 'deploy-lifebuoy-port'
-      }
-    ],
-    starboard: [
-      {
-        id: 'deploy-lifebuoy-starboard',
-        position: { left: '50%', top: '60%', width: '20%', height: '25%' },
-        label: 'Life Buoy',
-        action: 'deploy-lifebuoy-starboard'
-      }
-    ]
-  }), []);
 
-  const handleHotspotClick = useCallback((hotspot: Hotspot) => {
-    if (hotspot.action && hotspot.id !== 'logbook') {
-      logAction(hotspot.label || hotspot.action, hotspot.id);
-    }
-    if (hotspot.popupImage || hotspot.id === 'logbook') {
-      setActivePopup(hotspot.id);
-    }
+  const answerPhone = useCallback(() => {
+    setPhoneRinging(false);
+    playAudioFile('/audio/mob.wav', 0.8);
+    logAction('Answer emergency phone', 'answer-phone-btn');
   }, [logAction]);
+
+  // ─── MOB Whistle ────────────────────────────────────────────────────────────
+
+  const playMorseOscar = useCallback(() => {
+    const ctx = ensureAudioCtx();
+    const now = ctx.currentTime;
+    const DASH = 1.5, GAP = 0.8;
+    [0, 1, 2].forEach(i => {
+      const t = now + i * (DASH + GAP);
+      [180, 187].forEach(f => playTone(ctx, f, t, DASH, 0.4, 'sine'));
+    });
+    logAction('Sound Man Overboard alarm', 'alarm-mob');
+    addEventToLog('Man Overboard alarm - Oscar signal sounded (--- --- ---)');
+  }, [ensureAudioCtx, logAction, addEventToLog]);
+
+  // ─── VHF Chatter ────────────────────────────────────────────────────────────
+
+  const playVHFChatter = useCallback(() => {
+    if (!vhfChatterEnabled || vhfPlayingRef.current) return;
+    const files = ['/vhfchatter/chatter1.mp3', '/vhfchatter/chatter2.mp3'];
+    const audio = new Audio(files[Math.floor(Math.random() * files.length)]);
+    audio.volume = 0.3;
+    vhfPlayingRef.current = true;
+    vhfAudioRef.current = audio;
+    const schedule = () => {
+      vhfPlayingRef.current = false;
+      vhfTimeoutRef.current = setTimeout(playVHFChatter, 30000);
+    };
+    audio.onended = schedule;
+    audio.onerror = schedule;
+    audio.play().catch(schedule);
+  }, [vhfChatterEnabled]);
+
+  // ─── Radio / PTT ────────────────────────────────────────────────────────────
+
+  const playRadioResponse = useCallback((audioFile: string, desc: string) => {
+    setRadioStatus('responding');
+    setLastBosunResponse(desc);
+    const audio = new Audio(audioFile);
+    audio.volume = 0.8;
+    const done = () => { setRadioStatus('idle'); radioAudioRef.current = null; };
+    audio.onended = done;
+    audio.onerror = done;
+    audio.play().catch(done);
+    radioAudioRef.current = audio;
+  }, []);
+
+  const processRadioMessage = useCallback(async (transcript: string) => {
+    setRadioStatus('processing');
+    const lower = transcript.toLowerCase();
+
+    const bosunMap: Record<string, { file: string; desc: string }> = {
+      '1': { file: '/audio/bosun/bsn_go_ahead.wav', desc: 'Go ahead' },
+      '2': { file: '/audio/bosun/bsn_we_are_on_deck_now.wav', desc: 'We are on deck now' },
+      '3': { file: '/audio/bosun/bsn_okay_copy.wav', desc: 'Okay, copy' },
+      '4': { file: '/audio/bosun/bsn_understood_proceeding.wav', desc: 'Understood, proceeding' },
+      '5': { file: '/audio/bosun/bsn_repeat_last_message.wav', desc: 'Repeat last message' },
+      '6': { file: '/audio/bosun/bsn_wait_confirm_instruction.wav', desc: 'Wait, confirm instruction' },
+      '7': { file: '/audio/bosun/bsn_fire_party_on_deck.wav', desc: 'Fire party on deck' },
+      '8': { file: '/audio/bosun/bsn_fire_contained.wav', desc: 'Fire contained' },
+      '9': { file: '/audio/bosun/bsn_fire_spreading_slightly.wav', desc: 'Fire spreading slightly' },
+      '10': { file: '/audio/bosun/bsn_fire_main_deck_stbd_side.wav', desc: 'Fire on main deck starboard side' },
+      '11': { file: '/audio/bosun/bsn_heavy_smoke_no_flame.wav', desc: 'Heavy smoke, no flame' },
+      '12': { file: '/audio/bosun/bsn_hoses_charged.wav', desc: 'Hoses charged' },
+      '13': { file: '/audio/bosun/bsn_replace_leaky_hose.wav', desc: 'Replace leaky hose' },
+      '14': { file: '/audio/bosun/bsn_crew_safe_working_hard.wav', desc: 'Crew safe, working hard' },
+      '15': { file: '/audio/bosun/bsn_no_injury_all_crew_accounted.wav', desc: 'No injury, all crew accounted' },
+      '16': { file: '/audio/bosun/bsn_all_for_now_will_update.wav', desc: 'All for now, will update' },
+      '17': { file: '/audio/bosun/bsn_anchor_clear_and_ready.wav', desc: 'Anchor clear and ready' },
+      '18': { file: '/audio/bosun/bsn_mooring_line_chaffed_but_holding.wav', desc: 'Mooring line chaffed but holding' },
+      '19': { file: '/audio/bosun/bsn_checking_for_hotspots.wav', desc: 'Checking for hotspots' },
+      '20': { file: '/audio/bosun/bsn_slippery_deck.wav', desc: 'Slippery deck' },
+      '21': { file: '/audio/bosun/bsn_need_more_light_on_deck.wav', desc: 'Need more light on deck' },
+      '22': { file: '/audio/bosun/bsn_damage_railing.wav', desc: 'Damage to railing' },
+      '23': { file: '/audio/bosun/bsn_fcastle_checked_no_flooding.wav', desc: 'Fcastle checked, no flooding' },
+      '24': { file: '/audio/bosun/bsn_boundary_cooling_started.wav', desc: 'Boundary cooling started' },
+      '25': { file: '/audio/bosun/bsn_cargo_lashing_loose_securing.wav', desc: 'Cargo lashing loose, securing' },
+      '26': { file: '/audio/bosun/bsn_strong_wind_poor_vis.wav', desc: 'Strong wind, poor visibility' },
+      '27': { file: '/audio/bosun/bsn_situation_under_control.wav', desc: 'Situation under control' },
+      '28': { file: '/audio/bosun/bsn_situation_worsening.wav', desc: 'Situation worsening' },
+      '29': { file: '/audio/bosun/bsn_please_advise_next_action.wav', desc: 'Please advise next action' },
+    };
+
+    const choose = (key: string) => {
+      const r = bosunMap[key] ?? bosunMap['3'];
+      setAiProcessingStatus('🔊 ' + r.desc);
+      addEventToLog(`Radio: "${transcript}" → Bosun: "${r.desc}"`);
+      playRadioResponse(r.file, r.desc);
+      setTimeout(() => setAiProcessingStatus(''), 3000);
+    };
+
+    if (useAI && openaiApiKey) {
+      try {
+        setAiProcessingStatus('☁️ Sending to OpenAI...');
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiApiKey}` },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a bosun. Choose the single best numbered response (1-29) for the bridge officer\'s message. Reply with only the number.' },
+              { role: 'user', content: `Officer said: "${transcript}"\nResponse number:` },
+            ],
+            max_tokens: 5, temperature: 0.1,
+          }),
+        });
+        const data = await res.json();
+        choose(data.choices[0].message.content.trim());
+      } catch {
+        setAiProcessingStatus('❌ API Error - using fallback');
+        choose('3');
+      }
+      return;
+    }
+
+    // Keyword fallback
+    let key = '3';
+    if ((lower.includes('bosun') || lower.includes('boson')) && (lower.includes('copy') || lower.includes('bridge') || lower.includes('come in'))) key = '1';
+    else if (lower.includes('proceed') || lower.includes('go to') || lower.includes('move to') || lower.includes('head to')) key = '4';
+    else if (lower.includes('repeat') || lower.includes('say again')) key = '5';
+    else if (lower.includes('fire')) {
+      if (lower.includes('contain') || lower.includes('out')) key = '8';
+      else if (lower.includes('worse') || lower.includes('spread')) key = '9';
+      else if (lower.includes('where') || lower.includes('location')) key = '10';
+      else if (lower.includes('party') || lower.includes('team')) key = '7';
+      else if (lower.includes('smoke')) key = '11';
+      else key = '8';
+    }
+    else if (lower.includes('crew') || lower.includes('everyone')) key = lower.includes('injur') || lower.includes('hurt') ? '15' : '14';
+    else if (lower.includes('situation') || lower.includes('status')) key = lower.includes('worse') ? '28' : '27';
+    else if (lower.includes('anchor')) key = '17';
+    else if (lower.includes('hose') || lower.includes('water')) key = lower.includes('leak') ? '13' : '12';
+    else if (lower.includes('mooring') || lower.includes('line')) key = '18';
+    else if (lower.includes('damage') || lower.includes('broken')) key = '22';
+    else if (lower.includes('flood') || lower.includes('fcastle') || lower.includes('forecastle')) key = '23';
+    else if (lower.includes('check') || lower.includes('hotspot')) key = '19';
+    else if (lower.includes('weather') || lower.includes('wind') || lower.includes('visibility')) key = '26';
+    else if (lower.includes('light') || lower.includes('dark')) key = '21';
+    else if (lower.includes('cargo') || lower.includes('lash')) key = '25';
+    else if (lower.includes('stand by') || lower.includes('standby')) key = '16';
+    else if (lower.includes('what should') || lower.includes('advise') || lower.includes('next')) key = '29';
+
+    choose(key);
+  }, [useAI, openaiApiKey, playRadioResponse, addEventToLog]);
+
+  const handlePTTPress = useCallback(() => {
+    const rec = recognitionRef.current as { start: () => void } | null;
+    if (!rec) { alert('Speech recognition not supported in this browser'); return; }
+    ensureAudioCtx();
+    playAudioFile('/audio/bleep.mp3', 0.6);
+    setIsRecording(true);
+    setRadioStatus('listening');
+    setRadioTranscript('');
+    try { rec.start(); } catch { setIsRecording(false); setRadioStatus('idle'); }
+  }, [ensureAudioCtx]);
+
+  const handlePTTRelease = useCallback(() => {
+    const rec = recognitionRef.current as { stop: () => void } | null;
+    if (rec && isRecording) try { rec.stop(); } catch { /* ignore */ }
+    setIsRecording(false);
+  }, [isRecording]);
+
+  // ─── Lookout ────────────────────────────────────────────────────────────────
 
   const moveLookout = useCallback((direction: Scene) => {
     if (lookoutPosition === direction) return;
-    
     setShowLookoutArrows(false);
-    
-    const sceneOrder: Scene[] = ['port', 'center', 'starboard'];
-    const currentIndex = sceneOrder.indexOf(lookoutPosition);
-    const targetIndex = sceneOrder.indexOf(direction);
-    const exitDir = targetIndex > currentIndex ? 'right' : 'left';
-    
+    const order: Scene[] = ['port', 'center', 'starboard'];
+    const exitDir = order.indexOf(direction) > order.indexOf(lookoutPosition) ? 'right' : 'left';
     setLookoutExitDirection(exitDir);
     setLookoutTransitioning(true);
-    
     setTimeout(() => {
       setLookoutPosition(direction);
       setLookoutExitDirection(null);
-      
-      setTimeout(() => {
-        setLookoutTransitioning(false);
-      }, 600);
+      setTimeout(() => setLookoutTransitioning(false), 600);
     }, 600);
-    
-    if (currentScenario) {
-      logAction(`Move lookout to ${direction} wing`, `lookout-move-${direction}`);
-      
-      if (direction === 'port') {
-        logAction('Post lookout on port wing', 'port-lookout');
-      } else if (direction === 'starboard') {
-        logAction('Post lookout on starboard wing', 'starboard-lookout');
-      }
-    }
-  }, [currentScenario, logAction, lookoutPosition]);
+    if (direction === 'port') logAction('Post lookout on port wing', 'port-lookout');
+    else if (direction === 'starboard') logAction('Post lookout on starboard wing', 'starboard-lookout');
+  }, [lookoutPosition, logAction]);
 
   const getLookoutStyle = useCallback((): React.CSSProperties => {
-    const baseStyle: React.CSSProperties = {
-      position: 'absolute',
-      bottom: '0%',
-      height: '100%',
-      zIndex: 16,
-      pointerEvents: lookoutTransitioning ? 'none' : 'auto',
-      cursor: 'pointer'
-    };
-
-    let baseLeft = '5%';
-    
-    switch (lookoutPosition) {
-      case 'port':
-        baseLeft = '10%';
-        break;
-      case 'center':
-        baseLeft = '5%';
-        break;
-      case 'starboard':
-        baseLeft = '70%';
-        break;
-    }
-
+    const base: React.CSSProperties = { position: 'absolute', bottom: '0%', height: '100%', zIndex: 16, pointerEvents: lookoutTransitioning ? 'none' : 'auto', cursor: 'pointer' };
+    const leftMap: Record<Scene, string> = { port: '10%', center: '5%', starboard: '70%' };
     if (lookoutTransitioning) {
-      if (lookoutExitDirection === 'left') {
-        return {
-          ...baseStyle,
-          left: '-20%',
-          transition: 'left 0.6s ease-in-out',
-        };
-      } else if (lookoutExitDirection === 'right') {
-        return {
-          ...baseStyle,
-          left: '120%',
-          transition: 'left 0.6s ease-in-out',
-        };
-      } else {
-        return {
-          ...baseStyle,
-          left: baseLeft,
-          transition: 'left 0.6s ease-in-out',
-        };
-      }
+      return { ...base, left: lookoutExitDirection === 'left' ? '-20%' : lookoutExitDirection === 'right' ? '120%' : leftMap[lookoutPosition], transition: 'left 0.6s ease-in-out' };
     }
-
-    return {
-      ...baseStyle,
-      left: baseLeft,
-      transition: 'all 0.3s ease',
-    };
+    return { ...base, left: leftMap[lookoutPosition], transition: 'all 0.3s ease' };
   }, [lookoutPosition, lookoutTransitioning, lookoutExitDirection]);
 
+  // ─── Hotspot click ──────────────────────────────────────────────────────────
+
+  const handleHotspotClick = useCallback((hotspot: Hotspot) => {
+    if (hotspot.action && hotspot.id !== 'logbook') logAction(hotspot.label || hotspot.action, hotspot.id);
+    if (hotspot.popupImage || hotspot.id === 'logbook') setActivePopup(hotspot.id);
+  }, [logAction]);
+
+  // ─── Scene change ───────────────────────────────────────────────────────────
+
+  const changeScene = useCallback((scene: Scene) => {
+    setIsFading(true);
+    setTimeout(() => setCurrentScene(scene), 150);
+    setTimeout(() => setIsFading(false), 300);
+  }, []);
+
+  // ─── Ship position ──────────────────────────────────────────────────────────
+
+  const getShipPosition = useCallback(() => {
+    const offsets: Record<Scene, number> = { port: 27, center: 0, starboard: -27 };
+    return `${50 + shipProgress * 0.5 + offsets[currentScene]}%`;
+  }, [shipProgress, currentScene]);
+
+  // ─── Logbook helpers ────────────────────────────────────────────────────────
+
+  const addLogEntry = useCallback(() => {
+    setLogEntries(prev => [...prev, { time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }), heading: '', speed: '', depth: '', visibility: '', event: '' }]);
+  }, []);
+
+  const updateLogEntry = useCallback((i: number, field: keyof LogEntry, value: string) => {
+    setLogEntries(prev => { const n = [...prev]; n[i] = { ...n[i], [field]: value }; return n; });
+  }, []);
+
+  const deleteLogEntry = useCallback((i: number) => {
+    setLogEntries(prev => prev.filter((_, idx) => idx !== i));
+  }, []);
+
+  // ─── Effects ────────────────────────────────────────────────────────────────
+
+  // Ship animation
+  useEffect(() => {
+    const id = setInterval(() => setShipProgress((Date.now() - startTimeRef.current) / 1000 * 2), 50);
+    return () => clearInterval(id);
+  }, []);
+
+  // Speech recognition init
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const SR = (window as unknown as { SpeechRecognition: unknown; webkitSpeechRecognition: unknown }).SpeechRecognition
+      || (window as unknown as { webkitSpeechRecognition: unknown }).webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new (SR as new () => { continuous: boolean; interimResults: boolean; lang: string; onresult: unknown; onerror: unknown; onend: unknown })();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = 'en-US';
+    rec.onresult = (e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => {
+      const t = e.results[0][0].transcript.toLowerCase();
+      setRadioTranscript(t);
+      processRadioMessage(t);
+    };
+    rec.onerror = () => { setRadioStatus('idle'); setIsRecording(false); };
+    rec.onend = () => { setRadioStatus('idle'); setIsRecording(false); };
+    recognitionRef.current = rec;
+  }, [processRadioMessage]);
+
+  // Alarm sound
+  useEffect(() => {
+    if (!alarmActive) return;
+    const ctx = ensureAudioCtx();
+    const id = setInterval(() => {
+      const now = ctx.currentTime;
+      playTone(ctx, 700, now, 0.45, 0.05, 'square');
+      playTone(ctx, 800, now, 0.45, 0.05, 'sine');
+    }, 700);
+    alarmIntervalRef.current = id;
+    return () => clearInterval(id);
+  }, [alarmActive, ensureAudioCtx]);
+
+  // Phone ring sound
+  useEffect(() => {
+    if (!phoneRinging) return;
+    const ctx = ensureAudioCtx();
+    const ring = () => {
+      const now = ctx.currentTime;
+      playTone(ctx, 440, now, 1.8, 0.1, 'sine');
+      playTone(ctx, 480, now, 1.8, 0.08, 'sine');
+    };
+    ring();
+    const id = setInterval(ring, 4000);
+    alarmIntervalRef.current = id;
+    return () => clearInterval(id);
+  }, [phoneRinging, ensureAudioCtx]);
+
+  // Ambient sound
+  useEffect(() => {
+    if (!ambientEnabled) { ambientCleanupRef.current?.(); return; }
+    const ctx = ensureAudioCtx();
+    const nodes: { stop: () => void }[] = [];
+
+    const makeOsc = (type: OscillatorType, freq: number, vol: number, filterFreq: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      osc.type = type; osc.frequency.value = freq;
+      filter.type = 'lowpass'; filter.frequency.value = filterFreq;
+      gain.gain.value = vol;
+      osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      osc.start();
+      return osc;
+    };
+
+    nodes.push(makeOsc('sawtooth', 55, 0.03, 120));
+    nodes.push(makeOsc('sawtooth', 82, 0.03, 200));
+
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf; noise.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 800; nf.Q.value = 0.5;
+    const ng = ctx.createGain(); ng.gain.value = 0.03;
+    noise.connect(nf); nf.connect(ng); ng.connect(ctx.destination); noise.start();
+
+    const makeCreak = () => {
+      if (Math.random() > 0.5) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const flt = ctx.createBiquadFilter();
+      osc.type = 'square';
+      const sf = 180 + Math.random() * 120;
+      osc.frequency.setValueAtTime(sf, now);
+      osc.frequency.linearRampToValueAtTime(sf - 30 - Math.random() * 40, now + 0.3);
+      flt.type = 'bandpass'; flt.frequency.value = 250; flt.Q.value = 2;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+      gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      osc.connect(flt); flt.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.5);
+    };
+
+    const makeClank = () => {
+      if (Math.random() > 0.6) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square'; osc.frequency.value = 1200 + Math.random() * 400;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.2);
+    };
+
+    makeCreak();
+    setTimeout(makeClank, 1000);
+    const c1 = setInterval(makeCreak, 5000);
+    const c2 = setInterval(makeClank, 7000);
+
+    const cleanup = () => {
+      nodes.forEach(n => { try { n.stop(); } catch { /* ignore */ } });
+      try { noise.stop(); } catch { /* ignore */ }
+      clearInterval(c1); clearInterval(c2);
+    };
+    ambientCleanupRef.current = cleanup;
+    return cleanup;
+  }, [ambientEnabled, ensureAudioCtx]);
+
+  // VHF chatter
+  useEffect(() => {
+    if (!vhfChatterEnabled) {
+      vhfAudioRef.current?.pause();
+      vhfPlayingRef.current = false;
+      if (vhfTimeoutRef.current) clearTimeout(vhfTimeoutRef.current);
+      return;
+    }
+    vhfTimeoutRef.current = setTimeout(playVHFChatter, 5000);
+    return () => { if (vhfTimeoutRef.current) clearTimeout(vhfTimeoutRef.current); };
+  }, [vhfChatterEnabled, playVHFChatter]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      audioCtxRef.current?.close();
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+      if (vhfTimeoutRef.current) clearTimeout(vhfTimeoutRef.current);
+    };
+  }, []);
+
+  // ─── Parallax transform style ───────────────────────────────────────────────
+  const parallaxStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    transform: `scale(${PARALLAX_SCALE}) translate(${-mousePos.x * PARALLAX_MAX_PX}px, ${-mousePos.y * PARALLAX_MAX_PX}px)`,
+    transition: 'transform 0.12s ease-out',
+    willChange: 'transform',
+    transformOrigin: 'center center',
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-black font-sans">
-      {/* Lighting overlay for blackout effects */}
-      <div 
-        className="absolute top-0 left-0 w-full h-full bg-black z-[5] pointer-events-none transition-opacity duration-1000"
-        style={{ opacity: 1 - lightsLevel }}
-      />
+    <div className="relative w-screen h-screen overflow-hidden bg-black font-mono" onMouseMove={handleMouseMove}>
 
-      <div 
-        className={`absolute top-0 left-0 w-full h-full bg-black z-50 pointer-events-none transition-opacity duration-150 ${
-          isFading ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
-      
-      {/* Ocean background */}
-      <div className="absolute top-0 left-0 w-full h-full animate-ocean-motion">
-        <div 
-          className="absolute top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat z-[1]"
-          style={{ backgroundImage: "url('/shipimages/Ocean3.png')" }}
-        />
-        <div 
-          className="absolute top-0 left-0 w-full h-full bg-cover bg-center bg-no-repeat z-[2] animate-wave"
-          style={{ backgroundImage: "url('/shipimages/ocean4.png')" }}
-        />
-      </div>
-{/* Audio initialization prompt - appears on first load */}
-{!audioInitialized && (
-  <div 
-    className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center pointer-events-auto"
-    onClick={() => {
-      if (audioContextRef.current) {
-        audioContextRef.current.resume();
-      }
-      setAudioInitialized(true);
-    }}
-  >
-    <div className="bg-gradient-to-b from-gray-900 to-black border-2 border-gray-600 rounded-lg p-8 text-center">
-      <h2 className="text-white text-2xl font-bold mb-4 font-mono">SHIP BRIDGE SIMULATOR</h2>
-      <p className="text-gray-300 mb-6">Click anywhere to enable audio</p>
-      <div className="text-4xl">🎧</div>
-    </div>
-  </div>
-)}
-      {/* Ship on horizon */}
-      <div className="absolute top-[33%] left-0 w-full h-[20%] z-[3] pointer-events-none animate-ocean-motion">
-        <img
-          src="/shipimages/pdv_stbd_over50m_underway_day.png"
-          alt="Ship on horizon"
-          className="absolute top-1/2 -translate-y-1/2"
-          style={{ 
-            left: getShipPosition(),
-            height: `${getShipSize()}px`,
-            transform: `translateY(-50%)`,
-            opacity: shipProgress > 100 ? 0 : 1,
-            display: shipProgress > 120 ? 'none' : 'block'
-          }}
-        />
-      </div>
+      {/* Lighting overlay */}
+      <div className="absolute inset-0 bg-black z-[5] pointer-events-none transition-opacity duration-1000"
+        style={{ opacity: 1 - lightsLevel }} />
 
-      {/* Bridge scene */}
-      {bridgeMedia[currentScene].type === 'video' ? (
-        <video
-          key={currentScene}
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-full max-w-screen max-h-screen z-10 pointer-events-none object-contain object-bottom"
-          src={bridgeMedia[currentScene].src}
-          autoPlay
-          loop
-          muted
-          playsInline
-        />
-      ) : (
-        <div
-          key={currentScene}
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-full max-w-screen max-h-screen z-10 pointer-events-none bg-contain bg-center-bottom bg-no-repeat"
-          style={{ backgroundImage: `url('${bridgeMedia[currentScene].src}')` }}
-        />
-      )}
-{/* Interactive Hotspots */}
-{hotspots[currentScene].map((hotspot) => (
-  <div
-    key={hotspot.id}
-    onClick={() => handleHotspotClick(hotspot)}
-    onMouseEnter={(e) => {
-      const label = e.currentTarget.querySelector('.hotspot-label');
-      if (label) label.classList.remove('opacity-0');
-    }}
-    onMouseLeave={(e) => {
-      const label = e.currentTarget.querySelector('.hotspot-label');
-      if (label) label.classList.add('opacity-0');
-    }}
-    className="absolute z-[15] cursor-pointer pointer-events-auto group"
-    style={{
-      left: hotspot.position.left,
-      top: hotspot.position.top,
-      width: hotspot.position.width,
-      height: hotspot.position.height,
-    }}
-  >
-    {/* Hover highlight effect */}
-    <div className="absolute inset-0 border-2 border-yellow-400 bg-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded" />
-    
-    {/* Label that appears on hover */}
-    {hotspot.label && (
-      <div className="hotspot-label absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 px-3 py-1 bg-black/90 text-white text-sm rounded whitespace-nowrap opacity-0 transition-opacity duration-200 pointer-events-none">
-        {hotspot.label}
-      </div>
-    )}
-  </div>
-))}
-      {/* Lookout character */}
-      {(lookoutPosition === currentScene || (lookoutTransitioning && lookoutPosition === currentScene)) && (
-        <div
-          style={getLookoutStyle()}
-          onMouseEnter={() => !lookoutTransitioning && setShowLookoutArrows(true)}
-          onMouseLeave={() => setShowLookoutArrows(false)}
-        >
-          <img
-            src="/shipimages/lookout.png"
-            alt="Lookout"
-            className={lookoutTransitioning ? 'animate-walk' : 'animate-idle-sway'}
-            style={{
-              height: '100%',
-              width: 'auto',
-              objectFit: 'contain',
-              imageRendering: 'crisp-edges',
-              transform: currentScene === 'starboard' ? 'scaleX(-1)' : 'scaleX(1)',
-              transformOrigin: 'center center',
-              flexShrink: 0,
-              minHeight: '100%'
-            }}
-          />
-          
-          {showLookoutArrows && !lookoutTransitioning && (
-  <div className="absolute top-35 left-53 -translate-x-1/2 flex gap-1 bg-black/80 border border-gray-600 rounded p-1 shadow-lg z-30">
-    <button
-      onClick={() => moveLookout('port')}
-      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
-      disabled={lookoutPosition === 'port'}
-      title="Port Wing"
-    >
-      ←
-    </button>
-    <button
-      onClick={() => moveLookout('center')}
-      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
-      disabled={lookoutPosition === 'center'}
-      title="Center Bridge"
-    >
-      ⚓
-    </button>
-    <button
-      onClick={() => moveLookout('starboard')}
-      className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center text-base"
-      disabled={lookoutPosition === 'starboard'}
-      title="Starboard Wing"
-    >
-      →
-    </button>
-  </div>
-)}
-        </div>
-      )}
+      {/* Fade transition */}
+      <div className={`absolute inset-0 bg-black z-50 pointer-events-none transition-opacity duration-150 ${isFading ? 'opacity-100' : 'opacity-0'}`} />
 
-      {/* Phone Ringing Effect - replaces alarm for MOB */}
-{phoneRinging && currentScene === 'center' && (
-  <div className="absolute top-0 left-0 w-full h-full z-[15] pointer-events-none">
-    {/* Red flash effect */}
-    <div className="absolute inset-0 bg-red-600/30 animate-flash" />
-    
-    {/* Phone icon pulsing */}
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl animate-pulse">
-      📞
-    </div>
-  </div>
-)}
-
-{/* Answer Phone button - replaces silence alarm for MOB */}
-{phoneRinging && currentScene === 'center' && (
-  <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
-    <button
-      onClick={answerPhone}
-      className="relative px-10 py-6 rounded-full text-xl font-bold transition-all duration-100 pointer-events-auto bg-gradient-to-b from-green-600 to-green-800 border-4 border-green-900 text-white hover:from-green-500 hover:to-green-700 active:scale-95 shadow-2xl font-mono tracking-wider animate-pulse"
-      style={{
-        boxShadow: '0 0 30px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.5)',
-      }}
-    >
-      <div className="absolute inset-2 rounded-full border-2 border-green-400/30" />
-      📞 PICK UP PHONE
-    </button>
-  </div>
-)}
-
-
-// INSERT THIS AFTER THE ALARM VISUAL EFFECT AND BEFORE THE SCENARIO SELECTOR
-// Around line 1183 (after the alarm flash div ends)
-
-{/* VHF Chatter Toggle - Top Left */}
-<div className="absolute top-5 left-5 z-20 flex gap-3">
-  {/* VHF Chatter Toggle - Rocker Switch Style */}
-  <button
-    onClick={() => setVhfChatterEnabled(!vhfChatterEnabled)}
-    className="relative w-32 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-auto overflow-hidden"
-  >
-    <div className={`absolute inset-0 flex transition-all duration-300 ${
-      vhfChatterEnabled ? 'translate-x-0' : 'translate-x-16'
-    }`}>
-      <div className="w-16 h-full bg-gradient-to-b from-green-600 to-green-700 flex items-center justify-center text-white text-xs font-bold shadow-inner">
-        ON
-      </div>
-      <div className="w-16 h-full bg-gradient-to-b from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs font-bold">
-        OFF
-      </div>
-    </div>
-    <div className={`absolute top-1 ${vhfChatterEnabled ? 'left-1' : 'left-[68px]'} w-14 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded shadow-md transition-all duration-300 border border-gray-500`}>
-      <div className="absolute inset-1 bg-gradient-to-b from-gray-200 to-gray-300 rounded-sm" />
-    </div>
-    <div className="absolute top-0 left-0 w-full text-center text-[9px] text-gray-400 font-mono mt-0.5">
-      VHF CHATTER
-    </div>
-  </button>
-
-  {/* Test VHF Button */}
-  <button
-    onClick={() => {
-      console.log('Manual VHF test triggered');
-      playVHFChatter();
-    }}
-    className="w-20 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 text-white text-[10px] font-mono hover:from-gray-700 hover:to-gray-800 transition-all pointer-events-auto active:shadow-inner"
-  >
-    TEST<br/>VHF
-  </button>
-</div>
-{/* Ship Alarm Selector Bar - Bottom Center */}
-<div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex flex-col gap-2 pointer-events-auto">
-  <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-700 rounded-lg p-3 shadow-xl">
-    <div className="text-white text-xs font-mono mb-2 text-center">SHIP ALARMS</div>
-    <div className="flex gap-2">
-      <button
-  id="alarm-mob"
-  onClick={() => {
-    playMorseOscar();
-    setSelectedAlarm('alarm-mob');
-    setTimeout(() => setSelectedAlarm(null), 6000);
-    logAction('Sound Man Overboard alarm', 'alarm-mob'); // Add this line
-  }}
-  className={`px-4 py-2 rounded font-mono text-sm transition-all ${
-    selectedAlarm === 'alarm-mob'
-      ? 'bg-red-600 text-white border-2 border-red-400'
-      : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
-  }`}
->
-  ALARM-MOB<br/>
-  <span className="text-[10px]">- - -</span>
-</button>
-      
-      <button
-        onClick={() => {
-          setAlarmActive(true);
-          setSelectedAlarm('GENERAL');
-          setTimeout(() => {
-            setSelectedAlarm(null);
-            setAlarmActive(false);
-          }, 5000);
-        }}
-        className={`px-4 py-2 rounded font-mono text-sm transition-all ${
-          selectedAlarm === 'GENERAL'
-            ? 'bg-red-600 text-white border-2 border-red-400'
-            : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
-        }`}
-      >
-        GENERAL<br/>
-        <span className="text-[10px]">7 SHORT+1 LONG</span>
-      </button>
-      
-      <button
-        onClick={() => {
-          // Fire alarm - continuous bell
-          setAlarmActive(true);
-          setSelectedAlarm('FIRE');
-          setTimeout(() => {
-            setSelectedAlarm(null);
-            setAlarmActive(false);
-          }, 10000);
-          
-          setLogEntries(prev => {
-            const newEntry: LogEntry = {
-              time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-              heading: '',
-              speed: '',
-              depth: '',
-              visibility: '',
-              event: 'Fire alarm activated'
-            };
-            return [...prev, newEntry];
-          });
-        }}
-        className={`px-4 py-2 rounded font-mono text-sm transition-all ${
-          selectedAlarm === 'FIRE'
-            ? 'bg-red-600 text-white border-2 border-red-400'
-            : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'
-        }`}
-      >
-        FIRE<br/>
-        <span className="text-[10px]">CONTINUOUS</span>
-      </button>
-    </div>
-  </div>
-</div>
-{/* VHF Radio - Bottom Left */}
-<div className="absolute bottom-5 left-5 z-20 flex flex-col items-center pointer-events-auto">
-  <button
-    onMouseDown={handlePTTPress}
-    onMouseUp={handlePTTRelease}
-    onTouchStart={handlePTTPress}
-    onTouchEnd={handlePTTRelease}
-    disabled={radioStatus === 'responding'}
-    className={`relative transition-all select-none ${
-      isRecording ? 'scale-95' : 'scale-100 hover:scale-105'
-    } ${radioStatus === 'responding' ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'}`}
-    style={{ 
-      filter: isRecording 
-        ? 'drop-shadow(0 0 20px rgba(255,0,0,0.8))' 
-        : radioStatus === 'responding'
-        ? 'drop-shadow(0 0 20px rgba(0,255,0,0.8))'
-        : 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))' 
-    }}
-  >
-    {/* Awaiting state - default */}
-    {radioStatus === 'idle' && (
-      <img 
-        src="/shipimages/uhf-awaiting.png"
-        alt="VHF Radio - Awaiting"
-        className="w-48 h-auto"
-      />
-    )}
-    
-    {/* Transmitting state - red light */}
-    {(radioStatus === 'listening' || radioStatus === 'processing') && (
-      <img 
-        src="/shipimages/uhf-transmitting.png"
-        alt="VHF Radio - Transmitting"
-        className="w-48 h-auto"
-      />
-    )}
-    
-    {/* Bosun responding state - green light */}
-    {radioStatus === 'responding' && (
-      <img 
-        src="/shipimages/uhf-bosun.png"
-        alt="VHF Radio - Receiving"
-        className="w-48 h-auto"
-      />
-    )}
-  </button>
-  
-  {/* Status text below radio */}
-  <div className="text-center text-[10px] font-mono mt-2 text-gray-400">
-    {isRecording && '🔴 TRANSMITTING'}
-    {radioStatus === 'idle' && !isRecording && 'HOLD TO TALK'}
-    {radioStatus === 'processing' && '⚡ PROCESSING'}
-    {radioStatus === 'responding' && '📻 RECEIVING'}
-  </div>
-
-  {/* Transcript display - minimal */}
-  {radioTranscript && (
-    <div className="mt-2 p-2 bg-black/80 rounded border border-gray-700 max-w-[200px]">
-      <div className="text-[9px] text-gray-500 font-mono">YOU:</div>
-      <div className="text-[10px] text-white font-mono truncate">"{radioTranscript}"</div>
-      {lastBosunResponse && (
-        <>
-          <div className="text-[9px] text-gray-500 mt-1 font-mono">BOSUN:</div>
-          <div className="text-[10px] text-green-400 font-mono truncate">"{lastBosunResponse}"</div>
-        </>
-      )}
-    </div>
-  )}
-</div>
-
-{/* Emergency Scenarios - Bottom Right */}
-{!currentScenario && (
-  <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 max-w-xs shadow-2xl border border-gray-700 pointer-events-auto">
-    <h3 className="text-white text-lg font-bold mb-3 font-mono tracking-wider">EMERGENCY SCENARIOS</h3>
-    <div className="space-y-2">
-      {scenarios.map(scenario => (
-        <button
-          key={scenario.id}
-          onClick={() => startScenario(scenario)}
-          className="w-full px-4 py-3 bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-600 text-white rounded hover:from-gray-700 hover:to-gray-800 transition-all font-mono text-sm text-left shadow-md hover:shadow-lg"
-        >
-          {scenario.name}
-        </button>
-      ))}
-    </div>
-  </div>
-)}
-
-{/* Active scenario checklist - Notepad Style - Bottom Right */}
-{currentScenario && !showResults && (
-  <div className="absolute bottom-5 right-5 z-20 max-w-md pointer-events-auto">
-    {/* Clipboard Top */}
-    <div className="relative">
-      {/* Metal Clip */}
-      <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-8 bg-gradient-to-b from-gray-400 to-gray-500 rounded-t-lg shadow-lg z-10 border-t-2 border-gray-300">
-        <div className="absolute inset-1 bg-gradient-to-b from-gray-300 to-gray-400 rounded-t-md" />
-      </div>
-      
-      {/* Paper/Notepad */}
-      <div className="bg-white rounded-sm shadow-2xl border-l-2 border-r border-b border-gray-400 p-6 pt-8"
-     style={{
-       backgroundImage: `repeating-linear-gradient(
-         #ffffff
-       )`,
-       lineHeight: '32px'
-     }}>
-        
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4 -mt-2">
-          <div>
-            <h3 className="text-gray-800 text-xl font-bold" style={{ fontFamily: 'Courier New, monospace', lineHeight: '1.2' }}>
-              {currentScenario.name}
-            </h3>
-            <p className="text-gray-600 text-xs mt-1" style={{ fontFamily: 'Courier New, monospace', lineHeight: '1.3' }}>
-              {currentScenario.description}
-            </p>
+      {/* Audio init splash */}
+      {!audioInitialized && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center cursor-pointer"
+          onClick={() => { ensureAudioCtx(); setAudioInitialized(true); }}>
+          <div className="border border-gray-600 rounded-lg p-10 text-center bg-gray-950">
+            <div className="text-white text-2xl font-bold tracking-widest mb-2">SHIP BRIDGE SIMULATOR</div>
+            <div className="text-gray-400 text-sm mb-6 tracking-wide">MARITIME TRAINING SYSTEM</div>
+            <div className="text-4xl mb-4">🎧</div>
+            <div className="text-gray-500 text-xs">Click anywhere to initialise audio</div>
           </div>
-          <button
-            onClick={() => setShowResults(true)}
-            className="px-2 py-1 bg-yellow-200 text-gray-800 text-xs rounded shadow-sm hover:bg-yellow-300 border border-yellow-400"
-            style={{ fontFamily: 'Courier New, monospace' }}
-          >
-            Results
-          </button>
         </div>
-        
-        {/* Horizontal line */}
-        <div className="border-b-2 border-gray-400 mb-3" style={{ marginTop: '-8px' }} />
-        
-        {/* Checklist Items */}
-        <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
-          {checklist.map((item, idx) => (
-            <div
-              key={item.id}
-              className="flex items-start gap-2 py-1"
-              style={{ lineHeight: '32px' }}
-            >
-              {/* Checkbox - Hand-drawn style */}
-              <div className="flex-shrink-0 w-5 h-5 mt-1 relative">
-                {item.completed ? (
-                  // Checkmark - hand-drawn style
-                  <svg viewBox="0 0 20 20" className="w-5 h-5">
-                    <path
-                      d="M3 3 L17 3 L17 17 L3 17 Z"
-                      fill="none"
-                      stroke="#333"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M5 10 L9 14 L16 6"
-                      fill="none"
-                      stroke="#2563eb"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ) : (
-                  // Empty box
-                  <svg viewBox="0 0 20 20" className="w-5 h-5">
-                    <path
-                      d="M3 3 L17 3 L17 17 L3 17 Z"
-                      fill="none"
-                      stroke="#666"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                )}
-              </div>
-              
-              {/* Text */}
-              <div className="flex-1">
-                <span 
-                  className={`text-sm ${item.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`}
-                  style={{ fontFamily: 'Courier New, monospace' }}
-                >
-                  {idx + 1}. {item.action}
-                </span>
-                {item.completed && item.timeCompleted && scenarioStartTime && (
-                  <span className="ml-2 text-xs text-blue-600" style={{ fontFamily: 'Courier New, monospace' }}>
-                    ({((item.timeCompleted - scenarioStartTime) / 1000).toFixed(1)}s)
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+      )}
+
+      {/* ── PARALLAX WORLD WRAPPER ── */}
+      <div style={parallaxStyle}>
+        {/* Ocean background */}
+        <div className="absolute inset-0 animate-ocean-motion">
+          <div className="absolute inset-0 z-[1]" style={{ backgroundImage: "url('/shipimages/Ocean3.png')", backgroundSize: '100% auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center 35%' }} />
+<div className="absolute inset-0 z-[2] animate-wave" style={{ backgroundImage: "url('/shipimages/ocean4.png')", backgroundSize: '100% auto', backgroundRepeat: 'no-repeat', backgroundPosition: 'center 35%' }} />
         </div>
 
-        {/* Completion Message */}
-        {scenarioComplete && (
-          <div className="mt-4 p-2 bg-green-100 border-2 border-green-600 rounded text-center">
-            <p className="text-green-800 font-bold" style={{ fontFamily: 'Courier New, monospace' }}>
-              ✓ SCENARIO COMPLETE
-            </p>
+        {/* Ship on horizon */}
+        <div className="absolute top-[33%] left-0 w-full h-[20%] z-[3] pointer-events-none animate-ocean-motion">
+          {shipProgress <= 120 && (
+            <img src="/shipimages/pdv_stbd_over50m_underway_day.png" alt="Ship"
+              className="absolute top-1/2 -translate-y-1/2"
+              style={{ left: getShipPosition(), height: '50px', opacity: shipProgress > 100 ? 0 : 1 }} />
+          )}
+        </div>
+
+        {/* Bridge scene */}
+        {bridgeMedia[currentScene].type === 'video' ? (
+          <video key="bridge-center"
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-full z-10 pointer-events-none object-contain object-bottom"
+            src={bridgeMedia[currentScene].src} autoPlay loop muted playsInline />
+        ) : (
+          <div key={`bridge-${currentScene}`}
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-full z-10 pointer-events-none bg-contain bg-no-repeat"
+            style={{ backgroundImage: `url('${bridgeMedia[currentScene].src}')`, backgroundPosition: 'center bottom' }} />
+        )}
+
+        {/* Hotspots */}
+        {hotspots[currentScene].map(hotspot => (
+          <div key={hotspot.id}
+            onClick={() => handleHotspotClick(hotspot)}
+            className="absolute z-[15] cursor-pointer pointer-events-auto group"
+            style={{ left: hotspot.position.left, top: hotspot.position.top, width: hotspot.position.width, height: hotspot.position.height }}>
+            <div className="absolute inset-0 border-2 border-yellow-400 bg-yellow-400/20 opacity-0 group-hover:opacity-100 transition-opacity rounded" />
+            {hotspot.label && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full px-3 py-1 bg-black/90 text-white text-sm rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {hotspot.label}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Lookout */}
+        {(lookoutPosition === currentScene || lookoutTransitioning) && (
+          <div style={getLookoutStyle()}
+            onMouseEnter={() => !lookoutTransitioning && setShowLookoutArrows(true)}
+            onMouseLeave={() => setShowLookoutArrows(false)}>
+            <img src="/shipimages/lookout.png" alt="Lookout"
+              className={lookoutTransitioning ? 'animate-walk' : 'animate-idle-sway'}
+              style={{ height: '100%', width: 'auto', objectFit: 'contain', transform: currentScene === 'starboard' ? 'scaleX(-1)' : 'none' }} />
+            {showLookoutArrows && !lookoutTransitioning && (
+              <div className="absolute top-35 left-53 -translate-x-1/2 flex gap-1 bg-black/80 border border-gray-600 rounded p-1 z-30">
+                {(['port', 'center', 'starboard'] as Scene[]).map((s, i) => (
+                  <button key={s} onClick={() => moveLookout(s)} disabled={lookoutPosition === s}
+                    className="w-7 h-7 bg-gray-800 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 disabled:opacity-20 flex items-center justify-center text-base">
+                    {i === 0 ? '←' : i === 1 ? '⚓' : '→'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
-    </div>
-  </div>
-)}
+      {/* ── END PARALLAX WORLD WRAPPER ── */}
 
-{/* Results view - Bottom Right */}
-{showResults && currentScenario && (() => {
-  const performance = calculatePerformance();
-  return performance && (
-    <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-5 max-w-2xl max-h-[70vh] overflow-y-auto shadow-2xl border border-gray-700 pointer-events-auto">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-white text-xl font-bold font-mono tracking-wider">SCENARIO RESULTS</h3>
-        <button
-          onClick={() => {
-            setShowResults(false);
-            setCurrentScenario(null);
-            setActionLog([]);
-            setChecklist([]);
-          }}
-          className="px-4 py-2 bg-red-900 text-white rounded hover:bg-red-800 font-mono text-sm border border-red-700"
-        >
-          CLOSE
+      {/* Phone ringing overlay */}
+      {phoneRinging && currentScene === 'center' && (
+        <>
+          <div className="absolute inset-0 z-[15] pointer-events-none">
+            <div className="absolute inset-0 bg-red-600/30 animate-flash" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl animate-pulse">📞</div>
+          </div>
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+            <button onClick={answerPhone}
+              className="px-10 py-6 rounded-full text-xl font-bold bg-gradient-to-b from-green-600 to-green-800 border-4 border-green-900 text-white hover:from-green-500 active:scale-95 shadow-2xl tracking-wider animate-pulse"
+              style={{ boxShadow: '0 0 30px rgba(34,197,94,0.8)' }}>
+              📞 PICK UP PHONE
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Silence alarm button */}
+      {alarmActive && currentScene === 'center' && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
+          <button onClick={silenceAlarm}
+            className="px-10 py-6 rounded-full text-xl font-bold bg-gradient-to-b from-red-600 to-red-800 border-4 border-red-900 text-white hover:from-red-500 active:scale-95 shadow-2xl tracking-wider"
+            style={{ boxShadow: '0 0 30px rgba(220,38,38,0.8)', animation: 'pulse 1s ease-in-out infinite' }}>
+            🔔 SILENCE ALARM
+          </button>
+        </div>
+      )}
+
+      {/* ── TOP: Scene navigation ── */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8 pointer-events-auto">
+        {(['port', 'center', 'starboard'] as Scene[]).map(scene => (
+          <button key={scene} onClick={() => changeScene(scene)}
+            className={`flex items-center gap-2 transition-all group ${currentScene === scene ? 'text-white font-bold' : 'text-gray-400 hover:text-gray-200'}`}>
+            {scene === 'port' && <span className="text-2xl opacity-50 group-hover:opacity-100">←</span>}
+            <span className="text-lg tracking-wider">{sceneLabels[scene].toUpperCase()}</span>
+            {scene === 'starboard' && <span className="text-2xl opacity-50 group-hover:opacity-100">→</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TOP-LEFT: VHF toggle + test ── */}
+      <div className="absolute top-5 left-5 z-20 flex gap-3">
+        <button onClick={() => setVhfChatterEnabled(v => !v)}
+          className="relative w-32 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md shadow-lg border border-gray-700 pointer-events-auto overflow-hidden">
+          <div className={`absolute inset-0 flex transition-all duration-300 ${vhfChatterEnabled ? 'translate-x-0' : 'translate-x-16'}`}>
+            <div className="w-16 h-full bg-gradient-to-b from-green-600 to-green-700 flex items-center justify-center text-white text-xs font-bold">ON</div>
+            <div className="w-16 h-full bg-gradient-to-b from-gray-600 to-gray-700 flex items-center justify-center text-white text-xs font-bold">OFF</div>
+          </div>
+          <div className={`absolute top-1 ${vhfChatterEnabled ? 'left-1' : 'left-[68px]'} w-14 h-10 bg-gradient-to-b from-gray-300 to-gray-400 rounded shadow-md transition-all border border-gray-500`} />
+          <div className="absolute top-0 left-0 w-full text-center text-[9px] text-gray-400 mt-0.5">VHF CHATTER</div>
+        </button>
+        <button onClick={() => playVHFChatter()}
+          className="w-20 h-12 bg-gradient-to-b from-gray-800 to-gray-900 rounded-md border border-gray-700 text-white text-[10px] hover:from-gray-700 pointer-events-auto">
+          TEST<br />VHF
         </button>
       </div>
 
-      <div className="space-y-4">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-800 p-4 rounded border border-gray-600">
-            <div className="text-gray-400 text-xs font-mono mb-1">TOTAL TIME</div>
-            <div className="text-white text-3xl font-bold font-mono">{performance.totalTime.toFixed(1)}s</div>
-          </div>
-          <div className="bg-gray-800 p-4 rounded border border-gray-600">
-            <div className="text-gray-400 text-xs font-mono mb-1">SCORE</div>
-            <div className="text-white text-3xl font-bold font-mono">{performance.score.toFixed(0)}%</div>
-          </div>
+      {/* ── BOTTOM-LEFT: VHF Radio PTT ── */}
+      <div className="absolute bottom-5 left-5 z-20 flex flex-col items-center pointer-events-auto">
+        <button
+          onMouseDown={handlePTTPress} onMouseUp={handlePTTRelease}
+          onTouchStart={handlePTTPress} onTouchEnd={handlePTTRelease}
+          disabled={radioStatus === 'responding'}
+          className={`transition-all select-none ${isRecording ? 'scale-95' : 'scale-100 hover:scale-105'} ${radioStatus === 'responding' ? 'opacity-90 cursor-not-allowed' : 'cursor-pointer'}`}
+          style={{ filter: isRecording ? 'drop-shadow(0 0 20px rgba(255,0,0,0.8))' : radioStatus === 'responding' ? 'drop-shadow(0 0 20px rgba(0,255,0,0.8))' : 'drop-shadow(0 4px 6px rgba(0,0,0,0.5))' }}>
+          <img src={radioStatus === 'responding' ? '/shipimages/uhf-bosun.png' : (radioStatus === 'listening' || radioStatus === 'processing') ? '/shipimages/uhf-transmitting.png' : '/shipimages/uhf-awaiting.png'}
+            alt="VHF Radio" className="w-48 h-auto" />
+        </button>
+        <div className="text-center text-[10px] mt-2 text-gray-400">
+          {isRecording ? '🔴 TRANSMITTING' : radioStatus === 'processing' ? '⚡ PROCESSING' : radioStatus === 'responding' ? '📻 RECEIVING' : 'HOLD TO TALK'}
         </div>
-
-        {/* Completion Stats */}
-        <div className="bg-gray-800 p-4 rounded border border-gray-600">
-          <div className="text-gray-400 text-xs font-mono mb-2">ACTIONS COMPLETED</div>
-          <div className="text-white text-xl font-mono">
-            {performance.completedActions} / {performance.totalActions}
+        {radioTranscript && (
+          <div className="mt-2 p-2 bg-black/80 rounded border border-gray-700 max-w-[200px]">
+            <div className="text-[9px] text-gray-500">YOU:</div>
+            <div className="text-[10px] text-white truncate">"{radioTranscript}"</div>
+            {lastBosunResponse && <>
+              <div className="text-[9px] text-gray-500 mt-1">BOSUN:</div>
+              <div className="text-[10px] text-green-400 truncate">"{lastBosunResponse}"</div>
+            </>}
           </div>
-        </div>
+        )}
+        {aiProcessingStatus && <div className="mt-1 text-[9px] text-yellow-400">{aiProcessingStatus}</div>}
+      </div>
 
-        {/* Correct Order */}
-        <div className="bg-gray-800 p-4 rounded border border-gray-600">
-          <div className="text-gray-400 text-xs font-mono mb-2">CORRECT ORDER</div>
-          <div className={`text-xl font-bold font-mono ${performance.correctOrder ? 'text-green-400' : 'text-red-400'}`}>
-            {performance.correctOrder ? '✓ YES' : '✗ NO'}
+      {/* ── BOTTOM-LEFT+: Phone button / panel ── */}
+      {!phoneOpen ? (
+        <button onClick={() => { setPhoneOpen(true); ensureAudioCtx(); }}
+          className="absolute bottom-5 z-20 pointer-events-auto group"
+          style={{ left: '220px' }}>
+          <div className="relative w-16 h-16 bg-gradient-to-b from-gray-700 to-gray-900 rounded-full border-4 border-gray-600 shadow-2xl flex items-center justify-center hover:from-gray-600 transition-all active:scale-95">
+            <span className="text-2xl">☎️</span>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black animate-pulse" />
           </div>
-        </div>
-
-        {/* Action Log */}
-        <div className="mt-6">
-          <h4 className="text-white font-bold mb-3 font-mono tracking-wider">ACTION LOG</h4>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {actionLog.map((log, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded text-sm border-l-4 ${
-                  log.correct 
-                    ? 'bg-green-900/20 border-green-500' 
-                    : 'bg-gray-800/50 border-gray-600'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="text-white font-medium font-mono">{log.action}</div>
-                    <div className="text-gray-400 text-xs font-mono mt-1">
-                      {log.location} • Order: #{log.actualOrder}
-                      {log.expectedOrder && ` (Expected: #${log.expectedOrder})`}
-                    </div>
-                  </div>
-                  <div className="text-gray-400 text-xs font-mono">
-                    {scenarioStartTime 
-                      ? `+${((log.timestamp - scenarioStartTime) / 1000).toFixed(1)}s`
-                      : ''}
-                  </div>
-                </div>
+          <div className="text-center text-[9px] text-gray-400 mt-1 tracking-wider">PHONE</div>
+        </button>
+      ) : (
+        <div className="absolute bottom-5 z-20 pointer-events-auto w-72" style={{ left: '210px' }}>
+          <div className="bg-gradient-to-b from-gray-800 to-gray-950 border-2 border-gray-600 rounded-lg shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-b border-gray-700 px-4 py-3 flex justify-between items-center">
+              <div>
+                <div className="text-white text-sm font-bold tracking-widest">INTERNAL COMMS</div>
+                <div className="text-gray-400 text-[10px]">MV SOHO — BRIDGE EXT. 500</div>
               </div>
+              <button onClick={() => { setPhoneOpen(false); endCall(); }}
+                className="w-7 h-7 bg-gray-700 border border-gray-600 rounded text-gray-300 hover:bg-red-900 hover:text-white text-sm font-bold flex items-center justify-center">✕</button>
+            </div>
+
+            {(activeCall || dialingContact) && (() => {
+              const c = phoneContacts.find(p => p.id === (activeCall || dialingContact));
+              return c ? (
+                <div className="bg-black/40 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <div className={`text-[10px] tracking-wider mb-0.5 ${dialingContact ? 'text-yellow-400' : 'text-green-400'}`}>
+                      {dialingContact ? '⟳ DIALING...' : '● CONNECTED'}
+                    </div>
+                    <div className="text-white text-sm font-bold">{c.name}</div>
+                    <div className="text-gray-400 text-[10px]">{c.title}</div>
+                  </div>
+                  {activeCall && (
+                    <div className="text-right">
+                      <div className="text-green-400 text-lg font-bold">{formatCallTime(callTimer)}</div>
+                      <button onClick={endCall} className="mt-1 px-3 py-1 bg-red-700 border border-red-600 text-white text-[10px] rounded hover:bg-red-600">END CALL</button>
+                    </div>
+                  )}
+                </div>
+              ) : null;
+            })()}
+
+            <div className="p-3 space-y-2">
+              <div className="text-gray-500 text-[9px] tracking-widest px-1 mb-1">— SELECT STATION —</div>
+              {phoneContacts.map(contact => {
+                const isActive = activeCall === contact.id;
+                const isDialing = dialingContact === contact.id;
+                const isBusy = !!(activeCall && !isActive) || !!(dialingContact && !isDialing);
+                return (
+                  <button key={contact.id}
+                    onClick={() => !isBusy && !isActive && !isDialing && makeCall(contact)}
+                    disabled={isBusy || isActive || isDialing}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded border transition-all text-left ${
+                      isActive ? 'bg-green-900/40 border-green-600 cursor-default' :
+                      isDialing ? 'bg-yellow-900/30 border-yellow-700 cursor-wait' :
+                      isBusy ? 'bg-gray-800/30 border-gray-800 opacity-40 cursor-not-allowed' :
+                      'bg-gray-800/60 border-gray-700 hover:bg-gray-700/60 hover:border-gray-500 cursor-pointer'}`}>
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-green-400 animate-pulse' : isDialing ? 'bg-yellow-400 animate-pulse' : 'bg-gray-600'}`} />
+                    <span className="text-lg flex-shrink-0">{contact.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-bold tracking-wide truncate ${isActive ? 'text-green-300' : isDialing ? 'text-yellow-300' : 'text-gray-200'}`}>{contact.name}</div>
+                      <div className="text-gray-500 text-[9px] truncate">{contact.title}</div>
+                    </div>
+                    <div className="text-gray-600 text-[9px] flex-shrink-0">ext.{contact.extension}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="border-t border-gray-800 px-4 py-2 flex justify-between items-center">
+              <div className="text-gray-600 text-[9px]">HOLD TO TALK AFTER CONNECT</div>
+              <div className={`text-[9px] ${activeCall ? 'text-green-500' : 'text-gray-700'}`}>{activeCall ? '● LINE OPEN' : '○ STANDBY'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BOTTOM-CENTER: Ship alarms ── */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-700 rounded-lg p-3 shadow-xl">
+          <div className="text-white text-xs mb-2 text-center tracking-widest">SHIP ALARMS</div>
+          <div className="flex gap-2">
+            {[
+              { id: 'alarm-mob', label: 'ALARM-MOB', sub: '- - -', action: () => { playMorseOscar(); setSelectedAlarm('alarm-mob'); setTimeout(() => setSelectedAlarm(null), 6000); } },
+              { id: 'GENERAL', label: 'GENERAL', sub: '7 SHORT+1 LONG', action: () => { setAlarmActive(true); setSelectedAlarm('GENERAL'); setTimeout(() => { setSelectedAlarm(null); setAlarmActive(false); }, 5000); } },
+              { id: 'FIRE', label: 'FIRE', sub: 'CONTINUOUS', action: () => { setAlarmActive(true); setSelectedAlarm('FIRE'); setTimeout(() => { setSelectedAlarm(null); setAlarmActive(false); }, 10000); addEventToLog('Fire alarm activated'); } },
+            ].map(({ id, label, sub, action }) => (
+              <button key={id} onClick={action}
+                className={`px-4 py-2 rounded text-sm transition-all ${selectedAlarm === id ? 'bg-red-600 text-white border-2 border-red-400' : 'bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700'}`}>
+                {label}<br /><span className="text-[10px]">{sub}</span>
+              </button>
             ))}
           </div>
         </div>
       </div>
-    </div>
-  );
-})()}
 
-{/* Silence alarm button - Realistic emergency button */}
-{alarmActive && currentScene === 'center' && (
-  <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20">
-    <button
-      onClick={silenceAlarm}
-      className="relative px-10 py-6 rounded-full text-xl font-bold transition-all duration-100 pointer-events-auto bg-gradient-to-b from-red-600 to-red-800 border-4 border-red-900 text-white hover:from-red-500 hover:to-red-700 active:scale-95 shadow-2xl font-mono tracking-wider"
-      style={{
-        boxShadow: '0 0 30px rgba(220, 38, 38, 0.8), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.5)',
-        animation: 'pulse 1s ease-in-out infinite'
-      }}
-    >
-      <div className="absolute inset-2 rounded-full border-2 border-red-400/30" />
-      🔔 SILENCE ALARM
-    </button>
-  </div>
-)}
+      {/* ── BOTTOM-RIGHT: Scenario selector / checklist / results ── */}
+      {!currentScenario && (
+        <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-4 max-w-xs shadow-2xl border border-gray-700 pointer-events-auto">
+          <h3 className="text-white text-lg font-bold mb-3 tracking-wider">EMERGENCY SCENARIOS</h3>
+          <div className="space-y-2">
+            {scenarios.map(s => (
+              <button key={s.id} onClick={() => startScenario(s)}
+                className="w-full px-4 py-3 bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-600 text-white rounded hover:from-gray-700 transition-all text-sm text-left shadow-md">
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {currentScenario && !showResults && (
+        <div className="absolute bottom-5 right-5 z-20 max-w-md pointer-events-auto">
+          <div className="relative">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-8 bg-gradient-to-b from-gray-400 to-gray-500 rounded-t-lg shadow-lg z-10 border-t-2 border-gray-300">
+              <div className="absolute inset-1 bg-gradient-to-b from-gray-300 to-gray-400 rounded-t-md" />
+            </div>
+            <div className="bg-white rounded-sm shadow-2xl border border-gray-400 p-6 pt-8">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-gray-800 text-xl font-bold" style={{ fontFamily: 'Courier New, monospace' }}>{currentScenario.name}</h3>
+                  <p className="text-gray-600 text-xs mt-1" style={{ fontFamily: 'Courier New, monospace' }}>{currentScenario.description}</p>
+                </div>
+                <button onClick={() => setShowResults(true)} className="px-2 py-1 bg-yellow-200 text-gray-800 text-xs rounded border border-yellow-400 hover:bg-yellow-300" style={{ fontFamily: 'Courier New, monospace' }}>Results</button>
+              </div>
+              <div className="border-b-2 border-gray-400 mb-3" />
+              <div className="space-y-0 max-h-96 overflow-y-auto pr-2">
+                {checklist.map((item, idx) => (
+                  <div key={item.id} className="flex items-start gap-2 py-1" style={{ lineHeight: '32px' }}>
+                    <div className="flex-shrink-0 w-5 h-5 mt-1">
+                      <svg viewBox="0 0 20 20" className="w-5 h-5">
+                        <path d="M3 3 L17 3 L17 17 L3 17 Z" fill="none" stroke={item.completed ? '#333' : '#666'} strokeWidth="1.5" />
+                        {item.completed && <path d="M5 10 L9 14 L16 6" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
+                      </svg>
+                    </div>
+                    <span className={`text-sm ${item.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`} style={{ fontFamily: 'Courier New, monospace' }}>
+                      {idx + 1}. {item.action}
+                    </span>
+                    {item.completed && item.timeCompleted && scenarioStartTime && (
+                      <span className="ml-1 text-xs text-blue-600" style={{ fontFamily: 'Courier New, monospace' }}>({((item.timeCompleted - scenarioStartTime) / 1000).toFixed(1)}s)</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {scenarioComplete && (
+                <div className="mt-4 p-2 bg-green-100 border-2 border-green-600 rounded text-center">
+                  <p className="text-green-800 font-bold" style={{ fontFamily: 'Courier New, monospace' }}>✓ SCENARIO COMPLETE</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-{/* Scene navigation - Simple text-based */}
-<div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8 pointer-events-auto">
-  <button
-    onClick={() => changeScene('port')}
-    className="group flex items-center gap-2 transition-all"
-  >
-    <span className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">←</span>
-    <span className={`text-lg tracking-wider transition-all ${
-      currentScene === 'port' 
-        ? 'text-white font-bold' 
-        : 'text-gray-400 hover:text-gray-200'
-    }`}>
-      PORT WING
-    </span>
-  </button>
-  
-  <button
-  onClick={() => changeScene('center')}
-  className="group transition-all"
->
-  <span className={`text-lg tracking-wider transition-all ${
-    currentScene === 'center' 
-      ? 'text-white font-bold' 
-      : 'text-gray-400 hover:text-gray-200'
-  }`}>
-    CENTER BRIDGE
-  </span>
-</button>
-  
-  <button
-    onClick={() => changeScene('starboard')}
-    className="group flex items-center gap-2 transition-all"
-  >
-    <span className={`text-lg tracking-wider transition-all ${
-      currentScene === 'starboard' 
-        ? 'text-white font-bold' 
-        : 'text-gray-400 hover:text-gray-200'
-    }`}>
-      STARBOARD WING
-    </span>
-    <span className="text-2xl opacity-50 group-hover:opacity-100 transition-opacity">→</span>
-  </button>
-</div>
+      {showResults && currentScenario && (() => {
+        const p = calculatePerformance();
+        return p ? (
+          <div className="absolute bottom-5 right-5 z-20 bg-gradient-to-b from-gray-900 to-black rounded-lg p-5 max-w-2xl max-h-[70vh] overflow-y-auto shadow-2xl border border-gray-700 pointer-events-auto">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-white text-xl font-bold tracking-wider">SCENARIO RESULTS</h3>
+              <button onClick={() => { setShowResults(false); setCurrentScenario(null); setActionLog([]); setChecklist([]); }}
+                className="px-4 py-2 bg-red-900 text-white rounded hover:bg-red-800 text-sm border border-red-700">CLOSE</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-gray-800 p-4 rounded border border-gray-600">
+                <div className="text-gray-400 text-xs mb-1">TOTAL TIME</div>
+                <div className="text-white text-3xl font-bold">{p.totalTime.toFixed(1)}s</div>
+              </div>
+              <div className="bg-gray-800 p-4 rounded border border-gray-600">
+                <div className="text-gray-400 text-xs mb-1">SCORE</div>
+                <div className="text-white text-3xl font-bold">{p.score.toFixed(0)}%</div>
+              </div>
+            </div>
+            <div className="bg-gray-800 p-4 rounded border border-gray-600 mb-3">
+              <div className="text-gray-400 text-xs mb-1">ACTIONS COMPLETED</div>
+              <div className="text-white text-xl">{p.completedActions} / {p.totalActions}</div>
+            </div>
+            <div className="bg-gray-800 p-4 rounded border border-gray-600 mb-3">
+              <div className="text-gray-400 text-xs mb-1">CORRECT ORDER</div>
+              <div className={`text-xl font-bold ${p.correctOrder ? 'text-green-400' : 'text-red-400'}`}>{p.correctOrder ? '✓ YES' : '✗ NO'}</div>
+            </div>
+            <h4 className="text-white font-bold mb-2 tracking-wider">ACTION LOG</h4>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {actionLog.map((log, idx) => (
+                <div key={idx} className={`p-3 rounded text-sm border-l-4 ${log.correct ? 'bg-green-900/20 border-green-500' : 'bg-gray-800/50 border-gray-600'}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-white font-medium">{log.action}</div>
+                      <div className="text-gray-400 text-xs mt-1">{log.location} • Order: #{log.actualOrder}{log.expectedOrder ? ` (Expected: #${log.expectedOrder})` : ''}</div>
+                    </div>
+                    <div className="text-gray-400 text-xs">{scenarioStartTime ? `+${((log.timestamp - scenarioStartTime) / 1000).toFixed(1)}s` : ''}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
-      {/* Popup overlay */}
+      {/* Logbook / equipment popups */}
       {activePopup && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center pointer-events-auto p-4"
-          onClick={() => setActivePopup(null)}
-        >
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center pointer-events-auto p-4"
+          onClick={() => setActivePopup(null)}>
           {activePopup === 'logbook' ? (
-            <div 
-              className="relative w-full max-w-[1400px] h-[90vh] bg-white border-4 border-black shadow-[0_0_30px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="relative w-full max-w-[1400px] h-[90vh] bg-white border-4 border-black shadow-2xl flex flex-col overflow-hidden"
+              onClick={e => e.stopPropagation()}>
               <div className="bg-white border-b-4 border-black p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1">
                     <h1 className="text-2xl font-bold text-center mb-2">SHIP'S DECK LOG SHEET</h1>
-                    <div className="text-xs text-right">Vessel Name: MV Soho<br/>IMO: 16348275<br/>Callsign: D1WX7</div>
+                    <div className="text-xs text-right">Vessel Name: MV Soho<br />IMO: 16348275<br />Callsign: D1WX7</div>
                   </div>
-                  <button
-                    onClick={() => setActivePopup(null)}
-                    className="ml-4 w-8 h-8 bg-red-700 border-2 border-red-500 text-white rounded-full hover:bg-red-600 font-bold text-xl"
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => setActivePopup(null)} className="ml-4 w-8 h-8 bg-red-700 border-2 border-red-500 text-white rounded-full hover:bg-red-600 font-bold text-xl">×</button>
                 </div>
-
                 <div className="border-2 border-black p-2 text-xs font-bold mb-2">
                   <div className="text-center mb-1">USE BLACK INK TO FILL IN THIS LOG</div>
                   <div className="flex gap-4 items-center justify-center">
-                    <div className="flex gap-1 items-center">
-                      <span>SHIP TYPE:</span>
-                      <input
-                        type="text"
-                        value={shipInfo.shipType}
-                        onChange={(e) => setShipInfo({...shipInfo, shipType: e.target.value})}
-                        className="border border-black px-1 w-24"
-                      />
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      <span>HULL NUMBER:</span>
-                      <input
-                        type="text"
-                        value={shipInfo.hullNumber}
-                        onChange={(e) => setShipInfo({...shipInfo, hullNumber: e.target.value})}
-                        className="border border-black px-1 w-32"
-                      />
-                    </div>
+                    {(['shipType', 'hullNumber'] as const).map(field => (
+                      <div key={field} className="flex gap-1 items-center">
+                        <span>{field === 'shipType' ? 'SHIP TYPE:' : 'HULL NUMBER:'}</span>
+                        <input type="text" value={shipInfo[field]} onChange={e => setShipInfo(p => ({ ...p, [field]: e.target.value }))} className="border border-black px-1 w-24" />
+                      </div>
+                    ))}
                     <div className="flex gap-1 items-center">
                       <span>DATE:</span>
-                      <input
-                        type="text"
-                        value={shipInfo.date}
-                        onChange={(e) => setShipInfo({...shipInfo, date: e.target.value})}
-                        className="border border-black px-1 w-12 text-center"
-                        placeholder="DD"
-                      />
-                      <input
-                        type="text"
-                        value={shipInfo.month}
-                        onChange={(e) => setShipInfo({...shipInfo, month: e.target.value})}
-                        className="border border-black px-1 w-12 text-center"
-                        placeholder="MM"
-                      />
-                      <input
-                        type="text"
-                        value={shipInfo.year}
-                        onChange={(e) => setShipInfo({...shipInfo, year: e.target.value})}
-                        className="border border-black px-1 w-16 text-center"
-                        placeholder="YYYY"
-                      />
+                      {(['date', 'month', 'year'] as const).map(f => (
+                        <input key={f} type="text" value={shipInfo[f]} onChange={e => setShipInfo(p => ({ ...p, [f]: e.target.value }))}
+                          className="border border-black px-1 text-center" style={{ width: f === 'year' ? '64px' : '48px' }}
+                          placeholder={f === 'year' ? 'YYYY' : f === 'month' ? 'MM' : 'DD'} />
+                      ))}
                     </div>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-[80px_80px_80px_80px_80px_1fr] border-2 border-black text-xs font-bold bg-gray-100">
-                  <div className="border-r border-black p-1 text-center">TIME</div>
-                  <div className="border-r border-black p-1 text-center">HEADING</div>
-                  <div className="border-r border-black p-1 text-center">SPEED</div>
-                  <div className="border-r border-black p-1 text-center">DEPTH</div>
-                  <div className="border-r border-black p-1 text-center">VISIBILITY</div>
-                  <div className="p-1 text-center">RECORD OF ALL EVENTS OF THE DAY</div>
+                  {['TIME', 'HEADING', 'SPEED', 'DEPTH', 'VISIBILITY', 'RECORD OF ALL EVENTS OF THE DAY'].map(h => (
+                    <div key={h} className="border-r border-black p-1 text-center last:border-r-0">{h}</div>
+                  ))}
                 </div>
               </div>
-
               <div className="flex-1 overflow-y-auto bg-white">
-                {logEntries.map((entry, index) => (
-                  <div 
-                    key={index}
-                    className="grid grid-cols-[80px_80px_80px_80px_80px_1fr] border-b border-black text-xs hover:bg-gray-50 group"
-                  >
-                    <input
-                      type="text"
-                      value={entry.time}
-                      onChange={(e) => updateLogEntry(index, 'time', e.target.value)}
-                      className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none"
-                      placeholder="0000"
-                    />
-                    <input
-                      type="text"
-                      value={entry.heading}
-                      onChange={(e) => updateLogEntry(index, 'heading', e.target.value)}
-                      className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={entry.speed}
-                      onChange={(e) => updateLogEntry(index, 'speed', e.target.value)}
-                      className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={entry.depth}
-                      onChange={(e) => updateLogEntry(index, 'depth', e.target.value)}
-                      className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={entry.visibility}
-                      onChange={(e) => updateLogEntry(index, 'visibility', e.target.value)}
-                      className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none"
-                    />
+                {logEntries.map((entry, i) => (
+                  <div key={i} className="grid grid-cols-[80px_80px_80px_80px_80px_1fr] border-b border-black text-xs hover:bg-gray-50 group">
+                    {(['time', 'heading', 'speed', 'depth', 'visibility'] as const).map(field => (
+                      <input key={field} type="text" value={entry[field]} onChange={e => updateLogEntry(i, field, e.target.value)}
+                        className="border-r border-black p-1 text-center focus:bg-yellow-50 focus:outline-none" />
+                    ))}
                     <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        value={entry.event}
-                        onChange={(e) => updateLogEntry(index, 'event', e.target.value)}
-                        className="w-full p-1 pr-8 focus:bg-yellow-50 focus:outline-none"
-                        placeholder="Enter event description..."
-                      />
-                      <button
-                        onClick={() => deleteLogEntry(index)}
-                        className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white rounded px-2 py-0.5 text-xs hover:bg-red-600"
-                      >
-                        ×
-                      </button>
+                      <input type="text" value={entry.event} onChange={e => updateLogEntry(i, 'event', e.target.value)}
+                        className="w-full p-1 pr-8 focus:bg-yellow-50 focus:outline-none" placeholder="Enter event description..." />
+                      <button onClick={() => deleteLogEntry(i)}
+                        className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white rounded px-2 py-0.5 text-xs hover:bg-red-600">×</button>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="bg-white border-t-4 border-black p-3">
-                <div className="flex justify-between items-center">
-                  <button
-                    onClick={addLogEntry}
-                    className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition-colors"
-                  >
-                    + ADD NEW ENTRY
-                  </button>
-                  <div className="text-xs text-gray-600">
-                    {logEntries.length} entries • Clears on refresh
-                  </div>
-                  <div className="text-xs">
-                    OPNAV 3109/09 (Rev. 7-64)
-                  </div>
-                </div>
+              <div className="bg-white border-t-4 border-black p-3 flex justify-between items-center">
+                <button onClick={addLogEntry} className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">+ ADD NEW ENTRY</button>
+                <div className="text-xs text-gray-600">{logEntries.length} entries • Clears on refresh</div>
+                <div className="text-xs">OPNAV 3109/09 (Rev. 7-64)</div>
               </div>
             </div>
           ) : (
-            <div 
-              className="relative max-w-[90vw] max-h-[90vh] bg-[rgba(0,40,60,0.95)] border-4 border-[#00d9ff] rounded-lg p-4 shadow-[0_0_30px_rgba(0,217,255,0.6)]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setActivePopup(null)}
-                className="absolute top-2 right-2 w-10 h-10 bg-red-700 border-2 border-red-500 text-white rounded-full hover:bg-red-600 font-bold text-xl z-[101]"
-              >
-                ×
-              </button>
-              
-              <img
-                src={hotspots[currentScene].find(h => h.id === activePopup)?.popupImage}
-                alt="Control closeup"
-                className="max-w-full max-h-[80vh] object-contain rounded"
-              />
-              
+            <div className="relative max-w-[90vw] max-h-[90vh] bg-[rgba(0,40,60,0.95)] border-4 border-[#00d9ff] rounded-lg p-4 shadow-[0_0_30px_rgba(0,217,255,0.6)]"
+              onClick={e => e.stopPropagation()}>
+              <button onClick={() => setActivePopup(null)} className="absolute top-2 right-2 w-10 h-10 bg-red-700 border-2 border-red-500 text-white rounded-full hover:bg-red-600 font-bold text-xl z-[101]">×</button>
+              <img src={hotspots[currentScene].find(h => h.id === activePopup)?.popupImage} alt="Control" className="max-w-full max-h-[80vh] object-contain rounded" />
               {hotspots[currentScene].find(h => h.id === activePopup)?.label && (
-                <div className="mt-4 text-center text-[#00d9ff] text-xl font-bold">
-                  {hotspots[currentScene].find(h => h.id === activePopup)?.label}
-                </div>
+                <div className="mt-4 text-center text-[#00d9ff] text-xl font-bold">{hotspots[currentScene].find(h => h.id === activePopup)?.label}</div>
               )}
             </div>
           )}
@@ -3216,85 +1276,28 @@ const answerPhone = useCallback(() => {
       )}
 
       <style jsx>{`
-        @keyframes wave {
-          0% { opacity: 0; }
-          50% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-
-        @keyframes flash {
-          0% { opacity: 0; }
-          50% { opacity: 0.7; }
-          100% { opacity: 0; }
-        }
-
+        @keyframes wave { 0%,100%{opacity:0} 50%{opacity:1} }
+        @keyframes flash { 0%,100%{opacity:0} 50%{opacity:0.7} }
         @keyframes oceanMotion {
-          0% { transform: translate(0px, 0px) rotate(0deg); }
-          12.5% { transform: translate(1px, -2px) rotate(0.1deg); }
-          25% { transform: translate(2.5px, -5px) rotate(0.25deg); }
-          37.5% { transform: translate(3.5px, -7px) rotate(0.35deg); }
-          50% { transform: translate(3px, -6px) rotate(0.3deg); }
-          62.5% { transform: translate(2px, -4px) rotate(0.2deg); }
-          75% { transform: translate(1px, -2px) rotate(0.1deg); }
-          87.5% { transform: translate(-0.5px, 1px) rotate(-0.05deg); }
-          100% { transform: translate(0px, 0px) rotate(0deg); }
+          0%{transform:translate(0,0) rotate(0deg)}
+          25%{transform:translate(2.5px,-5px) rotate(0.25deg)}
+          50%{transform:translate(3px,-6px) rotate(0.3deg)}
+          75%{transform:translate(1px,-2px) rotate(0.1deg)}
+          100%{transform:translate(0,0) rotate(0deg)}
         }
-
         @keyframes idleSway {
-          0% { 
-            translate: 0px 0px;
-            rotate: 0deg;
-          }
-          25% { 
-            translate: 0px -2px;
-            rotate: 0.3deg;
-          }
-          50% { 
-            translate: 0px 0px;
-            rotate: 0deg;
-          }
-          75% { 
-            translate: 0px -1px;
-            rotate: -0.3deg;
-          }
-          100% { 
-            translate: 0px 0px;
-            rotate: 0deg;
-          }
+          0%,100%{translate:0 0;rotate:0deg}
+          25%{translate:0 -2px;rotate:0.3deg}
+          75%{translate:0 -1px;rotate:-0.3deg}
         }
-
         @keyframes walk {
-          0% { translate: 0px 0px; }
-          25% { translate: 0px -4px; }
-          50% { translate: 0px 0px; }
-          75% { translate: 0px -4px; }
-          100% { translate: 0px 0px; }
+          0%,100%{translate:0 0} 25%,75%{translate:0 -4px}
         }
-
-        .animate-wave {
-          animation: wave 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-        }
-
-        .animate-flash {
-          animation: flash 1s ease-in-out infinite;
-        }
-
-        .animate-ocean-motion {
-          animation: oceanMotion 6s linear infinite;
-          will-change: transform;
-        }
-
-        .animate-idle-sway {
-          animation: idleSway 3s ease-in-out infinite;
-        }
-
-        .animate-walk {
-          animation: walk 0.4s ease-in-out infinite;
-        }
-
-        .bg-center-bottom {
-          background-position: center bottom;
-        }
+        .animate-wave{animation:wave 4s cubic-bezier(.45,.05,.55,.95) infinite}
+        .animate-flash{animation:flash 1s ease-in-out infinite}
+        .animate-ocean-motion{animation:oceanMotion 6s linear infinite;will-change:transform}
+        .animate-idle-sway{animation:idleSway 3s ease-in-out infinite}
+        .animate-walk{animation:walk .4s ease-in-out infinite}
       `}</style>
     </div>
   );
