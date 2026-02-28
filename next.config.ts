@@ -7,10 +7,10 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Add this to skip all type checking
   experimental: {
     typedRoutes: false,
   },
+  transpilePackages: ['three'],
 };
 
 export default nextConfig;
