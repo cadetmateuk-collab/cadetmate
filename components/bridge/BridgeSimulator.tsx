@@ -8,16 +8,19 @@ const NAV_BUTTONS: { node: CameraNode; label: string }[] = [
   { node: 'back',  label: '⬅ BACK BRIDGE'   },
   { node: 'helm',  label: 'HELM POSITION'    },
   { node: 'radar', label: 'RADAR STATION ➡' },
-  // { node: 'newNode', label: 'NEW POSITION' },
 ];
 
 export default function ShipBridgeSimulator() {
   const [cameraNode, setCameraNode] = useState<CameraNode>('back');
-  const { screenDefs } = useBridgeInteractions();
+  const { screenDefs, objectDefs } = useBridgeInteractions(); // ← now destructures objectDefs too
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'black' }}>
-      <BridgeScene cameraNode={cameraNode} screenDefs={screenDefs} />
+      <BridgeScene
+        cameraNode={cameraNode}
+        screenDefs={screenDefs}
+        objectDefs={objectDefs}  // ← pass it in here
+      />
 
       <div style={{
         position: 'absolute',

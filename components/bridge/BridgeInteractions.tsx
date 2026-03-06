@@ -1,43 +1,36 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { SCREENS, ScreenDef, ScreenKey } from './BridgeScene';
-
-// ══════════════════════════════════════════════════════════════════════════════
-// All plane interactions live here.
-// To add a new interaction:
-//   1. Add state below
-//   2. Wire it into useScreenDefs
-// ══════════════════════════════════════════════════════════════════════════════
+import { useState, useCallback } from 'react';
+import { SCREENS, OBJECTS, ScreenDef, ScreenKey, ObjectDef, ObjectKey } from './BridgeScene';
 
 export function useBridgeInteractions() {
-  // ── Radar on/off ────────────────────────────────────────────────────────────
+
+  // ── Radar ──────────────────────────────────────────────────────────────────
   const [radarOn, setRadarOn] = useState(true);
+  const toggleRadar = useCallback(() => setRadarOn(v => !v), []);
 
-  // ── Add more state here ─────────────────────────────────────────────────────
-  // const [compassOn, setCompassOn] = useState(true);
-
-  // ── Wire state into screen defs ─────────────────────────────────────────────
-  const screenDefs: Record<ScreenKey, ScreenDef> = useMemo(() => ({
+  const screenDefs: Record<ScreenKey, ScreenDef> = {
     radarScreen: {
       ...SCREENS.radarScreen,
-      isActive: !radarOn,  // isActive = true shows altTexture (off state)
+      isActive: !radarOn,
     },
     radarToggle: {
       ...SCREENS.radarToggle,
-      isActive: !radarOn,  // button also swaps texture
-      onClick:  () => setRadarOn(v => !v),
+      isActive: !radarOn,
+      onClick:  toggleRadar,
     },
-    // compassScreen: {
-    //   ...SCREENS.compassScreen,
-    //   isActive: !compassOn,
-    // },
-    // compassToggle: {
-    //   ...SCREENS.compassToggle,
-    //   isActive: !compassOn,
-    //   onClick: () => setCompassOn(v => !v),
-    // },
-  }), [radarOn]);
+  };
 
-  return { screenDefs };
+  // ── 3D Objects ─────────────────────────────────────────────────────────────
+  const objectDefs: Record<ObjectKey, ObjectDef> = {
+    throttle: {
+      ...OBJECTS.throttle,
+      onClick: () => console.log('throttle clicked'),
+    },
+  };
+
+  return {
+    screenDefs,
+    objectDefs,
+  };
 }
