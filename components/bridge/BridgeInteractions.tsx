@@ -16,8 +16,10 @@ export function useBridgeInteractions() {
     },
     radarToggle: {
       ...SCREENS.radarToggle,
-      isActive: !radarOn,
-      onClick:  toggleRadar,
+      onToggle: toggleRadar,
+    },
+    overheadPanel: {
+      ...SCREENS.overheadPanel,
     },
   };
 

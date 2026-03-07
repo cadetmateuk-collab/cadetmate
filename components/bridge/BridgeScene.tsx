@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState, useMemo } from 'react';
+import { Suspense, useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, OrbitControls, useProgress, Preload, useGLTF } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
@@ -69,18 +69,48 @@ function getDistanceScale(
 // ── CAMERA NODES ─────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
-export type CameraNode = 'back' | 'helm' | 'radar';
+export type CameraNode =
+  | 'back'
+  | 'helm'
+  | 'psEcdis'
+  | 'psLookout'
+  | 'psRadio'
+  | 'psSofa'
+  | 'psWing'
+  | 'sbDesk'
+  | 'sbLogbook'
+  | 'sbLookout'
+  | 'radar'
+  | 'sbWing';
 
 const CAMERA_BLENDER: Record<CameraNode, [number, number, number]> = {
-  back:  [0,        -6.9537,  4.2472 ],
-  helm:  [0,        -5.0,     4.2472 ],
-  radar: [2.13856,  -3.49108, 4.24725],
+  back:       [0,        -6.9537,  91.568],
+  helm:       [0,        -5.0,     91.568],
+  psEcdis:    [-2.7145,  -3.4911,  91.568],
+  psLookout:  [-14.476,   0.25729, 91.568],
+  psRadio:    [-5.4819,  -3.4911,  91.568],
+  psSofa:     [-11.823,  -13.676,  91.568],
+  psWing:     [-30.932,  -6.9677,  91.568],
+  sbDesk:     [4.7446,   -13.308,  91.568],
+  sbLogbook:  [6.6436,   -3.4911,  91.568],
+  sbLookout:  [4.5762,    3.5637,  91.568],
+  radar:      [2.1561,   -3.4911,  91.568],
+  sbWing:     [23.913,   -6.9677,  91.568],
 };
 
 const PANORAMAS: Record<CameraNode, string> = {
-  back:  '/shipimages/bridge-back.webp',
-  helm:  '/shipimages/bridge-helm.webp',
-  radar: '/shipimages/bridge-sbradar.webp',
+  back:       '/shipimages/bridge-back.webp',
+  helm:       '/shipimages/bridge-helm.webp',
+  psEcdis:    '/shipimages/bridge-ps-ecdis.webp',
+  psLookout:  '/shipimages/bridge-ps-lookout.webp',
+  psRadio:    '/shipimages/bridge-ps-radio.webp',
+  psSofa:     '/shipimages/bridge-ps-sofa.webp',
+  psWing:     '/shipimages/bridge-ps-wing.webp',
+  sbDesk:     '/shipimages/bridge-sb-desk.webp',
+  sbLogbook:  '/shipimages/bridge-sb-logbook.webp',
+  sbLookout:  '/shipimages/bridge-sb-lookout.webp',
+  radar:      '/shipimages/bridge-sb-radar.webp',
+  sbWing:     '/shipimages/bridge-sb-wing.webp',
 };
 
 const BACK_THREE = blenderPosToThree(...CAMERA_BLENDER.back);
@@ -92,7 +122,8 @@ export const NODE_OFFSETS: Record<CameraNode, [number, number, number]> = Object
   })
 ) as Record<CameraNode, [number, number, number]>;
 
-const ALL_NODES = Object.keys(CAMERA_BLENDER) as CameraNode[];
+const ALL_NODES  = Object.keys(CAMERA_BLENDER) as CameraNode[];
+const WING_NODES = new Set<CameraNode>(['psWing', 'sbWing']);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -110,43 +141,136 @@ export interface ScreenDef {
   blenderPos:      [number, number, number];
   blenderRot:      [number, number, number];
   texture:         string;
-  altTexture?:     string;    // shown when isActive = true
-  videoSrc?:       string;    // WebM video shown when isActive = true
-  loadingTexture?: string;    // shown during boot-up sequence before video
+  altTexture?:     string;
+  videoSrc?:       string;
+  loadingTexture?: string;
   blenderSize:     [number, number];
   scale?:          number;
   onClick?:        () => void;
   isActive?:       boolean;
+  // 'bridge' = hidden on wing nodes. 'wing' = only on wings. 'always' = everywhere.
+  visibility?:         'bridge' | 'wing' | 'always';
+  // Per-node position nudge in Three.js world units [x, y, z]:
+  //   x: positive = move right,  negative = move left
+  //   y: positive = move up,     negative = move down
+  //   z: positive = move toward camera, negative = away
+  // Tune these to correct any residual parallax from each camera position.
+  nodeAdjust?:         Partial<Record<CameraNode, [number, number, number]>>;
+  // Momentary button: shows altTexture for pressedDurationMs on click, then reverts.
+  // Wire onToggle in BridgeInteractions to respond to the press.
+  momentaryPress?:     boolean;
+  pressedDurationMs?:  number;
+  onToggle?:           () => void;
 }
 
 export const SCREENS = {
   radarScreen: {
-    blenderPos:      [2.233,   -0.13147, 2.6350] as [number, number, number],
-    blenderRot:      [65, 0, 0]                  as [number, number, number],
-    texture:         '/shipimages/radar.png',
-    altTexture:      '/shipimages/radar-off.png',
-    videoSrc:        '/shipimages/radar.webm',
-    loadingTexture:  '/shipimages/radar-loading.png',
-    blenderSize:     [1.58, 1.0]                 as [number, number],
-    scale:           62.25,
+    blenderPos:     [2.250,  -0.13147, 89.63] as [number, number, number],
+    blenderRot:     [65, 0, 0]                 as [number, number, number],
+    texture:        '/shipimages/radar.png',
+    altTexture:     '/shipimages/radar-off.png',
+    videoSrc:       '/shipimages/radar.webm',
+    loadingTexture: '/shipimages/radar-loading.png',
+    blenderSize:    [1.44, 0.898]              as [number, number],
+    // scale = SPHERE_RADIUS(498) / dist_from_back_camera_to_this_screen(7.449m) = 66.86
+    scale:          66.86,
+    visibility:     'bridge' as const,
+    nodeAdjust: {
+      // ── Tuned ──────────────────────────────────────────────────────
+      psSofa:     [ 0,  0, 0] as [number, number, number],
+      sbDesk:     [-0.4,  -0.2, 0] as [number, number, number],
+      psEcdis:    [ 1,  0.2, 0] as [number, number, number],
+      // ── Not yet tuned — adjust x/y/z as needed ────────────────────
+      back:       [ 0,  0, 0] as [number, number, number],
+      helm:       [ 0,  1.2, 0] as [number, number, number],
+      psRadio:    [ 3.5,  0, 0] as [number, number, number],
+      psLookout:  [ 0,  0, 0] as [number, number, number],
+      sbLogbook:  [ 0,  0, 0] as [number, number, number],
+      sbLookout:  [ 0,  0, 0] as [number, number, number],
+      radar:      [ 0.7,  0.4, 0] as [number, number, number],
+      // wings hidden via visibility:'bridge' — no need to tune
+      psWing:     [ 0,  0, 0] as [number, number, number],
+      sbWing:     [ 0,  0, 0] as [number, number, number],
+    },
   },
   radarToggle: {
-    blenderPos:  [2.855, -0.35478, 2.19] as [number, number, number],
-    blenderRot:  [65, 0, 0]                 as [number, number, number],
-    texture:     '/shipimages/btn-on.png',
-    altTexture:  '/shipimages/btn-off.png',
-    blenderSize: [0.07, 0.07]               as [number, number],
-    scale:       62.25,
+    blenderPos:          [2.870, -0.35478, 89.188] as [number, number, number],
+    blenderRot:          [65, 0, 0]                as [number, number, number],
+    texture:             '/shipimages/pwr-unpressed.png',
+    altTexture:          '/shipimages/pwr-pressed.png',
+    blenderSize:         [0.07, 0.07]              as [number, number],
+    scale:               66.86,
+    visibility:          'bridge' as const,
+    momentaryPress:      true,
+    pressedDurationMs:   1000,
+    nodeAdjust: {
+      // ── Tuned ──────────────────────────────────────────────────────
+      psSofa:     [ -3.4,  0, 0] as [number, number, number],
+      sbDesk:     [0.45,  0, 0] as [number, number, number],
+      psEcdis:    [ 0.2,  0.4, 0] as [number, number, number],
+      // ── Not yet tuned — adjust x/y/z as needed ────────────────────
+      back:       [ 0,  0, 0] as [number, number, number],
+      helm:       [ -1.8,  1.6, 0] as [number, number, number],
+      psRadio:    [ 0.7,  0.1, 0] as [number, number, number],
+      psLookout:  [ 0,  0, 0] as [number, number, number],
+      sbLogbook:  [ 0,  0, 0] as [number, number, number],
+      sbLookout:  [ 0,  0, 0] as [number, number, number],
+      radar:      [ 0,  0.8, 0] as [number, number, number],
+      psWing:     [ 0,  0, 0] as [number, number, number],
+      sbWing:     [ 0,  0, 0] as [number, number, number],
+    },
+  },
+  overheadPanel: {
+    blenderPos:  [3.666,  5.9174, 94.52]  as [number, number, number],
+    blenderRot:  [96.382, 0.56744, -0.50]      as [number, number, number],
+    texture:     '/shipimages/overhead-panel.png',
+    blenderSize: [9.2, 0.898]              as [number, number],
+    // scale = SPHERE_RADIUS(498) / dist_from_back_camera_to_this_screen(13.692m) = 36.37
+    scale:       36.9,
+    visibility:  'bridge' as const,
+    nodeAdjust: {
+      // ── Not yet tuned — adjust x/y/z as needed ────────────────────
+      back:       [ 0,  0, 0] as [number, number, number],
+      helm:       [ 0,  -0.8, 0] as [number, number, number],
+      psSofa:     [ 0,  0, 0] as [number, number, number],
+      sbDesk:     [ 0,  0, 0] as [number, number, number],
+      psEcdis:    [ 0,  0, 0] as [number, number, number],
+      psRadio:    [ 0,  0, 0] as [number, number, number],
+      psLookout:  [ 0,  0, 0] as [number, number, number],
+      sbLogbook:  [ 0,  0, 0] as [number, number, number],
+      sbLookout:  [ 0,  0, 0] as [number, number, number],
+      radar:      [ 0,  0, 0] as [number, number, number],
+      psWing:     [ 0,  0, 0] as [number, number, number],
+      sbWing:     [ 0,  0, 0] as [number, number, number],
+    },
   },
   // ── Add new screen planes here ─────────────────────────────────────────────
-  // compassScreen: {
+  // For scale: open browser console and run:
+  //   498 / distanceTo(blenderPosToThree(...screenPos), blenderPosToThree(...backCamPos))
+  // Or just set scale:1 first, eyeball it, then multiply up.
+  // myScreen: {
   //   blenderPos:  [x, y, z],
   //   blenderRot:  [rx, ry, rz],
-  //   texture:     '/shipimages/compass.png',
-  //   blenderSize: [1.0, 1.0],
-  //   scale:       62.25,
+  //   texture:     '/shipimages/myscreen.png',
+  //   blenderSize: [w, h],   // real Blender metres
+  //   scale:       66.86,    // SPHERE_RADIUS / dist_from_back_to_screen
+  //   visibility:  'bridge',
+  //   nodeAdjust: {
+  //     back:      [0, 0, 0],  // x=right/left  y=up/down  z=toward/away
+  //     helm:      [0, 0, 0],
+  //     psSofa:    [0, 0, 0],
+  //     sbDesk:    [0, 0, 0],
+  //     psEcdis:   [0, 0, 0],
+  //     psRadio:   [0, 0, 0],
+  //     psLookout: [0, 0, 0],
+  //     sbLogbook: [0, 0, 0],
+  //     sbLookout: [0, 0, 0],
+  //     radar:     [0, 0, 0],
+  //     psWing:    [0, 0, 0],
+  //     sbWing:    [0, 0, 0],
+  //   },
   // },
-} satisfies Record<string, Omit<ScreenDef, 'onClick' | 'isActive'>>;
+} satisfies Record<string, Omit<ScreenDef, 'onClick' | 'isActive' | 'onToggle'>>;
 
 export type ScreenKey = keyof typeof SCREENS;
 
@@ -306,9 +430,18 @@ function PanoramaSpheres({
   const { camera } = useThree();
 
   const textures: Record<CameraNode, THREE.Texture> = {
-    back:  useTexture(PANORAMAS.back),
-    helm:  useTexture(PANORAMAS.helm),
-    radar: useTexture(PANORAMAS.radar),
+    back:      useTexture(PANORAMAS.back),
+    helm:      useTexture(PANORAMAS.helm),
+    psEcdis:   useTexture(PANORAMAS.psEcdis),
+    psLookout: useTexture(PANORAMAS.psLookout),
+    psRadio:   useTexture(PANORAMAS.psRadio),
+    psSofa:    useTexture(PANORAMAS.psSofa),
+    psWing:    useTexture(PANORAMAS.psWing),
+    sbDesk:    useTexture(PANORAMAS.sbDesk),
+    sbLogbook: useTexture(PANORAMAS.sbLogbook),
+    sbLookout: useTexture(PANORAMAS.sbLookout),
+    radar:     useTexture(PANORAMAS.radar),
+    sbWing:    useTexture(PANORAMAS.sbWing),
   };
 
   const meshRefs = useRef<Record<CameraNode, THREE.Mesh | null>>(
@@ -472,8 +605,16 @@ function RadarVideoScreen({
 
   useFrame(() => {
     if (!meshRef.current) return;
-    const { worldPos, distScale } = nodeData[transitionRef.current.toNode];
-    meshRef.current.position.copy(worldPos);
+    const currentNode = transitionRef.current.toNode;
+
+    const vis    = def.visibility ?? 'bridge';
+    const onWing = WING_NODES.has(currentNode);
+    meshRef.current.visible = !(vis === 'bridge' && onWing);
+    if (!meshRef.current.visible) return;
+
+    const { worldPos, distScale } = nodeData[currentNode];
+    const [ax, ay, az] = def.nodeAdjust?.[currentNode] ?? [0, 0, 0];
+    meshRef.current.position.set(worldPos.x + ax, worldPos.y + ay, worldPos.z + az);
 
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
     switch (stateRef.current) {
@@ -523,7 +664,6 @@ function RadarVideoScreen({
       ]} />
       <meshBasicMaterial
         transparent
-        opacity={1.0}
         side={THREE.FrontSide}
         depthWrite={false}
         depthTest={false}
@@ -544,15 +684,45 @@ function BridgeScreen({
   renderOrder?: number;
 }) {
   const meshRef    = useRef<THREE.Mesh>(null);
-  const texture    = useTexture(def.texture);
-  const altTexture = useTexture(def.altTexture ?? def.texture);
+  const texture    = useTexture(def.texture,                   (t) => {
+    if (!def.momentaryPress) return;
+    const tex = Array.isArray(t) ? t[0] : t;
+    tex.premultiplyAlpha = true;
+    tex.needsUpdate = true;
+  });
+  const altTexture = useTexture(def.altTexture ?? def.texture, (t) => {
+    if (!def.momentaryPress) return;
+    const tex = Array.isArray(t) ? t[0] : t;
+    tex.premultiplyAlpha = true;
+    tex.needsUpdate = true;
+  });
   const scale      = def.scale ?? 62.25;
 
+  // Momentary press state
+  const [isPressed, setIsPressed]   = useState(false);
+  const pressTimerRef               = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Refs so useFrame always reads latest values without stale closure
-  const isActiveRef = useRef(def.isActive);
-  const onClickRef  = useRef(def.onClick);
-  useEffect(() => { isActiveRef.current = def.isActive; }, [def.isActive]);
-  useEffect(() => { onClickRef.current  = def.onClick;  }, [def.onClick]);
+  const isActiveRef  = useRef(def.isActive);
+  const isPressedRef = useRef(isPressed);
+  const onClickRef   = useRef(def.onClick);
+  const onToggleRef  = useRef(def.onToggle);
+  useEffect(() => { isActiveRef.current  = def.isActive; },  [def.isActive]);
+  useEffect(() => { isPressedRef.current = isPressed; },     [isPressed]);
+  useEffect(() => { onClickRef.current   = def.onClick; },   [def.onClick]);
+  useEffect(() => { onToggleRef.current  = def.onToggle; },  [def.onToggle]);
+
+  useEffect(() => () => { if (pressTimerRef.current) clearTimeout(pressTimerRef.current); }, []);
+
+  const handleClick = useCallback(() => {
+    if (def.momentaryPress) {
+      setIsPressed(true);
+      onToggleRef.current?.();
+      pressTimerRef.current = setTimeout(() => setIsPressed(false), def.pressedDurationMs ?? 1000);
+    } else {
+      onClickRef.current?.();
+    }
+  }, [def.momentaryPress, def.pressedDurationMs]);
 
   // Pre-compute world position + scale for every node
   const nodeData = useMemo(() => Object.fromEntries(
@@ -569,14 +739,27 @@ function BridgeScreen({
 
   useFrame(() => {
     if (!meshRef.current) return;
-    const { worldPos, distScale } = nodeData[transitionRef.current.toNode];
+    const currentNode = transitionRef.current.toNode;
 
-    meshRef.current.position.copy(worldPos);
+    const vis    = def.visibility ?? 'bridge';
+    const onWing = WING_NODES.has(currentNode);
+    meshRef.current.visible = !(vis === 'bridge' && onWing);
+    if (!meshRef.current.visible) return;
 
-    // Swap texture based on isActive
+    const { worldPos, distScale } = nodeData[currentNode];
+    const [ax, ay, az] = def.nodeAdjust?.[currentNode] ?? [0, 0, 0];
+    meshRef.current.position.set(worldPos.x + ax, worldPos.y + ay, worldPos.z + az);
+
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
-    mat.map = isActiveRef.current ? altTexture : texture;
-    mat.needsUpdate = true;
+    const nextMap = def.momentaryPress
+      ? (isPressedRef.current ? altTexture : texture)
+      : (isActiveRef.current ? altTexture : texture);
+    if (mat.map !== nextMap) {
+      mat.map = null;
+      mat.needsUpdate = true;
+      mat.map = nextMap;
+      mat.needsUpdate = true;
+    }
 
     const w = scale * def.blenderSize[0] * distScale;
     const h = scale * def.blenderSize[1] * distScale;
@@ -598,8 +781,8 @@ function BridgeScreen({
       position={init.worldPos.toArray()}
       rotation={euler}
       renderOrder={renderOrder}
-      onClick={() => onClickRef.current?.()}
-      onPointerOver={() => { if (def.onClick) document.body.style.cursor = 'pointer'; }}
+      onClick={handleClick}
+      onPointerOver={() => { if (def.onClick || def.momentaryPress) document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { document.body.style.cursor = 'default'; }}
     >
       <planeGeometry args={[
@@ -609,7 +792,6 @@ function BridgeScreen({
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={1.0}
         side={THREE.FrontSide}
         depthWrite={false}
         depthTest={false}
@@ -695,6 +877,8 @@ function OceanSphere() {
     texture.needsUpdate = true;
   }, [texture]);
 
+  const TILT_X = 0;   // base downward tilt — increase to tilt ocean further down
+
   useFrame((_, delta) => {
     if (!meshRef.current) return;
 
@@ -702,10 +886,11 @@ function OceanSphere() {
     meshRef.current.position.copy(camera.position);
 
     // Gentle calm-sea rocking: tiny roll + slight vertical pitch oscillation
+    // Added on top of the base TILT_X so the static tilt is preserved
     clock.current += delta;
     const t = clock.current;
-    meshRef.current.rotation.z = Math.sin(t / 5.5)  * 0.0026;   // roll  ±0.15°
-    meshRef.current.rotation.x = Math.sin(t / 11.0) * 0.0017;   // pitch bob
+    meshRef.current.rotation.z = Math.sin(t / 5.5)  * 0.005;        // roll  ±0.15°
+    meshRef.current.rotation.x = TILT_X + Math.sin(t / 11.0) * 0.02; // pitch bob around tilt
   });
 
   return (
@@ -713,8 +898,8 @@ function OceanSphere() {
       ref={meshRef}
       // Rotate so the image "forward" aligns with camera default look direction
       rotation={[
-        -0.42,          // tilt up — lifts horizon into view
-        Math.PI * 0.5,  // match panorama sphere orientation
+        TILT_X,
+        Math.PI * 1.25,  // match panorama sphere orientation
         0,
       ]}
       renderOrder={-1}
