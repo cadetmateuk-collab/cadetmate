@@ -733,7 +733,8 @@ const ImportModal = memo(function ImportModal({ isOpen, onClose, onImport }: { i
 // MAIN COMPONENT
 // ============================================================================
 
-export function ModuleBuilder() {
+// Inner component that safely reads search params — must be inside <Suspense>
+function ModuleBuilderInner() {
   const searchParams = useSearchParams();
   const [module, dispatch] = useReducer(moduleReducer, initialModuleState);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -1006,5 +1007,24 @@ export function ModuleBuilder() {
 
       <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImport={loadModule} />
     </div>
+  );
+}
+
+// ============================================================================
+// EXPORTED WRAPPER — provides the Suspense boundary required by useSearchParams
+// ============================================================================
+
+export function ModuleBuilder() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-500">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="text-lg font-medium">Loading…</span>
+        </div>
+      </div>
+    }>
+      <ModuleBuilderInner />
+    </React.Suspense>
   );
 }
