@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -11,6 +12,7 @@ const nextConfig: NextConfig = {
     typedRoutes: false,
   },
   transpilePackages: ['three'],
+  serverExternalPackages: ['ws'],
 };
 
 export default nextConfig;

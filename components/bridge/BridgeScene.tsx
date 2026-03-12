@@ -865,52 +865,60 @@ const worldPos = useMemo(() => {
 
 function OceanSphere() {
   const { camera } = useThree();
-  const meshRef    = useRef<THREE.Mesh>(null);
-  const texture    = useTexture('/shipimages/ocean.webp');
+  const mesh1Ref   = useRef<THREE.Mesh>(null);
+  const mesh2Ref   = useRef<THREE.Mesh>(null);
+  const tex1       = useTexture('/shipimages/ocean.webp');
+  const tex2       = useTexture('/shipimages/ocean2.webp');
   const clock      = useRef(0);
 
-  useEffect(() => {
-    texture.wrapS     = THREE.RepeatWrapping;
-    texture.wrapT     = THREE.RepeatWrapping;
-    texture.repeat.x  = -1;               // flip so it reads left→right naturally
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.needsUpdate = true;
-  }, [texture]);
+  // Wave cycle: seconds for a full ocean → ocean2 → ocean crossfade
+  const WAVE_PERIOD = 1.8;
+  const TILT_X      = 0;
 
-  const TILT_X = 0;   // base downward tilt — increase to tilt ocean further down
+  useEffect(() => {
+    [tex1, tex2].forEach(t => {
+      t.wrapS       = THREE.RepeatWrapping;
+      t.wrapT       = THREE.RepeatWrapping;
+      t.repeat.x    = -1;
+      t.colorSpace  = THREE.SRGBColorSpace;
+      t.needsUpdate = true;
+    });
+  }, [tex1, tex2]);
 
   useFrame((_, delta) => {
-    if (!meshRef.current) return;
+    if (!mesh1Ref.current || !mesh2Ref.current) return;
 
-    // Follow camera so the sphere is always centred on the viewer
-    meshRef.current.position.copy(camera.position);
-
-    // Gentle calm-sea rocking: tiny roll + slight vertical pitch oscillation
-    // Added on top of the base TILT_X so the static tilt is preserved
     clock.current += delta;
     const t = clock.current;
-    meshRef.current.rotation.z = Math.sin(t / 5.5)  * 0.005;        // roll  ±0.15°
-    meshRef.current.rotation.x = TILT_X + Math.sin(t / 11.0) * 0.02; // pitch bob around tilt
+
+    // Both meshes follow camera
+    mesh1Ref.current.position.copy(camera.position);
+    mesh2Ref.current.position.copy(camera.position);
+
+    // Gentle rocking on both
+    const rollZ  = Math.sin(t / 5.5)   * 0.005;
+    const pitchX = TILT_X + Math.sin(t / 11.0) * 0.02;
+    mesh1Ref.current.rotation.set(pitchX, Math.PI * 1.25, rollZ);
+    mesh2Ref.current.rotation.set(pitchX, Math.PI * 1.25, rollZ);
+
+    // ocean2 fades in then back out — smooth sine pulse
+    const alpha = Math.sin((t / WAVE_PERIOD) * Math.PI) ** 2;
+    (mesh2Ref.current.material as THREE.MeshBasicMaterial).opacity = alpha;
   });
 
   return (
-    <mesh
-      ref={meshRef}
-      // Rotate so the image "forward" aligns with camera default look direction
-      rotation={[
-        TILT_X,
-        Math.PI * 1.25,  // match panorama sphere orientation
-        0,
-      ]}
-      renderOrder={-1}
-    >
-      <sphereGeometry args={[501, 60, 40]} />
-      <meshBasicMaterial
-        map={texture}
-        side={THREE.BackSide}
-        depthWrite={false}
-      />
-    </mesh>
+    <>
+      {/* Base layer — ocean.webp always fully opaque */}
+      <mesh ref={mesh1Ref} rotation={[TILT_X, Math.PI * 1.25, 0]} renderOrder={-2}>
+        <sphereGeometry args={[501, 60, 40]} />
+        <meshBasicMaterial map={tex1} side={THREE.BackSide} depthWrite={false} transparent />
+      </mesh>
+      {/* Overlay layer — ocean2.webp fades in/out on top */}
+      <mesh ref={mesh2Ref} rotation={[TILT_X, Math.PI * 1.25, 0]} renderOrder={-1}>
+        <sphereGeometry args={[500, 60, 40]} />
+        <meshBasicMaterial map={tex2} side={THREE.BackSide} depthWrite={false} transparent opacity={0} />
+      </mesh>
+    </>
   );
 }
 

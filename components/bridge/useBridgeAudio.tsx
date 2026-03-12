@@ -65,10 +65,18 @@ function ramp(gain: GainNode, target: number, ctx: AudioContext, timeConstant = 
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useBridgeAudio(node: CameraNode, enabled: boolean) {
+export interface BridgeAudioHandle {
+  ringPhone: () => void;
+  stopRing:  () => void;
+}
+
+export function useBridgeAudio(node: CameraNode, enabled: boolean): BridgeAudioHandle {
   const ctxRef     = useRef<AudioContext | null>(null);
   const startedRef = useRef(false);
   const timers     = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const ringTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ringCtxRef    = useRef<AudioContext | null>(null);
 
   const gainRefs = useRef<{
     master:      GainNode | null;
@@ -310,4 +318,45 @@ export function useBridgeAudio(node: CameraNode, enabled: boolean) {
   }, [node]);
 
   useEffect(() => () => stop(), []);
+
+  // ── Phone ring: classic dual-tone desk phone ──────────────────────────────
+  const stopRing = useCallback(() => {
+    if (ringTimerRef.current) { clearInterval(ringTimerRef.current); ringTimerRef.current = null; }
+    if (ringCtxRef.current)   { ringCtxRef.current.close(); ringCtxRef.current = null; }
+  }, []);
+
+  const ringPhone = useCallback(() => {
+    stopRing();
+    const ctx = new AudioContext();
+    ringCtxRef.current = ctx;
+
+    const playBurst = () => {
+      // UK-style phone ring: two tones (400Hz + 450Hz), two bursts then pause
+      const playTone = (startAt: number, dur: number) => {
+        [400, 450].forEach(freq => {
+          const osc = ctx.createOscillator();
+          const env = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          env.gain.setValueAtTime(0, startAt);
+          env.gain.linearRampToValueAtTime(0.12, startAt + 0.01);
+          env.gain.setValueAtTime(0.12, startAt + dur - 0.01);
+          env.gain.linearRampToValueAtTime(0, startAt + dur);
+          osc.connect(env);
+          env.connect(ctx.destination);
+          osc.start(startAt);
+          osc.stop(startAt + dur + 0.02);
+        });
+      };
+      const t = ctx.currentTime;
+      playTone(t,        0.4);  // first burst
+      playTone(t + 0.5,  0.4);  // second burst
+      // silence until next ring (~3.5s total cycle)
+    };
+
+    playBurst();
+    ringTimerRef.current = setInterval(playBurst, 4000);
+  }, [stopRing]);
+
+  return { ringPhone, stopRing };
 }

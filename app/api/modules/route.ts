@@ -105,6 +105,16 @@ export async function POST(request: Request) {
       blocksCount: moduleData.blocks?.length || 0
     })
     
+    // Compute total_lessons and estimated_hours from page-break blocks
+    const blocks: any[] = moduleData.blocks || []
+    const pageBreaks = blocks.filter((b: any) => b.type === 'page-break')
+    // Number of pages = number of page-breaks + 1
+    const totalLessons = pageBreaks.length + 1
+    // Sum estimatedMinutes from each page-break (each break carries the time for the page before it)
+    // Plus give the last page a default of 5 min
+    const totalMinutes = pageBreaks.reduce((sum: number, b: any) => sum + (b.content?.estimatedMinutes || 5), 0) + 5
+    const estimatedHours = Math.max(0.1, Math.round((totalMinutes / 60) * 10) / 10)
+    
     // Generate slug
     const categorySlug = moduleData.category.toLowerCase().replace(/\s+/g, '-');
     const subcategorySlug = moduleData.subcategory 
@@ -131,6 +141,8 @@ export async function POST(request: Request) {
         subcategory: moduleData.subcategory,
         slug: slug,
         blocks: moduleData.blocks,
+        total_lessons: totalLessons,
+        estimated_hours: estimatedHours,
         created_by: user.id,
         updated_at: new Date().toISOString(),
       })
