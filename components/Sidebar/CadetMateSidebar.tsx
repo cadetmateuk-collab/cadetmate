@@ -31,6 +31,7 @@ interface SidebarContentProps {
   isMobileOpen: boolean;
   userProfile: UserProfile | null;
   isPremium: boolean;
+  isAdmin: boolean;
   mounted: boolean;
   pathname: string;
   theme: string | undefined;
@@ -169,7 +170,7 @@ function NavItem({
 // ─── SidebarContent ───────────────────────────────────────────────────────────
 
 function SidebarContent({
-  isCollapsed, isMobileOpen, userProfile, isPremium,
+  isCollapsed, isMobileOpen, userProfile, isPremium, isAdmin,
   mounted, pathname, theme,
   onToggleSidebar, onLockedClick, onUpgradeClick, onToggleTheme,
 }: SidebarContentProps) {
@@ -256,9 +257,13 @@ function SidebarContent({
         <SectionLabel isCollapsed={isCollapsed}>Simulators</SectionLabel>
         <NavItem icon={Compass}  label="Emergencies" href="/simulator"  isActive={isActive("/simulator")}  locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
 
-        <SectionLabel isCollapsed={isCollapsed}>Management</SectionLabel>
-        <NavItem icon={Settings} label="Module Management"  href="/admin/modules" isActive={isActive("/admin/modules")} isCollapsed={isCollapsed} navRef={navRef} />
-        <NavItem icon={BookOpen} label="Module Builder"  href="/admin/module-builder" isActive={isActive("/admin/module-builder")} isCollapsed={isCollapsed} navRef={navRef} />
+        {isAdmin && (
+          <>
+            <SectionLabel isCollapsed={isCollapsed}>Management</SectionLabel>
+            <NavItem icon={Settings} label="Module Management"  href="/admin/modules" isActive={isActive("/admin/modules")} isCollapsed={isCollapsed} navRef={navRef} />
+            <NavItem icon={BookOpen} label="Module Builder"  href="/admin/module-builder" isActive={isActive("/admin/module-builder")} isCollapsed={isCollapsed} navRef={navRef} />
+          </>
+        )}
       </nav>
 
       {/* ── Footer — darker zone ── */}
@@ -433,6 +438,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   const { theme, setTheme } = useTheme();
 
   const isPremium = useMemo(() => userProfile?.role === "admin" || userProfile?.role === "premium", [userProfile]);
+  const isAdmin   = useMemo(() => userProfile?.role === "admin", [userProfile]);
 
   // Auto-collapse when entering a module route, restore when leaving
   const preModuleCollapsed = useRef<boolean | null>(null);
@@ -493,7 +499,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   }, []);
 
   const contentProps: SidebarContentProps = {
-    isCollapsed, isMobileOpen, userProfile, isPremium,
+    isCollapsed, isMobileOpen, userProfile, isPremium, isAdmin,
     mounted, pathname, theme,
     onToggleSidebar: handleToggleSidebar,
     onLockedClick:   handleLockedClick,
