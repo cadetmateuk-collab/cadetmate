@@ -15,5 +15,9 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "include": ["server.ts", "lib/**/*"]
+  "include": ["server.ts", "lib/**/*"],
+  "exclude": [
+    "lib/useSessionReporter.tsx",
+    "lib/hooks/useActivityTracker.ts"
+  ]
 }
