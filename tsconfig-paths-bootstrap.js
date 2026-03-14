@@ -1,12 +1,9 @@
 const tsConfigPaths = require('tsconfig-paths');
+const path = require('path');
+
 const tsConfig = require('./tsconfig.server.json');
 
 tsConfigPaths.register({
-  baseUrl: tsConfig.compilerOptions.baseUrl || '.',
+  baseUrl: path.join(__dirname, tsConfig.compilerOptions.baseUrl || '.'),
   paths: tsConfig.compilerOptions.paths || {},
 });
-```
-
-**Then add `.server-out` to your `.gitignore`:**
-```
-.server-out

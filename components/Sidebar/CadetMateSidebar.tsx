@@ -260,6 +260,7 @@ function SidebarContent({
         {isAdmin && (
           <>
             <SectionLabel isCollapsed={isCollapsed}>Management</SectionLabel>
+            <NavItem icon={House} label="Home"  href="/admin/admin-home" isActive={isActive("/admin/admin-home")} isCollapsed={isCollapsed} navRef={navRef} />
             <NavItem icon={Settings} label="Module Management"  href="/admin/modules" isActive={isActive("/admin/modules")} isCollapsed={isCollapsed} navRef={navRef} />
             <NavItem icon={BookOpen} label="Module Builder"  href="/admin/module-builder" isActive={isActive("/admin/module-builder")} isCollapsed={isCollapsed} navRef={navRef} />
           </>

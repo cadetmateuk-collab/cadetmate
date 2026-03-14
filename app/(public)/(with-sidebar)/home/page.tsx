@@ -1,15 +1,22 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { Users, CheckCircle, Clock, Trophy, ArrowRight, Linkedin } from 'lucide-react'
+import {
+  Users, CheckCircle, ArrowRight,
+  Zap, BookOpen, BarChart2, Star, MessageSquare,
+  ShipWheel, Activity, Pin, HelpCircle,
+} from 'lucide-react'
+import PortClocks from '@/components/PortClocks'
+import QuestionOfDay from '@/components/QuestionOfDay'
 
 export const metadata: Metadata = {
   title: 'CadetMate | UK Deck Cadet Maritime Training Platform',
-  description: 'The training platform built for UK deck cadets. Interactive modules, COLREGS, watchkeeping, STCW revision and more. Start free today.',
+  description:
+    'The training platform built for UK deck cadets. Interactive modules, COLREGS, watchkeeping, STCW revision and more. Start free today.',
   keywords: ['deck cadet training UK', 'maritime cadet app', 'STCW revision', 'COLREGS training', 'OOW cadet', 'nautical science'],
   openGraph: {
     title: 'CadetMate | UK Deck Cadet Maritime Training',
     description: 'Interactive training modules for UK deck cadets. COLREGS, watchkeeping, signals and more.',
-    url: 'https://cadetmate.com/home',
+    url: 'https://cadetmate.co.uk/home',
     siteName: 'CadetMate',
     images: [{ url: '/images/CadetMateLogoBlueBGQWhiteFG.svg', alt: 'CadetMate' }],
     type: 'website',
@@ -17,205 +24,345 @@ export const metadata: Metadata = {
 }
 
 const FEATURES = [
-  'Interactive Modules',
-  'Expert Content',
-  'Progress Tracking',
-  'Quiz System',
-  'Certificates',
-  'Community',
+  { label: 'Interactive Modules', icon: BookOpen,      description: 'Hands-on lessons built for cadets' },
+  { label: 'Expert Content',      icon: Star,          description: 'Written by MCA-qualified officers' },
+  { label: 'Progress Tracking',   icon: BarChart2,     description: 'See exactly where you stand' },
+  { label: 'Quiz System',         icon: CheckCircle,   description: 'Test yourself at every stage' },
+  { label: 'Simulators',          icon: ShipWheel,     description: 'Practise in realistic simulators' },
+  { label: 'Community',           icon: MessageSquare, description: 'Learn alongside fellow cadets' },
 ] as const
 
-const formatTime = (seconds: number): string => {
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return `${hours}h ${mins}m`
+// Placeholder noticeboard — replace with Supabase pull once admin table is ready
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
 }
 
 export default async function HomePage() {
   const supabase = await createClient()
 
-  const weekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split('T')[0]
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
 
-  const [totalUsersResult, activeUsersResult, topTimeResult] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+  const todayKey = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
+
+  const [totalUsersResult, activeUsersResult, recentActivityResult, questionResult, noticesResult] = await Promise.all([
     supabase
-      .from('user_statistics')
+      .from('profiles')
+      .select('*', { count: 'exact', head: true }),
+
+    supabase
+      .from('profiles')
       .select('*', { count: 'exact', head: true })
-      .gte('last_activity_at', new Date(Date.now() - 3600000).toISOString()),
+      .gte('last_seen_at', twoHoursAgo),
+
+    // Most recent 5 section completions
     supabase
-      .from('user_statistics')
-      .select('total_time_seconds, profiles!user_statistics_user_id_fkey (full_name)')
-      .gte('last_activity_date', weekAgoDate)
-      .order('total_time_seconds', { ascending: false })
+      .from('user_section_progress')
+      .select('completed_at, section_index, user_id, module_id, modules!user_section_progress_module_id_fkey (title)')
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(5),
+
+    // Today's question
+    supabase
+      .from('daily_questions')
+      .select('id, question, options, correct_answer, explanation')
+      .eq('question_date', todayKey)
+      .maybeSingle(),
+
+    // Most recent 3 active notices for homepage
+    supabase
+      .from('notices')
+      .select('id, text, created_at')
+      .eq('active', true)
+      .order('created_at', { ascending: false })
       .limit(3),
   ])
 
-  const totalUsers = totalUsersResult.count || 0
+  const totalUsers  = totalUsersResult.count || 0
   const activeUsers = activeUsersResult.count || 0
-  const topTimeSpent =
-    topTimeResult.data?.map((row: any) => ({
-      full_name: row.profiles?.full_name ?? 'Anonymous',
-      total_time_seconds: row.total_time_seconds,
-    })) || []
+  const rawActivity = (recentActivityResult.data ?? []) as any[]
+
+  // Fetch display names for the users in the activity feed
+  const activityUserIds = [...new Set(rawActivity.map(r => r.user_id))]
+  const profilesResult = activityUserIds.length > 0
+    ? await supabase.from('profiles').select('id, full_name').in('id', activityUserIds)
+    : { data: [] }
+  const profileMap = new Map((profilesResult.data ?? []).map((p: any) => [p.id, p.full_name]))
+  const recentActivity = rawActivity.map(r => {
+    const raw = profileMap.get(r.user_id)
+    const display_name = (raw && typeof raw === 'string' && raw.trim()) ? raw.trim() : null
+    return { ...r, display_name }
+  })
+  const todayQ         = questionResult.data as {
+    id: string
+    question: string
+    options: string[]
+    correct_answer: string
+    explanation?: string | null
+  } | null
+  const notices        = (noticesResult.data ?? []) as { id: string; text: string; created_at: string }[]
 
   return (
-    <div className="h-screen overflow-hidden bg-white">
-      <div className="h-full flex">
+    <>
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulseDot {
+          0%,100% { transform: scale(1);   opacity: 1;   }
+          50%      { transform: scale(1.8); opacity: 0.3; }
+        }
 
-        {/* Hero Section */}
-        <section
-          className="w-[80%] flex items-center justify-center p-12 relative"
-          aria-label="Hero section"
-        >
-          <div className="max-w-5xl w-full grid grid-cols-[1.5fr_0.5fr] gap-6 items-center relative">
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full mb-6 text-sm font-medium">
-                Maritime Training Platform
-              </div>
+        .anim-eyebrow { animation: fadeUp 0.45s ease both 0.05s; }
+        .anim-h1      { animation: fadeUp 0.45s ease both 0.15s; }
+        .anim-sub     { animation: fadeUp 0.45s ease both 0.25s; }
+        .anim-ctas    { animation: fadeUp 0.45s ease both 0.35s; }
+        .anim-video   { animation: fadeIn 0.65s ease both 0.20s; }
+        .anim-footer  { animation: fadeUp 0.40s ease both 0.50s; }
 
-              <h1 className="text-6xl font-semibold mb-6 leading-tight">
-                Master Your Maritime Career
-              </h1>
+        .feat-card { animation: fadeUp 0.4s ease both; }
+        .feat-card:nth-child(1) { animation-delay: 0.44s; }
+        .feat-card:nth-child(2) { animation-delay: 0.50s; }
+        .feat-card:nth-child(3) { animation-delay: 0.56s; }
+        .feat-card:nth-child(4) { animation-delay: 0.62s; }
+        .feat-card:nth-child(5) { animation-delay: 0.68s; }
+        .feat-card:nth-child(6) { animation-delay: 0.74s; }
+        .feat-card {
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .feat-card:hover {
+          transform: translateY(-3px);
+          border-color: hsl(var(--primary) / 0.35);
+          box-shadow: 0 8px 28px hsl(var(--primary) / 0.09);
+        }
+        .btn-primary { transition: transform 0.12s ease, box-shadow 0.15s ease; }
+        .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px hsl(var(--primary) / 0.35);
+        }
+        .btn-ghost { transition: transform 0.12s ease, background 0.15s ease; }
+        .btn-ghost:hover { transform: translateY(-2px); background: hsl(var(--muted)); }
+        .ping-ring { animation: pulseDot 1.8s ease-in-out infinite; }
 
-              <p className="text-muted-foreground mb-8 text-xl leading-relaxed">
-                Comprehensive training modules, interactive quizzes, and expert guidance to help
-                you excel in your maritime journey.
-              </p>
+        @media (max-width: 768px) {
+          .page-root    { height: auto !important; overflow: auto !important; display: flex !important; flex-direction: column !important; }
+          .hero-section { padding: 2.5rem 1.25rem 2rem !important; grid-column: 1 !important; }
+          .captain-wrap { display: none !important; }
+          .sidebar      { display: none !important; }
+          .hero-grid    { grid-template-columns: 1fr !important; gap: 0 !important; }
+          .hero-h1-text { font-size: 2.75rem !important; }
+          .hero-sub-text { font-size: 1rem !important; margin-bottom: 2rem !important; }
+          .feat-grid    { grid-template-columns: repeat(2, 1fr) !important; }
+          .footer-bar   { padding: 0.625rem 1.25rem !important; gap: 0.75rem !important; flex-wrap: wrap; grid-column: 1 !important; }
+          .footer-tagline { display: none !important; }
+          .mobile-stats { display: flex !important; }
+        }
+        @media (max-width: 480px) {
+          .hero-h1-text { font-size: 2.2rem !important; }
+          .feat-grid    { grid-template-columns: 1fr !important; }
+        }
+        .mobile-stats { display: none; }
+      `}</style>
 
-              <nav className="flex gap-4 mb-12" aria-label="Primary actions">
-                <a
-                  href="/auth"
-                  className="px-8 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-all duration-200 text-base inline-flex items-center"
-                >
-                  Get Started Free
-                  <ArrowRight className="h-5 w-5 ml-2" aria-hidden="true" />
-                </a>
-                <a
-                  href="/simulator"
-                  className="px-8 py-3 border border-border rounded-lg font-medium hover:bg-muted transition-all duration-200 text-base"
-                >
-                  Watch Demo
-                </a>
-              </nav>
+      <div className="page-root bg-background" style={{ height: '100dvh', overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 18rem', gridTemplateRows: '1fr auto' }}>
 
-              <section className="pt-8 border-t border-border">
-                <h2 className="font-semibold mb-5 text-lg">What We Include</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {FEATURES.map((item) => (
-                    <div key={item} className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary flex-shrink-0" aria-hidden="true" />
-                      <span className="text-base">{item}</span>
+          {/* ── Hero ── */}
+          <section
+            className="hero-section flex-1 flex items-center px-16 py-10 relative overflow-hidden"
+            style={{ gridColumn: '1', gridRow: '1', minHeight: 0 }}
+            aria-label="Hero"
+          >
+            {/* Dot grid background */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage: 'radial-gradient(circle, hsl(var(--foreground) / 0.08) 1px, transparent 1px)',
+                backgroundSize: '28px 28px',
+                maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+              }}
+            />
+            <div
+              className="pointer-events-none absolute -top-48 -left-48 w-[800px] h-[800px] rounded-full"
+              style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.065) 0%, transparent 66%)' }}
+            />
+
+            <div
+              className="hero-grid max-w-6xl w-full grid items-center"
+              style={{ gridTemplateColumns: '1fr auto', gap: '2.5rem' }}
+            >
+              <div className="flex flex-col">
+
+                <div className="anim-eyebrow inline-flex items-center gap-2 self-start px-3.5 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-bold tracking-widest uppercase mb-7">
+                  <Zap className="h-3 w-3" aria-hidden="true" />
+                  UK Maritime Training
+                </div>
+
+                <h1 className="hero-h1-text anim-h1 font-bold leading-[1.05] tracking-tight mb-5" style={{ fontSize: '4.5rem' }}>
+                  Master Your
+                  <br />
+                  <span className="text-primary">Maritime</span> Career
+                </h1>
+
+                <p className="hero-sub-text anim-sub text-muted-foreground leading-relaxed max-w-xl mb-9" style={{ fontSize: '1.2rem' }}>
+                  Everything a UK deck cadet needs — comprehensive modules,
+                  expert quizzes, and real progress you can track.
+                </p>
+
+                {/* Mobile-only quick stats */}
+                <div className="mobile-stats items-center gap-5 mb-8">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                    <span className="text-sm text-muted-foreground">Users</span>
+                    <span className="text-sm font-bold tabular-nums">{totalUsers}</span>
+                  </div>
+                  <div className="h-3.5 w-px bg-border" aria-hidden="true" />
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="ping-ring absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                    </span>
+                    <span className="text-sm text-muted-foreground">Active now</span>
+                    <span className="text-sm font-bold tabular-nums text-primary">{activeUsers}</span>
+                  </div>
+                </div>
+
+                <nav className="anim-ctas flex flex-wrap items-center gap-3 mb-11" aria-label="Primary actions">
+                  <a href="/auth" className="btn-primary inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm">
+                    Get Started Free
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </a>
+                </nav>
+
+                <div className="feat-grid grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }} role="list" aria-label="Platform features">
+                  {FEATURES.map(({ label, icon: Icon, description }) => (
+                    <div key={label} role="listitem" className="feat-card flex flex-col gap-2.5 rounded-xl border border-border bg-white dark:bg-background px-4 py-3.5 cursor-default">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-primary/10 flex-shrink-0">
+                          <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                        </div>
+                        <span className="text-sm font-semibold leading-tight">{label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-snug">{description}</p>
                     </div>
                   ))}
                 </div>
-              </section>
-            </div>
+              </div>
 
-            <div className="relative -mr-16 flex justify-center items-center">
-              <div className="w-[clamp(300px,35vw,500px)] h-auto">
-                <video
-                  src="/images/captain-wave.webm"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-auto object-contain"
-                />
+              <div className="captain-wrap anim-video flex-shrink-0 ml-auto" style={{ width: 'clamp(300px, 30vw, 500px)', transform: 'translateX(2rem)' }}>
+                <video src="/images/captain-wave.webm" autoPlay loop muted playsInline className="w-full h-auto object-contain" />
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Sidebar */}
-        <aside
-          className="w-[20%] border-l border-border flex flex-col bg-muted/30"
-          aria-label="Statistics and updates"
-        >
-          {/* Stats Bar */}
-          <section className="flex items-center justify-between gap-6 px-6 py-4 border-b border-border bg-background">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-sm font-semibold">{totalUsers}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              <span className="text-sm text-muted-foreground">Active</span>
-              <span className="text-sm font-semibold">{activeUsers}</span>
-            </div>
           </section>
 
-          {/* Top This Week */}
-          <section className="p-6 border-b border-border bg-background">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h2 className="font-semibold">Top This Week</h2>
-            </div>
-            <div className="space-y-3">
-              {topTimeSpent.length > 0 ? (
-                topTimeSpent.map((user, idx) => (
-                  <div key={`${user.full_name}-${idx}`} className="flex items-center gap-3">
-                    <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${
-                        idx === 0 ? 'bg-primary text-white' : 'bg-muted text-foreground'
-                      }`}
-                    >
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {user.full_name || 'Anonymous'}
+          {/* ── Sidebar ── spans both grid rows, full height ── */}
+          <aside
+            className="sidebar border-l border-border flex flex-col bg-background overflow-y-auto"
+            style={{ gridColumn: '2', gridRow: '1 / 3' }}
+            aria-label="Activity and info"
+          >
+
+            {/* 1 · Recent Activity */}
+            <section className="sidebar-section px-5 py-4" aria-label="Recent activity">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Recent Activity</p>
+              </div>
+              <div className="space-y-2.5">
+                {recentActivity.length > 0 ? recentActivity.slice(0, 3).map((row, idx) => {
+                  const displayName: string = row.display_name || ''
+                  const firstName = displayName.split(' ')[0] || 'Cadet'
+                  const avatarText = firstName.slice(0, 2).toUpperCase()
+                  const moduleTitle: string = row.modules?.title || 'a module'
+                  const sectionNum: number = (row.section_index ?? 0) + 1
+                  return (
+                    <div key={idx} className="flex items-start gap-2.5">
+                      <div className="mt-0.5 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[9px] font-bold text-primary leading-none">{avatarText}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatTime(user.total_time_seconds || 0)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs leading-snug">
+                          <span className="font-semibold">{firstName}</span>
+                          <span className="text-muted-foreground"> completed section {sectionNum} of </span>
+                          <span className="font-medium">{moduleTitle}</span>
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/50 mt-0.5">{timeAgo(row.completed_at)}</p>
                       </div>
                     </div>
-                    {idx === 0 && (
-                      <Trophy className="h-4 w-4 text-primary flex-shrink-0" aria-hidden="true" />
-                    )}
+                  )
+                }) : (
+                  <p className="text-xs text-muted-foreground/60 py-1">No recent activity yet</p>
+                )}
+              </div>
+            </section>
+
+            {/* 2 · Cadet Noticeboard */}
+            <section className="sidebar-section px-5 py-4" aria-label="Cadet noticeboard">
+              <div className="flex items-center gap-2 mb-3">
+                <Pin className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Noticeboard</p>
+              </div>
+              <div className="space-y-2">
+                {notices.length > 0 ? notices.map(notice => (
+                  <div key={notice.id} className="rounded-lg bg-primary/5 border border-primary/10 px-3 py-2.5">
+                    <p className="text-xs leading-snug">{notice.text}</p>
+                    <p className="text-[10px] text-muted-foreground/50 mt-1">{timeAgo(notice.created_at)}</p>
                   </div>
-                ))
+                )) : (
+                  <p className="text-xs text-muted-foreground/60 py-1">No notices right now.</p>
+                )}
+              </div>
+            </section>
+
+            {/* 3 · Question of the Day */}
+            <section className="sidebar-section px-5 py-4" aria-label="Question of the day">
+              <div className="flex items-center gap-2 mb-3">
+                <HelpCircle className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">Question of the Day</p>
+              </div>
+              {todayQ ? (
+                <QuestionOfDay question={todayQ} todayKey={todayKey} />
               ) : (
-                <div className="text-center py-4 text-xs text-muted-foreground">
-                  No activity this week
-                </div>
+                <p className="text-xs text-muted-foreground/60 py-1">No question set for today yet.</p>
               )}
-            </div>
-          </section>
+            </section>
 
-          {/* LinkedIn Feed */}
-          <section className="flex-1 p-6 flex flex-col min-h-0 bg-background">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Latest Update</h2>
-              <a
-                href="https://www.linkedin.com/company/cadetmate/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-xs text-primary hover:underline"
-                aria-label="Follow CadetMate on LinkedIn"
-              >
-                <Linkedin className="h-4 w-4" aria-hidden="true" />
-                Follow
-              </a>
+            {/* Copyright — pinned to sidebar bottom */}
+            <div className="mt-auto px-5 py-10">
+              <p className="text-xs text-muted-foreground/50 font-medium text-center">© CadetMate 2026. All rights reserved.</p>
             </div>
-            <div className="flex-1 border border-border rounded-lg overflow-hidden bg-white">
-              <iframe
-                src="https://www.linkedin.com/embed/feed/update/urn:li:share:7423140746456825856"
-                className="w-full h-full"
-                frameBorder="0"
-                allowFullScreen
-                title="CadetMate LinkedIn updates and news"
-                loading="lazy"
-              />
-            </div>
-          </section>
-        </aside>
 
+          </aside>
+
+        {/* ── Footer stats bar — only under hero ── */}
+        <footer className="footer-bar anim-footer border-t border-border bg-background/80 backdrop-blur-sm px-8 py-3 flex items-center gap-6" style={{ gridColumn: '1' }} aria-label="Platform statistics">
+          <div className="flex items-center gap-2.5">
+            <Users className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+            <span className="text-xs text-muted-foreground font-medium">Total users</span>
+            <span className="text-sm font-bold tabular-nums">{totalUsers}</span>
+          </div>
+          <div className="h-3.5 w-px bg-border" aria-hidden="true" />
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+              <span className="ping-ring absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+            </span>
+            <span className="text-xs text-muted-foreground font-medium">Active</span>
+            <span className="text-sm font-bold tabular-nums text-primary">{activeUsers}</span>
+          </div>
+          <div className="flex-1" />
+          <PortClocks />
+        </footer>
       </div>
-    </div>
+    </>
   )
 }

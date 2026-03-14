@@ -16,21 +16,20 @@ import {
   Shield,
   Sparkles,
   CheckCircle2,
-  XCircle
+  XCircle,
+  KeyRound
 } from 'lucide-react'
-
+import { PasswordResetButton } from './PasswordResetButton'
 export default async function DashboardPage() {
   const user = await requireAuth()
   const supabase = await createClient()
 
-  // Fetch user statistics
   const { data: stats } = await supabase
     .from('user_statistics')
     .select('*')
     .eq('user_id', user.id)
     .single()
 
-  // Fetch recent activity
   const { data: recentModules } = await supabase
     .from('user_module_progress')
     .select('module_id, modules(title), last_accessed, progress')
@@ -45,10 +44,19 @@ export default async function DashboardPage() {
     redirect('/auth')
   }
 
+  async function sendPasswordReset() {
+    'use server'
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user?.email) return
+    await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: 'https://cadetmate.com/reset-password',
+    })
+  }
+
   const isPremium = user.profile?.role === 'premium' || user.profile?.role === 'admin'
   const isAdmin = user.profile?.role === 'admin'
 
-  // Calculate stats with defaults
   const totalHours = Math.floor((stats?.total_time_seconds || 0) / 3600)
   const totalMinutes = Math.floor(((stats?.total_time_seconds || 0) % 3600) / 60)
   const modulesStarted = stats?.modules_started || 0
@@ -58,6 +66,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
+
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
           <div>
@@ -88,7 +97,7 @@ export default async function DashboardPage() {
                       Upgrade to Premium to access all training modules, TRB tools, and expert guidance
                     </p>
                     <div className="flex gap-3">
-                      <Button className="bg-blue-600 hover:from-blue-700 hover:to-blue-900 text-white">
+                      <Button className="bg-blue-600 text-white">
                         <Crown className="mr-2 h-4 w-4" />
                         Upgrade to Premium
                       </Button>
@@ -103,7 +112,6 @@ export default async function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Time Spent */}
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -112,14 +120,11 @@ export default async function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">
-                {totalHours}h {totalMinutes}m
-              </div>
+              <div className="text-3xl font-bold text-gray-900">{totalHours}h {totalMinutes}m</div>
               <p className="text-xs text-gray-500 mt-1">Total learning time</p>
             </CardContent>
           </Card>
 
-          {/* Modules Started */}
           <Card className="border-l-4 border-l-green-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -133,7 +138,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Current Streak */}
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -147,7 +151,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Completion Rate */}
           <Card className="border-l-4 border-l-purple-500">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -165,6 +168,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
           {/* Profile Card */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -175,9 +179,11 @@ export default async function DashboardPage() {
               <CardDescription>Your account details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* Avatar + Name */}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className="h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                 {user.profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || '?'}
+                  {user.profile?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || '?'}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">
@@ -190,12 +196,13 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
+              {/* Account details */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Account Type</span>
-                  <Badge 
-                    variant={isPremium ? "default" : "secondary"}
-                    className={isPremium ? "bg-blue-600" : ""}
+                  <Badge
+                    variant={isPremium ? 'default' : 'secondary'}
+                    className={isPremium ? 'bg-blue-600' : ''}
                   >
                     {isAdmin ? (
                       <><Shield className="h-3 w-3 mr-1" /> Admin</>
@@ -210,9 +217,9 @@ export default async function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Member Since</span>
                   <span className="text-sm font-medium text-gray-900">
-                    {new Date(user.created_at || Date.now()).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      year: 'numeric' 
+                    {new Date(user.created_at || Date.now()).toLocaleDateString('en-US', {
+                      month: 'short',
+                      year: 'numeric',
                     })}
                   </span>
                 </div>
@@ -220,13 +227,19 @@ export default async function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Last Login</span>
                   <span className="text-sm font-medium text-gray-900">
-                    {new Date(user.last_sign_in_at || Date.now()).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric' 
+                    {new Date(user.last_sign_in_at || Date.now()).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
                     })}
                   </span>
                 </div>
               </div>
+
+              {/* Password Reset */}
+              <div className="pt-3 border-t border-border">
+  <PasswordResetButton action={sendPasswordReset} />
+</div>
+
             </CardContent>
           </Card>
 
@@ -243,8 +256,8 @@ export default async function DashboardPage() {
               {recentModules && recentModules.length > 0 ? (
                 <div className="space-y-3">
                   {recentModules.map((item: any, idx: number) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -262,7 +275,7 @@ export default async function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-blue-600"
                             style={{ width: `${item.progress || 0}%` }}
                           />
@@ -305,15 +318,13 @@ export default async function DashboardPage() {
                         {isAdmin ? 'Admin Account' : 'Premium Subscription Active'}
                       </h4>
                       <p className="text-sm text-gray-600">
-                        {isAdmin 
+                        {isAdmin
                           ? 'You have full access to all features and admin tools'
-                          : 'You have access to all premium features and content'
-                        }
+                          : 'You have access to all premium features and content'}
                       </p>
                     </div>
                   </div>
                 </div>
-
                 {!isAdmin && (
                   <div className="flex gap-3">
                     <Button variant="outline" className="flex-1">
@@ -355,7 +366,7 @@ export default async function DashboardPage() {
                       <span>Expert tips & guidance</span>
                     </div>
                   </div>
-                  <Button className="w-full bg-blue-60 hover:from-blue-700 hover:to-blue-900">
+                  <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
                     <Crown className="mr-2 h-4 w-4" />
                     Upgrade to Premium - £9.99/month
                   </Button>
@@ -364,6 +375,7 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
       </div>
     </div>
   )
