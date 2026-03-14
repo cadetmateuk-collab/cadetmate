@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node --project tsconfig.server.json -r tsconfig-paths/register server.ts",
-    "build": "next build",
-    "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
+    "dev": "ts-node --transpile-only --project tsconfig.server.json -r tsconfig-paths/register server.ts",
+    "build": "next build && tsc --project tsconfig.server.json",
+    "start": "NODE_ENV=production node -r ./tsconfig-paths-bootstrap.js .server-out/server.js",
     "lint": "eslint"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "ws": "^8.19.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^20.19.27",
     "@types/react": "^19.2.7",

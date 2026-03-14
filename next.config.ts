@@ -5,14 +5,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  experimental: {
-    typedRoutes: false,
-  },
+  typedRoutes: false,        // moved out of experimental
   transpilePackages: ['three'],
   serverExternalPackages: ['ws'],
+  productionBrowserSourceMaps: false,
 };
 
 export default nextConfig;

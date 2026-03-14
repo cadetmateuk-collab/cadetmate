@@ -5,6 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, OrbitControls, useProgress, Preload, useGLTF } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 import * as THREE from 'three';
+import { Water } from 'three/examples/jsm/objects/Water.js';
+import { Sky }   from 'three/examples/jsm/objects/Sky.js';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TO ADD A NEW CAMERA NODE:
@@ -858,68 +860,82 @@ const worldPos = useMemo(() => {
   );
 }
 
-// ── Ocean sphere — lives inside Three.js, perfectly synced with camera ───────
-//  Rendered behind everything (renderOrder -1). Follows camera.position each
-//  frame exactly like the panorama spheres do, so panning always matches.
-//  The gentle bob/roll is applied as a slow rotation offset on the mesh itself.
+// ── Sky + Sun ─────────────────────────────────────────────────────────────────
+function SkyAndSun({ onSunReady }: { onSunReady: (sun: THREE.Vector3) => void }) {
+  const { scene, gl } = useThree();
+  useEffect(() => {
+    const sky = new Sky();
+    sky.scale.setScalar(450);
+    scene.add(sky);
+    const sun = new THREE.Vector3();
+    sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(78), THREE.MathUtils.degToRad(210));
+    const u = sky.material.uniforms;
+    u['sunPosition'].value.copy(sun);
+    u['turbidity'].value        = 8;
+    u['rayleigh'].value         = 1.2;
+    u['mieCoefficient'].value   = 0.005;
+    u['mieDirectionalG'].value  = 0.8;
+    const pmrem = new THREE.PMREMGenerator(gl);
+    scene.environment = pmrem.fromScene(sky as unknown as THREE.Scene).texture;
+    pmrem.dispose();
+    onSunReady(sun);
+    return () => { scene.remove(sky); sky.geometry.dispose(); (sky.material as THREE.Material).dispose(); };
+  }, []);
+  return null;
+}
 
-function OceanSphere() {
-  const { camera } = useThree();
-  const mesh1Ref   = useRef<THREE.Mesh>(null);
-  const mesh2Ref   = useRef<THREE.Mesh>(null);
-  const tex1       = useTexture('/shipimages/ocean.webp');
-  const tex2       = useTexture('/shipimages/ocean2.webp');
-  const clock      = useRef(0);
-
-  // Wave cycle: seconds for a full ocean → ocean2 → ocean crossfade
-  const WAVE_PERIOD = 1.8;
-  const TILT_X      = 0;
+// ── Ocean — Three.js Water ────────────────────────────────────────────────────
+function OceanPlane({ speedKnots = 8, waveHeight = 1.2, sunPosition }: {
+  speedKnots?:  number;
+  waveHeight?:  number;
+  sunPosition?: THREE.Vector3;
+}) {
+  const { scene, camera } = useThree();
+  const waterRef = useRef<Water | null>(null);
 
   useEffect(() => {
-    [tex1, tex2].forEach(t => {
-      t.wrapS       = THREE.RepeatWrapping;
-      t.wrapT       = THREE.RepeatWrapping;
-      t.repeat.x    = -1;
-      t.colorSpace  = THREE.SRGBColorSpace;
-      t.needsUpdate = true;
+    const geo     = new THREE.PlaneGeometry(10000, 10000);
+    const normals = new THREE.TextureLoader().load(
+      'https://threejs.org/examples/textures/waternormals.jpg',
+      (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
+    );
+    const water = new Water(geo, {
+      textureWidth:    256,
+      textureHeight:   256,
+      waterNormals:    normals,
+      sunDirection:    sunPosition?.clone().normalize() ?? new THREE.Vector3(0, 1, 0),
+      sunColor:        0xfff5e0,
+      waterColor:      0x003d5c,
+      distortionScale: Math.max(0.02, waveHeight * 0.8),
+      fog:             false,
     });
-  }, [tex1, tex2]);
+    water.rotation.x  = -Math.PI / 2;
+    water.position.y  = -80;      // slightly below eye level
+    water.renderOrder = -10;
+    waterRef.current  = water;
+    scene.add(water);
+    return () => { scene.remove(water); geo.dispose(); (water.material as THREE.Material).dispose(); };
+  }, []);
+
+  useEffect(() => {
+    if (waterRef.current && sunPosition)
+      waterRef.current.material.uniforms['sunDirection'].value.copy(sunPosition).normalize();
+  }, [sunPosition]);
+
+  useEffect(() => {
+    if (waterRef.current)
+      waterRef.current.material.uniforms['distortionScale'].value = Math.max(0.2, waveHeight * 0.8);
+  }, [waveHeight]);
 
   useFrame((_, delta) => {
-    if (!mesh1Ref.current || !mesh2Ref.current) return;
-
-    clock.current += delta;
-    const t = clock.current;
-
-    // Both meshes follow camera
-    mesh1Ref.current.position.copy(camera.position);
-    mesh2Ref.current.position.copy(camera.position);
-
-    // Gentle rocking on both
-    const rollZ  = Math.sin(t / 5.5)   * 0.005;
-    const pitchX = TILT_X + Math.sin(t / 11.0) * 0.02;
-    mesh1Ref.current.rotation.set(pitchX, Math.PI * 1.25, rollZ);
-    mesh2Ref.current.rotation.set(pitchX, Math.PI * 1.25, rollZ);
-
-    // ocean2 fades in then back out — smooth sine pulse
-    const alpha = Math.sin((t / WAVE_PERIOD) * Math.PI) ** 2;
-    (mesh2Ref.current.material as THREE.MeshBasicMaterial).opacity = alpha;
+    const w = waterRef.current;
+    if (!w) return;
+    w.material.uniforms['time'].value += delta * (0.6 + speedKnots * 0.04);
+    w.position.x = camera.position.x;
+    w.position.z = camera.position.z;
   });
 
-  return (
-    <>
-      {/* Base layer — ocean.webp always fully opaque */}
-      <mesh ref={mesh1Ref} rotation={[TILT_X, Math.PI * 1.25, 0]} renderOrder={-2}>
-        <sphereGeometry args={[501, 60, 40]} />
-        <meshBasicMaterial map={tex1} side={THREE.BackSide} depthWrite={false} transparent />
-      </mesh>
-      {/* Overlay layer — ocean2.webp fades in/out on top */}
-      <mesh ref={mesh2Ref} rotation={[TILT_X, Math.PI * 1.25, 0]} renderOrder={-1}>
-        <sphereGeometry args={[500, 60, 40]} />
-        <meshBasicMaterial map={tex2} side={THREE.BackSide} depthWrite={false} transparent opacity={0} />
-      </mesh>
-    </>
-  );
+  return null;
 }
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
@@ -928,13 +944,18 @@ function Scene({
   cameraNode,
   screenDefs,
   objectDefs = {},
+  speedKnots,
+  waveHeight,
 }: {
   cameraNode:   CameraNode;
   screenDefs:   Record<ScreenKey, ScreenDef>;
   objectDefs?:  Record<string, ObjectDef>;
+  speedKnots?:  number;
+  waveHeight?:  number;
 }) {
   const orbitRef      = useRef<OrbitControlsType>(null);
   const transitionRef = useRef<TransitionRef>({ fromNode: 'back', toNode: 'back' });
+  const [sunPos, setSunPos] = useState<THREE.Vector3 | undefined>(undefined);
 
   return (
     <>
@@ -949,8 +970,8 @@ function Scene({
       />
       <ZoomController />
       <Suspense fallback={null}>
-        {/* Ocean sphere — behind everything, perfectly camera-synced */}
-        <OceanSphere />
+        <SkyAndSun onSunReady={setSunPos} />
+        <OceanPlane speedKnots={speedKnots} waveHeight={waveHeight} sunPosition={sunPos} />
 
         <PanoramaSpheres node={cameraNode} transitionRef={transitionRef} />
 
@@ -995,10 +1016,14 @@ export function BridgeScene({
   cameraNode = 'back',
   screenDefs,
   objectDefs = {},
+  speedKnots,
+  waveHeight,
 }: {
   cameraNode?:  CameraNode;
   screenDefs:   Record<ScreenKey, ScreenDef>;
   objectDefs?:  Record<string, ObjectDef>;
+  speedKnots?:  number;
+  waveHeight?:  number;
 }) {
   const [loading, setLoading] = useState(true);
   const [blur, setBlur]       = useState(0);
@@ -1027,11 +1052,11 @@ export function BridgeScene({
       }}>
         <Canvas
           style={{ width: '100%', height: '100%', background: 'black' }}
-          camera={{ fov: FOV_DEFAULT, near: 0.1, far: 2000, position: [0, 0, 0] }}
-          gl={{ antialias: true, alpha: false }}
+          camera={{ fov: FOV_DEFAULT, near: 0.1, far: 5000, position: [0, 0, 0] }}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           shadows={false}
         >
-          <Scene cameraNode={cameraNode} screenDefs={screenDefs} objectDefs={objectDefs} />
+          <Scene cameraNode={cameraNode} screenDefs={screenDefs} objectDefs={objectDefs} speedKnots={speedKnots} waveHeight={waveHeight} />
         </Canvas>
       </div>
     </div>

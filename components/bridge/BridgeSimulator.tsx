@@ -62,6 +62,7 @@ export default function ShipBridgeSimulator() {
         cameraNode={cameraNode}
         screenDefs={screenDefs}
         objectDefs={objectDefs}
+        speedKnots={14}      // 0-30, affects scroll speed and chop
       />
 
       <BridgeNav current={cameraNode} onChange={handleCameraChange} />
