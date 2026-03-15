@@ -25,15 +25,15 @@ export default function AppLayout({
 }) {
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      {/* Tracks page loads, clicks, and tab focus — writes last_seen_at via /api/ping */}
       <ActivityTracker />
 
-      {/* Sidebar */}
+      {/* Sidebar — desktop only in flow; mobile UI is portalled to body */}
       <CadetMateSidebar />
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 min-w-0 pt-16 lg:pt-0">
-        <main className="flex-1 overflow-y-auto bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950">
+      {/* pb-16 = space for the mobile bottom tab bar (64px) */}
+      <div className="flex flex-col flex-1 min-w-0 lg:pt-0">
+        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-gray-900 dark:to-gray-950">
           {children}
         </main>
       </div>

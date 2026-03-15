@@ -192,6 +192,40 @@ function uid() {
   return `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function randomId(prefix = "id") {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/** Deep-clone a raw JSON module, re-randomise every id so there are no collisions */
+function randomiseIds(raw: any): ModuleData {
+  const pages: Page[] = (raw.pages || []).map((p: any) => {
+    const blocks: ContentBlock[] = (p.blocks || []).map((b: any) => {
+      // Re-randomise quiz question ids too
+      if (b.type === "quiz" && b.content?.questions) {
+        return {
+          ...b,
+          id: randomId("block"),
+          content: {
+            ...b.content,
+            questions: b.content.questions.map((q: any) => ({ ...q, id: randomId("q") })),
+          },
+        };
+      }
+      return { ...b, id: randomId("block") };
+    });
+    return { ...p, id: randomId("page"), blocks };
+  });
+
+  return {
+    id: raw.id || "",
+    title: raw.title || "",
+    description: raw.description || "",
+    category: raw.category || "",
+    subcategory: raw.subcategory || "",
+    pages: pages.length > 0 ? pages : [newPage()],
+  };
+}
+
 function getDefaultContent(type: BlockType): any {
   const defaults: Record<BlockType, any> = {
     heading: { level: 2, text: "" },
@@ -743,6 +777,7 @@ function ModuleBuilderInner() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (currentPageIndex >= module.pages.length) setCurrentPageIndex(Math.max(0, module.pages.length - 1));
@@ -873,6 +908,38 @@ function ModuleBuilderInner() {
             </button>
             <button type="button" onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all border border-gray-200">
               <Search className="h-4 w-4" /> Import / Edit
+            </button>
+            {/* Hidden file input for JSON upload */}
+            <input
+              ref={jsonInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                e.target.value = "";
+                try {
+                  const text = await file.text();
+                  const raw = JSON.parse(text);
+                  if (!raw.pages || !Array.isArray(raw.pages)) throw new Error("JSON does not look like a module — missing 'pages' array.");
+                  if (module.pages.some(p => p.blocks.length > 0) || module.title) {
+                    if (!confirm("Load this JSON file? Any unsaved changes will be lost.")) return;
+                  }
+                  dispatch({ type: "SET_MODULE", payload: randomiseIds(raw) });
+                  setCurrentPageIndex(0);
+                } catch (err: any) {
+                  alert(`❌ Could not load JSON: ${err.message}`);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => jsonInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all border border-gray-200"
+              title="Load a module from a JSON file"
+            >
+              <FileText className="h-4 w-4" /> Load JSON
             </button>
             <button type="button" onClick={saveModule} disabled={saving}
               className={`flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl transition-all disabled:opacity-60 shadow-sm ${saveSuccess ? "bg-emerald-500 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}>

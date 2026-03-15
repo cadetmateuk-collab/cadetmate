@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -426,16 +427,59 @@ function SidebarContent({
   );
 }
 
+// ─── MobileNavRow ─────────────────────────────────────────────────────────────
+
+function MobileNavRow({
+  icon: Icon, label, href, isActive, locked, onLockedClick, onClose,
+}: {
+  icon: React.ElementType; label: string; href: string;
+  isActive: boolean; locked?: boolean;
+  onLockedClick?: (e: React.MouseEvent) => void;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <button
+      onClick={(e) => {
+        if (locked && onLockedClick) { onLockedClick(e); return; }
+        onClose();
+        router.push(href);
+      }}
+      className={cn(
+        "w-full flex items-center gap-3.5 px-3 py-3 rounded-xl mb-0.5 transition-all text-left",
+        locked && "opacity-40",
+      )}
+      style={isActive
+        ? { background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.22)" }
+        : { background: "transparent", border: "1px solid transparent" }
+      }
+    >
+      {isActive && <span className="absolute left-4 w-[3px] h-5 rounded-r-full bg-white" style={{ boxShadow: "0 0 6px rgba(255,255,255,0.7)" }} />}
+      <Icon className="h-[18px] w-[18px] flex-shrink-0 text-white/80" />
+      <span className={cn(
+        "text-[15px] font-medium flex-1",
+        isActive ? "text-white font-semibold" : "text-white/85",
+      )}>
+        {label}
+      </span>
+      {locked && <Lock className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />}
+      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-white/60 flex-shrink-0" />}
+    </button>
+  );
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetMateSidebarProps) {
   const [isCollapsed,      setIsCollapsed]      = useState(defaultCollapsed);
   const [isMobileOpen,     setIsMobileOpen]     = useState(false);
+  const [isMobile,         setIsMobile]         = useState(false);
   const [userProfile,      setUserProfile]      = useState<UserProfile | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [mounted,          setMounted]          = useState(false);
 
   const pathname            = usePathname();
+  const router              = useRouter();
   const { theme, setTheme } = useTheme();
 
   const isPremium = useMemo(() => userProfile?.role === "admin" || userProfile?.role === "premium", [userProfile]);
@@ -466,6 +510,24 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   const handleToggleTheme   = useCallback(() => setTheme(theme === "dark" ? "light" : "dark"), [theme, setTheme]);
 
   useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const style = document.createElement("style");
+    style.id = "hide-mobile-scrollbar";
+    style.textContent = `* { scrollbar-width: none !important; } *::-webkit-scrollbar { display: none !important; width: 0 !important; }`;
+    if (!document.getElementById("hide-mobile-scrollbar")) {
+      document.head.appendChild(style);
+    }
+    return () => { document.getElementById("hide-mobile-scrollbar")?.remove(); };
+  }, [isMobile]);
 
   useEffect(() => {
     document.body.style.overflow = isMobileOpen ? "hidden" : "";
@@ -510,56 +572,254 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div
-        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-4"
-        style={{ background: C.primary, borderBottom: "1px solid rgba(255,255,255,0.1)" }}
-      >
-        <button
-          onClick={() => setIsMobileOpen(true)}
-          className="p-2 rounded-lg transition-colors"
-          style={{ color: "rgba(255,255,255,0.8)" }}
-          aria-label="Open menu"
+      {/* ── MOBILE: portalled so fixed children escape any parent transform ── */}
+      {mounted && isMobile && createPortal(
+        <>
+          {/* Full-screen overlay */}
+          <div
+            style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              zIndex: 9999,
+              display: "flex",
+              flexDirection: "column",
+              background: C.primary,
+              transform: isMobileOpen ? "translateY(0)" : "translateY(100%)",
+              opacity: isMobileOpen ? 1 : 0,
+              pointerEvents: isMobileOpen ? "auto" : "none",
+              transition: "transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s ease",
+            }}
+          >
+        {/* Noise grain */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: NOISE_SVG,
+            backgroundRepeat: "repeat",
+            backgroundSize: "200px 200px",
+            opacity: 0.03,
+            mixBlendMode: "overlay",
+          }}
+        />
+
+        {/* Overlay header */}
+        <div
+          className="relative z-10 flex items-center justify-between px-5 flex-shrink-0"
+          style={{ height: 64, borderBottom: "1px solid rgba(255,255,255,0.1)" }}
         >
-          <Menu className="h-5 w-5" />
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="relative h-7 w-7 flex-shrink-0">
-            <Image src="/images/c2.png" alt="Cadet Mate" fill className="object-contain" priority />
-          </div>
-          <span className="font-semibold text-[14px] text-white tracking-wide">Cadet Mate</span>
-        </div>
-        {/* Right side — show user initials if logged in, else spacer */}
-        <div className="w-10 flex justify-end">
-          {userProfile && (
-            <div
-              className="h-8 w-8 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}
-            >
-              <span className="text-[11px] font-bold text-white">{userProfile.initials}</span>
+          <div className="flex items-center gap-2.5">
+            <div className="relative h-9 w-9 rounded-lg overflow-hidden flex-shrink-0">
+              <Image src="/images/c2.png" alt="Cadet Mate" fill className="object-contain p-1" priority />
             </div>
+            <div>
+              <h1 className="font-semibold text-[15px] text-white leading-tight tracking-wide">Cadet Mate</h1>
+              <p className="text-[10px] text-white/50 leading-tight">Maritime Training</p>
+            </div>
+          </div>
+          <button
+            onClick={closeMobileMenu}
+            className="h-9 w-9 rounded-xl flex items-center justify-center transition-colors"
+            style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)" }}
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
+        </div>
+
+        {/* Nav content — scrollable */}
+        <nav
+          className="relative z-10 flex-1 overflow-y-auto"
+          style={{ padding: "8px 16px" }}
+        >
+          {/* Faint glow */}
+          <div
+            aria-hidden
+            className="absolute pointer-events-none"
+            style={{
+              right: "-10%", top: "30%",
+              width: "200px", height: "250px",
+              background: "radial-gradient(ellipse at center, rgba(255,255,255,0.08) 0%, transparent 70%)",
+              filter: "blur(14px)",
+            }}
+          />
+
+          {/* Section: Platform */}
+          <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-3 pb-1 opacity-50">Platform</p>
+          {[
+            { icon: House,       label: "Home",         href: "/home" },
+            { icon: ShoppingBag, label: "Store",        href: "/store" },
+            { icon: Sparkles,    label: "Free Content", href: "/free-content" },
+          ].map(({ icon: Icon, label, href }) => (
+            <MobileNavRow key={href} icon={Icon} label={label} href={href} isActive={pathname.startsWith(href)} onClose={closeMobileMenu} />
+          ))}
+
+          {/* Section: Resources */}
+          <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Resources</p>
+          {[
+            { icon: BookOpen,  label: "Unit Modules",        href: "/unit-modules",        locked: !isPremium },
+            { icon: Briefcase, label: "Work Based Learning",  href: "/work-based-learning", locked: !isPremium },
+            { icon: FileText,  label: "TRB",                  href: "/trb",                 locked: !isPremium },
+            { icon: Anchor,    label: "Sea Survival",         href: "/sea-survival",        locked: !isPremium },
+            { icon: Lightbulb, label: "General Tips",         href: "/general-tips",        locked: !isPremium },
+          ].map(({ icon: Icon, label, href, locked }) => (
+            <MobileNavRow key={href} icon={Icon} label={label} href={href} isActive={pathname.startsWith(href)} locked={locked} onLockedClick={handleLockedClick} onClose={closeMobileMenu} />
+          ))}
+
+          {/* Section: Simulators */}
+          <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Simulators</p>
+          <MobileNavRow icon={Compass} label="Emergencies" href="/simulator" isActive={pathname.startsWith("/simulator")} locked={!isPremium} onLockedClick={handleLockedClick} onClose={closeMobileMenu} />
+
+          {isAdmin && (
+            <>
+              <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Management</p>
+              <MobileNavRow icon={House}     label="Home"              href="/admin/admin-home"      isActive={pathname.startsWith("/admin/admin-home")}      onClose={closeMobileMenu} />
+              <MobileNavRow icon={Settings}  label="Module Management" href="/admin/modules"         isActive={pathname.startsWith("/admin/modules")}         onClose={closeMobileMenu} />
+              <MobileNavRow icon={BookOpen}  label="Module Builder"    href="/admin/module-builder"  isActive={pathname.startsWith("/admin/module-builder")}  onClose={closeMobileMenu} />
+            </>
+          )}
+
+          {/* Bottom spacing so last item isn't under footer */}
+          <div className="h-6" />
+        </nav>
+
+        {/* Overlay footer */}
+        <div
+          className="relative z-10 flex-shrink-0 px-4 pb-6 pt-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.1)", background: "linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.32) 100%)" }}
+        >
+          {/* Premium badge / upgrade */}
+          {userProfile && (
+            <div className="mb-2">
+              {isPremium ? (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl border"
+                  style={{ background: "rgba(248,233,161,0.08)", borderColor: "rgba(248,233,161,0.2)" }}
+                >
+                  <Sparkles className="h-4 w-4 flex-shrink-0" style={{ color: C.yellow }} />
+                  <span className="text-[13px] font-semibold" style={{ color: C.yellow }}>Premium Active</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { closeMobileMenu(); setShowPremiumModal(true); }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[14px] font-bold text-white transition-all"
+                  style={{ background: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.2)" }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Upgrade to Premium
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* User row */}
+          {userProfile ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { closeMobileMenu(); router.push("/settings"); }}
+                className="flex items-center gap-3 flex-1 min-w-0 px-2 py-2.5 rounded-xl transition-colors"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+              >
+                <div
+                  className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: "rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}
+                >
+                  <span className="text-[12px] font-bold text-white">{userProfile.initials}</span>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-[13px] font-semibold text-white truncate">{userProfile.name}</p>
+                  <p className="text-[11px] text-white/50 truncate">{userProfile.email}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => { closeMobileMenu(); router.push("/logout"); }}
+                className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}
+                aria-label="Logout"
+              >
+                <LogOut className="h-4 w-4 text-white/50" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { closeMobileMenu(); router.push("/auth"); }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[14px] font-bold text-white transition-all"
+              style={{ background: "rgba(255,255,255,0.13)", border: "1px solid rgba(255,255,255,0.2)" }}
+            >
+              <Lock className="h-4 w-4" />
+              Log In
+            </button>
           )}
         </div>
       </div>
 
-      {/* Mobile backdrop */}
-      {isMobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={closeMobileMenu} />
+          {/* Bottom tab bar */}
+          <div
+            style={{
+              position: "fixed",
+              bottom: 0, left: 0, right: 0,
+              height: 64,
+              zIndex: 9998,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-around",
+              padding: "0 8px",
+              background: C.primary,
+              borderTop: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 -4px 20px rgba(0,0,0,0.2)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+          >
+        {/* Quick-access tabs */}
+        {[
+          { icon: House,    href: "/home" },
+          { icon: BookOpen, href: "/unit-modules" },
+          { icon: Compass,  href: "/simulator" },
+        ].map(({ icon: Icon, href }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <button
+              key={href}
+              onClick={() => router.push(href)}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all"
+            >
+              <Icon
+                className="h-5 w-5 transition-colors"
+                style={{ color: active ? "#fff" : "rgba(255,255,255,0.45)" }}
+              />
+              {active && <span className="w-1 h-1 rounded-full bg-white" />}
+            </button>
+          );
+        })}
+
+        {/* Divider */}
+        <div className="w-px h-6 mx-1" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+        {/* Menu button */}
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-all"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" style={{ color: "rgba(255,255,255,0.7)" }} />
+          <span className="text-[9px] font-semibold tracking-wide" style={{ color: "rgba(255,255,255,0.45)" }}>Menu</span>
+        </button>
+        </div>
+        </>,
+        document.body
       )}
 
-      {/* Sidebar */}
+      {/* ── DESKTOP Sidebar ── */}
       <aside
         className={cn(
           "hidden lg:flex lg:relative lg:h-screen overflow-hidden",
           "transition-[width] duration-300 ease-in-out",
           isCollapsed ? "lg:w-[56px]" : "lg:w-60",
-          isMobileOpen && "!flex fixed inset-y-0 left-0 z-50 w-72",
           className,
         )}
         style={{
           background:  C.primary,
           borderRight: "1px solid rgba(255,255,255,0.08)",
-          height: isMobileOpen ? "100dvh" : undefined,
         }}
       >
         {/* Noise grain overlay */}
@@ -577,7 +837,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
 
         <div
           className="relative z-20 flex flex-col h-full overflow-hidden"
-          style={{ width: isMobileOpen ? "100%" : isCollapsed ? "56px" : "240px" }}
+          style={{ width: isCollapsed ? "56px" : "240px" }}
         >
           <SidebarContent {...contentProps} />
         </div>

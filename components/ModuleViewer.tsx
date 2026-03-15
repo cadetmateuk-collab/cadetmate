@@ -1,6 +1,17 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Menu, X, ChevronDown } from "lucide-react";
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -130,6 +141,8 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 
 export default function ModuleViewer({ moduleId, moduleData: initialData, userEmail, userId }: ModuleViewerProps) {
   const supabase = createClient();
+  const isMobile = useIsMobile();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const contentDivRef = useRef<HTMLDivElement>(null);
   const canvasRef   = useRef<HTMLCanvasElement>(null);
@@ -920,10 +933,106 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   const currentPage = pages[activePage];
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
+    <div style={{
+      display: "flex",
+      minHeight: "100vh",
+      background: "hsl(var(--background))",
+      color: "hsl(var(--foreground))",
+      // On mobile: break out of any parent flex/grid column and fill the true viewport
+      ...(isMobile ? { position: "fixed", inset: 0, width: "100vw", height: "100dvh", overflow: "hidden" } : {}),
+    }}>
 
-      {/* ── LEFT NAV ── */}
-      <aside style={{
+      {/* ── MOBILE NAV OVERLAY ── */}
+      {isMobile && mobileNavOpen && (
+        <div
+          onClick={() => setMobileNavOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 50,
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(2px)",
+          }}
+        />
+      )}
+
+      {/* ── MOBILE NAV DRAWER ── */}
+      {isMobile && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 60,
+          width: 300, maxWidth: "85vw",
+          background: "#fff",
+          display: "flex", flexDirection: "column",
+          transform: mobileNavOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.28s cubic-bezier(.4,0,.2,1)",
+          boxShadow: mobileNavOpen ? "4px 0 32px rgba(0,0,0,0.18)" : "none",
+        }}>
+          {/* Drawer header */}
+          <div style={{ background: "hsl(var(--primary))", padding: "0 16px", height: 60, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1.2px", fontWeight: 600 }}>
+                {moduleData.category}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
+                {moduleData.title}
+              </div>
+            </div>
+            <button onClick={() => setMobileNavOpen(false)} style={{ width: 34, height: 34, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <X style={{ width: 16, height: 16 }} />
+            </button>
+          </div>
+
+          {/* Page nav */}
+          <nav style={{ padding: "10px 8px", flex: 1, overflowY: "auto" }}>
+            {pages.map((page, i) => {
+              const isActive = i === activePage;
+              const isCompleted = completed.has(i);
+              const icon = SECTION_ICONS[i % SECTION_ICONS.length];
+              return (
+                <div key={page.id} style={{ position: "relative" }}>
+                  {isActive && (
+                    <span style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 3, height: "60%", borderRadius: "0 3px 3px 0", background: "hsl(var(--primary))" }} />
+                  )}
+                  <button onClick={() => { goTo(i); setMobileNavOpen(false); }} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 12px", borderRadius: 8,
+                    border: "1px solid transparent",
+                    width: "100%", textAlign: "left",
+                    background: isActive ? "hsl(221 91% 96%)" : "transparent",
+                    cursor: "pointer", transition: "background 0.15s",
+                  }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: isCompleted ? "hsl(var(--primary))" : isActive ? "hsl(var(--primary))" : "#f1f3f5", color: isCompleted || isActive ? "#fff" : "#6b7280", fontWeight: 700, fontSize: isCompleted ? 13 : 14 }}>
+                      {isCompleted ? "✓" : icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, lineHeight: 1.3, color: isActive ? "hsl(var(--primary))" : isCompleted ? "#374151" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {page.title || `Page ${i + 1}`}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#c4c9d1", marginTop: 2 }}>{page.estimatedMinutes || 5} min</div>
+                    </div>
+                    {isCompleted && !isActive && (
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "hsl(var(--primary))", flexShrink: 0, opacity: 0.5 }} />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Progress footer */}
+          <div style={{ padding: "12px 16px", flexShrink: 0, borderTop: "1px solid #e8eaed" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Progress</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "hsl(var(--primary))" }}>{totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%</span>
+            </div>
+            <div style={{ height: 5, background: "hsl(var(--muted))", borderRadius: 99, overflow: "hidden" }}>
+              <div style={{ width: `${totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%`, height: "100%", background: "hsl(var(--primary))", borderRadius: 99, transition: "width 0.5s cubic-bezier(.4,0,.2,1)" }} />
+            </div>
+            <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{donePages} of {totalPages} pages complete</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LEFT NAV (desktop only) ── */}
+      {!isMobile && <aside style={{
         width: 280, minHeight: "100vh",
         background: "#fff",
         display: "flex", flexDirection: "column",
@@ -1013,10 +1122,19 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           </div>
           <div style={{ fontSize: 10, color: "#9ca3af" }}>{donePages} of {totalPages} pages complete</div>
         </div>
-      </aside>
+      </aside>}
 
       {/* ── MAIN CONTENT ── */}
-      <main ref={contentRef} style={{ flex: 1, display: "flex", flexDirection: "column", background: "hsl(var(--background))", position: "relative", overflow: "hidden" }}>
+      <main ref={contentRef} style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: "hsl(var(--background))",
+        position: "relative",
+        overflow: "hidden",
+        // On mobile: fill remaining space and allow inner scroll
+        ...(isMobile ? { minWidth: 0, width: "100%", overflow: "auto" } : {}),
+      }}>
 
         {/* Paper noise background */}
         <div aria-hidden style={{
@@ -1030,64 +1148,77 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
 
         {/* Top bar */}
         <div style={{
-          padding: "0 24px 0 32px",
+          padding: isMobile ? "0 16px" : "0 24px 0 32px",
           height: 60, flexShrink: 0,
-          display: "flex", alignItems: "center", gap: 12,
+          display: "flex", alignItems: "center", gap: isMobile ? 10 : 12,
           background: "hsl(var(--primary))",
           position: "sticky", top: 0, zIndex: 10,
           borderLeft: "1px solid rgba(255,255,255,0.15)",
         }}>
-          <div>
+          {/* Mobile: hamburger + title */}
+          {isMobile && (
+            <button onClick={() => setMobileNavOpen(true)} style={{ width: 36, height: 36, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+              <Menu style={{ width: 18, height: 18 }} />
+            </button>
+          )}
+
+          <div style={{ flex: isMobile ? 1 : undefined, minWidth: 0 }}>
             <div style={{ fontSize: 11, color: "hsl(var(--primary-foreground) / 0.65)", textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 600 }}>
               Page {activePage + 1} of {totalPages}
             </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "hsl(var(--primary-foreground))" }}>
+            <div style={{ fontSize: isMobile ? 13 : 15, fontWeight: 700, color: "hsl(var(--primary-foreground))", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {currentPage?.title || `Page ${activePage + 1}`}
             </div>
           </div>
 
-          {/* ── Zoom controls + hint ── */}
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>
-              Shift+scroll to zoom · Middle mouse to pan
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.12)", borderRadius: 10, padding: "4px 6px", border: "1px solid rgba(255,255,255,0.15)" }}>
-              <button title="Zoom out" onClick={() => zoomBy(-0.1)}
-                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
-                <ZoomOut style={{ width: 14, height: 14 }} />
-              </button>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)", minWidth: 36, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-              <button title="Zoom in" onClick={() => zoomBy(0.1)}
-                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
-                <ZoomIn style={{ width: 14, height: 14 }} />
-              </button>
-              <button title="Reset view" onClick={resetView}
-                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
-                <RotateCcw style={{ width: 13, height: 13 }} />
-              </button>
+          {/* Desktop: zoom controls + hint */}
+          {!isMobile && (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>
+                Shift+scroll to zoom · Middle mouse to pan
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.12)", borderRadius: 10, padding: "4px 6px", border: "1px solid rgba(255,255,255,0.15)" }}>
+                <button title="Zoom out" onClick={() => zoomBy(-0.1)}
+                  style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                  <ZoomOut style={{ width: 14, height: 14 }} />
+                </button>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)", minWidth: 36, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+                <button title="Zoom in" onClick={() => zoomBy(0.1)}
+                  style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                  <ZoomIn style={{ width: 14, height: 14 }} />
+                </button>
+                <button title="Reset view" onClick={resetView}
+                  style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                  <RotateCcw style={{ width: 13, height: 13 }} />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginLeft: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 16, marginLeft: isMobile ? 0 : 12 }}>
             {saving && <span style={{ fontSize: 11, color: "hsl(var(--primary-foreground) / 0.6)" }}>Saving…</span>}
-            <span style={{ fontSize: 12, color: "hsl(var(--primary-foreground) / 0.7)", background: "hsl(var(--primary-foreground) / 0.12)", padding: "4px 10px", borderRadius: 99 }}>⏱ {currentPage?.estimatedMinutes || 5} min</span>
+            <span style={{ fontSize: 12, color: "hsl(var(--primary-foreground) / 0.7)", background: "hsl(var(--primary-foreground) / 0.12)", padding: "4px 10px", borderRadius: 99, whiteSpace: "nowrap" }}>⏱ {currentPage?.estimatedMinutes || 5} min</span>
           </div>
         </div>
 
         {/* Pan/Zoom viewport — middle mouse pans, scroll zooms */}
         <div
           ref={viewportRef}
-          style={{ flex: 1, position: "relative", overflow: "hidden" }}
+          style={{ flex: 1, position: "relative", overflow: isMobile ? "auto" : "hidden" }}
         >
           {/* Pannable / zoomable content */}
-          <div style={{
+          <div style={isMobile ? { padding: 0 } : {
             position: "absolute", top: 0, left: 0, right: 0,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "0 0",
           }}>
-            <div ref={contentDivRef} style={{ padding: "44px 64px", maxWidth: 980, margin: "0 auto", width: "100%", position: "relative", zIndex: 1 }}>
+            <div ref={contentDivRef} style={{
+              padding: isMobile ? "24px 20px 0" : "44px 64px",
+              maxWidth: 980, margin: "0 auto", width: "100%",
+              position: "relative", zIndex: 1, boxSizing: "border-box",
+            }}>
               {currentPage?.title && (
-                <h2 style={{ fontSize: 28, fontWeight: 800, color: "hsl(var(--foreground))", marginBottom: 28, lineHeight: 1.15 }}>
+                <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: "hsl(var(--foreground))", marginBottom: isMobile ? 20 : 28, lineHeight: 1.15 }}>
                   {currentPage.title}
                 </h2>
               )}
@@ -1100,8 +1231,8 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             </div>
           </div>
 
-          {/* Drawing canvas — fixed to viewport, not affected by pan/zoom */}
-          <canvas
+          {/* Drawing canvas — desktop only */}
+          {!isMobile && <canvas
             ref={canvasRef}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
@@ -1115,10 +1246,10 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                     : activeTool === "erase" ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='%23666' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='12' r='1.5' fill='%23666'/%3E%3C/svg%3E") 12 12, crosshair`
                     : "default",
             }}
-          />
+          />}
 
-          {/* ── Floating drawing toolbar — right side ── */}
-          <div style={{
+          {/* ── Floating drawing toolbar — desktop only ── */}
+          {!isMobile && <div style={{
             position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
             zIndex: 20,
             background: "hsl(var(--card))",
@@ -1205,31 +1336,33 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
               }}>
               <Trash2 style={{ width: 14, height: 14 }} />
             </button>
-          </div>
+          </div>}
         </div>
 
         {/* Bottom navigation */}
         <div style={{
-          padding: "0 64px",
-          height: 68, flexShrink: 0,
+          padding: isMobile ? "0 16px" : "0 64px",
+          height: isMobile ? 72 : 68, flexShrink: 0,
           borderTop: "1px solid hsl(var(--border))",
-          display: "flex", alignItems: "center", gap: 14,
-          marginTop: "auto",
+          display: "flex", alignItems: "center", gap: isMobile ? 10 : 14,
           background: "hsl(var(--card))",
           boxShadow: "0 -2px 12px hsl(var(--foreground) / 0.05)",
-          position: "relative", zIndex: 1,
+          position: "sticky", bottom: 0, zIndex: 1,
+          // On mobile: sit above the 64px bottom tab bar
+          ...(isMobile ? { marginBottom: 64, paddingBottom: "env(safe-area-inset-bottom)" } : {}),
         }}>
           <button onClick={goPrev} disabled={activePage === 0}
             style={{
-              padding: "11px 22px",
+              padding: isMobile ? "10px 16px" : "11px 22px",
               borderRadius: "var(--radius)",
               border: "1px solid hsl(var(--border))",
               background: "hsl(var(--background))",
               color: activePage === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--foreground))",
-              fontSize: 13, fontWeight: 500,
+              fontSize: isMobile ? 14 : 13, fontWeight: 500,
               cursor: activePage === 0 ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
             }}>
-            ← Previous
+            ← {!isMobile && "Previous"}
           </button>
 
           <div style={{ flex: 1 }} />
@@ -1238,45 +1371,48 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           {completed.has(activePage) ? (
             <button onClick={() => toggleComplete(activePage)} disabled={saving}
               style={{
-                padding: "11px 22px",
+                padding: isMobile ? "10px 14px" : "11px 22px",
                 borderRadius: "var(--radius)",
                 border: "1px solid hsl(var(--primary) / 0.3)",
                 background: "hsl(var(--accent))",
                 color: "hsl(var(--primary))",
-                fontSize: 13, fontWeight: 600,
+                fontSize: isMobile ? 13 : 13, fontWeight: 600,
                 cursor: saving ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", gap: 7,
+                whiteSpace: "nowrap",
               }}>
-              <span style={{ fontSize: 15 }}>✓</span> Completed — Undo
+              <span style={{ fontSize: 15 }}>✓</span> {isMobile ? "Undo" : "Completed — Undo"}
             </button>
           ) : !isLastPage ? (
             <button onClick={goNext} disabled={saving}
               style={{
-                padding: "11px 24px",
+                padding: isMobile ? "10px 16px" : "11px 24px",
                 borderRadius: "var(--radius)",
                 border: "none",
                 background: "hsl(var(--primary))",
                 color: "hsl(var(--primary-foreground))",
-                fontSize: 13, fontWeight: 700,
+                fontSize: isMobile ? 13 : 13, fontWeight: 700,
                 cursor: saving ? "not-allowed" : "pointer",
                 opacity: saving ? 0.7 : 1,
                 boxShadow: "0 4px 14px hsl(var(--primary) / 0.3)",
+                whiteSpace: "nowrap",
               }}>
-              Mark Complete & Continue →
+              {isMobile ? "Complete & Next →" : "Mark Complete & Continue →"}
             </button>
           ) : (
             <button onClick={() => toggleComplete(activePage)} disabled={saving}
               style={{
-                padding: "11px 24px",
+                padding: isMobile ? "10px 16px" : "11px 24px",
                 borderRadius: "var(--radius)",
                 border: isModuleComplete ? "1px solid hsl(var(--primary) / 0.3)" : "none",
                 background: isModuleComplete ? "hsl(var(--accent))" : "hsl(var(--primary))",
                 color: isModuleComplete ? "hsl(var(--primary))" : "hsl(var(--primary-foreground))",
-                fontSize: 13, fontWeight: 700,
+                fontSize: isMobile ? 13 : 13, fontWeight: 700,
                 cursor: saving ? "not-allowed" : "pointer",
                 boxShadow: isModuleComplete ? "none" : "0 4px 14px hsl(var(--primary) / 0.3)",
+                whiteSpace: "nowrap",
               }}>
-              {isModuleComplete ? "Module Complete!" : "Complete Module"}
+              {isModuleComplete ? "✓ Complete!" : "Complete Module"}
             </button>
           )}
         </div>

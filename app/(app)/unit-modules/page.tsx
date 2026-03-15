@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search, Lock, CheckCircle2, Clock, ChevronRight, Sparkles,
-  BookOpen, Filter, LayoutGrid, List, Loader2,
+  BookOpen, LayoutGrid, List, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from '@/lib/supabase/client';
@@ -209,7 +209,7 @@ function ModuleCard({
   if (viewMode === "list") {
     return (
       <div
-        className="group relative flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-200 cursor-pointer hover:shadow-sm"
+        className="group relative flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-sm"
         style={{
           background: isLocked ? "hsl(var(--muted))" : "hsl(var(--card))",
           borderColor: "hsl(var(--border))",
@@ -218,50 +218,47 @@ function ModuleCard({
         onClick={handleClick}
       >
         {/* Thumbnail */}
-        <div className="h-14 w-14 rounded-xl overflow-hidden flex-shrink-0">
+        <div className="h-11 w-11 rounded-lg overflow-hidden flex-shrink-0">
           <img src={module.imageUrl} alt={module.title} className="w-full h-full object-cover"
             style={{ filter: isLocked ? "grayscale(60%) brightness(0.8)" : "brightness(0.92)" }} />
         </div>
+
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[14px] font-semibold text-[hsl(var(--foreground))]">{module.title}</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[13.5px] font-semibold text-[hsl(var(--foreground))] truncate">{module.title}</span>
             {module.isNew && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[hsl(var(--accent))] text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.25)]">NEW</span>
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-[hsl(var(--accent))] text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.2)] flex-shrink-0">NEW</span>
             )}
             {module.isPremium && (
-              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-                <Sparkles className="h-2.5 w-2.5" /> Premium
+              <span className="flex items-center gap-0.5 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 flex-shrink-0">
+                <Sparkles className="h-2 w-2" /> Premium
               </span>
             )}
-            {isLocked && <Lock className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />}
           </div>
-
+          <div className="flex items-center gap-1.5 mt-0.5 text-[11.5px] text-[hsl(var(--muted-foreground))]">
+            <span style={{ color: isLocked ? undefined : module.accentColor }} className="font-medium">{module.category}</span>
+            <span className="opacity-30">·</span>
+            <span>{module.pageCount} pages</span>
+            <span className="opacity-30">·</span>
+            <span>{module.totalMinutes}m</span>
+          </div>
         </div>
-        {/* Meta */}
-        <div className="hidden md:flex items-center gap-6 flex-shrink-0">
-          <div className="text-center">
-            <div className="text-[13px] font-semibold text-[hsl(var(--foreground))]">{module.pageCount}</div>
-            <div className="text-[10px] text-[hsl(var(--muted-foreground))]">pages</div>
-          </div>
-          <div className="text-center">
-            <div className="text-[13px] font-semibold text-[hsl(var(--foreground))]">{module.totalMinutes}m</div>
-            <div className="text-[10px] text-[hsl(var(--muted-foreground))]">total</div>
-          </div>
-          <span className={cn("text-[11px] font-medium px-2.5 py-1 rounded-full border", DIFFICULTY_COLOR[module.difficulty])}>
+
+        {/* Right side */}
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <span className={cn("text-[10.5px] font-medium px-2 py-0.5 rounded-full border hidden sm:inline-flex", DIFFICULTY_COLOR[module.difficulty])}>
             {module.difficulty}
           </span>
-        </div>
-        {/* Progress ring + chevron */}
-        <div className="flex-shrink-0 flex items-center gap-3">
           {!isLocked && (
-            <div className="relative">
-              <ProgressRing percent={module.progressPercent ?? 0} color={module.accentColor} size={36} />
-              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold" style={{ color: module.accentColor }}>
+            <div className="relative w-8 h-8">
+              <ProgressRing percent={module.progressPercent ?? 0} color={module.accentColor} size={32} />
+              <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold" style={{ color: module.accentColor }}>
                 {module.progressPercent ?? 0}%
               </span>
             </div>
           )}
+          {isLocked && <Lock className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))]" />}
           <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] group-hover:text-[hsl(var(--foreground))] transition-colors" />
         </div>
       </div>
@@ -291,27 +288,27 @@ function ModuleCard({
         {/* Status badges */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
           {module.isNew && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-[hsl(var(--primary))] shadow-sm">NEW</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-[hsl(var(--primary))]">NEW</span>
           )}
           {module.isFeatured && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-amber-600 shadow-sm">⭐ FEATURED</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-amber-600">⭐ Featured</span>
           )}
           {module.isPremium && (
-            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm"
-              style={{ background: isLocked ? 'rgba(0,0,0,0.5)' : 'rgba(124,58,237,0.9)', color: 'white', backdropFilter: 'blur(4px)' }}>
-              <Sparkles className="h-2.5 w-2.5" /> PREMIUM
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+              style={{ background: isLocked ? 'rgba(0,0,0,0.45)' : 'rgba(124,58,237,0.85)' }}>
+              <Sparkles className="h-2.5 w-2.5" /> Premium
             </span>
           )}
         </div>
       </div>
 
       {/* Card body */}
-      <div className="p-5 pb-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-1"
+      <div className="p-4 pb-2">
+        <p className="text-[10.5px] font-semibold uppercase tracking-[1px] mb-1"
           style={{ color: isLocked ? "hsl(var(--muted-foreground))" : module.accentColor }}>
           {module.category}
-        </div>
-        <h3 className={cn("text-[16px] font-bold leading-tight",
+        </p>
+        <h3 className={cn("text-[15px] font-semibold leading-snug",
           isLocked ? "text-[hsl(var(--muted-foreground))]" : "text-[hsl(var(--foreground))]")}>
           {module.title}
         </h3>
@@ -319,13 +316,13 @@ function ModuleCard({
 
       {/* Tags */}
       {module.tags.length > 0 && (
-        <div className="px-5 pb-3 flex flex-wrap gap-1.5">
+        <div className="px-4 pb-3 flex flex-wrap gap-1">
           {module.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[10px] px-2 py-0.5 rounded-md border"
+            <span key={tag} className="text-[10.5px] px-2 py-0.5 rounded-full border"
               style={{
-                background: isLocked ? "hsl(var(--muted))" : `${module.accentColor}10`,
-                borderColor: isLocked ? "hsl(var(--border))" : `${module.accentColor}25`,
-                color: isLocked ? "hsl(var(--muted-foreground))" : `${module.accentColor}cc`,
+                background: isLocked ? "hsl(var(--muted))" : `${module.accentColor}0d`,
+                borderColor: isLocked ? "hsl(var(--border))" : `${module.accentColor}30`,
+                color: isLocked ? "hsl(var(--muted-foreground))" : `${module.accentColor}bb`,
               }}>
               {tag}
             </span>
@@ -334,42 +331,31 @@ function ModuleCard({
       )}
 
       {/* Stats */}
-      <div className="px-5 pb-4 flex items-center gap-4 border-t border-[hsl(var(--border))] pt-3">
-        <div className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-          <BookOpen className="h-3.5 w-3.5" />
-          <span className="text-[12px]">{module.pageCount} {module.pageCount === 1 ? "page" : "pages"}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[hsl(var(--muted-foreground))]">
-          <Clock className="h-3.5 w-3.5" />
-          <span className="text-[12px]">{module.totalMinutes} min</span>
-        </div>
-        <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full border ml-auto", DIFFICULTY_COLOR[module.difficulty])}>
+      <div className="px-4 pb-3 pt-3 border-t border-[hsl(var(--border))] flex items-center gap-1.5 text-[11.5px] text-[hsl(var(--muted-foreground))]">
+        <BookOpen className="h-3 w-3 flex-shrink-0" />
+        <span>{module.pageCount} pages</span>
+        <span className="opacity-30">·</span>
+        <Clock className="h-3 w-3 flex-shrink-0" />
+        <span>{module.totalMinutes}m</span>
+        <span className="opacity-30 ml-auto">·</span>
+        <span className={cn("text-[10.5px] font-medium px-2 py-0.5 rounded-full border", DIFFICULTY_COLOR[module.difficulty])}>
           {module.difficulty}
         </span>
       </div>
 
-      {/* Progress bar — shown for all non-locked modules; 0% = not started */}
+      {/* Progress bar */}
       {!isLocked && (
-        <div className="px-5 pb-3">
-          <div className="flex items-center justify-between mb-1.5">
-            {hasProgress ? (
-              <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
-                {isComplete ? "Complete 🎉" : `${module.progressPercent}% complete`}
-              </span>
-            ) : (
-              <span className="text-[11px] text-[hsl(var(--muted-foreground))]">Not started</span>
-            )}
-            <span className="text-[11px] font-semibold tabular-nums" style={{ color: module.accentColor }}>
-              {module.progressPercent ?? 0}%
+        <div className="px-4 pb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] text-[hsl(var(--muted-foreground))]">
+              {isComplete ? "Complete 🎉" : hasProgress ? `${module.progressPercent}% complete` : "Not started"}
             </span>
           </div>
-          <div className="h-[4px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
+          <div className="h-[3px] rounded-full bg-[hsl(var(--muted))] overflow-hidden">
             <div className="h-full rounded-full transition-all duration-700"
               style={{
                 width: `${module.progressPercent ?? 0}%`,
-                background: isComplete
-                  ? `linear-gradient(to right, ${module.accentColor}99, ${module.accentColor})`
-                  : `linear-gradient(to right, ${module.accentColor}60, ${module.accentColor}bb)`,
+                background: `linear-gradient(to right, ${module.accentColor}80, ${module.accentColor})`,
               }} />
           </div>
         </div>
@@ -378,24 +364,24 @@ function ModuleCard({
       {/* Sub-modules toggle */}
       {!isLocked && module.subModules.length > 0 && (
         <button
-          className="px-5 py-2.5 border-t border-[hsl(var(--border))] flex items-center justify-between w-full text-left hover:bg-[hsl(var(--muted))] transition-colors"
+          className="px-4 py-2 border-t border-[hsl(var(--border))] flex items-center justify-between w-full text-left hover:bg-[hsl(var(--muted))] transition-colors"
           onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          <span className="text-[12px] text-[hsl(var(--muted-foreground))]">{expanded ? "Hide" : "Show"} lessons</span>
+          <span className="text-[11.5px] text-[hsl(var(--muted-foreground))]">{expanded ? "Hide" : "Show"} pages</span>
           <ChevronRight className={cn("h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] transition-transform duration-200", expanded && "rotate-90")} />
         </button>
       )}
       {expanded && !isLocked && (
-        <div className="px-3 pb-3 space-y-1">
+        <div className="px-3 pb-3 space-y-0.5">
           {module.subModules.map((sub) => (
             <button key={sub.id} onClick={(e) => e.stopPropagation()}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[hsl(var(--muted))] transition-colors group/sub">
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[hsl(var(--muted))] transition-colors group/sub">
               <div className="flex-shrink-0">
                 {sub.isCompleted
-                  ? <CheckCircle2 className="h-4 w-4" style={{ color: module.accentColor }} />
-                  : <div className="h-4 w-4 rounded-full border border-[hsl(var(--border))]" />}
+                  ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: module.accentColor }} />
+                  : <div className="h-3.5 w-3.5 rounded-full border border-[hsl(var(--border))]" />}
               </div>
-              <span className={cn("text-[13px] flex-1 text-left",
-                sub.isCompleted ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))] group-hover/sub:text-[hsl(var(--foreground))]")}>
+              <span className={cn("text-[12.5px] flex-1 text-left",
+                sub.isCompleted ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]")}>
                 {sub.title}
               </span>
               <span className="text-[11px] text-[hsl(var(--muted-foreground))] flex items-center gap-1">
@@ -407,30 +393,30 @@ function ModuleCard({
       )}
 
       {/* CTA */}
-      <div className="px-5 pb-5 mt-auto pt-2">
+      <div className="px-4 pb-4 mt-auto pt-2">
         {isLocked ? (
           <button onClick={onUpgrade}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] transition-all text-[13px] font-semibold text-[hsl(var(--muted-foreground))]">
-            <Sparkles className="h-4 w-4 text-[hsl(var(--primary))]" />
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] hover:bg-[hsl(var(--secondary))] transition-all text-[12.5px] font-semibold text-[hsl(var(--muted-foreground))]">
+            <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
             Unlock with Premium
           </button>
         ) : isComplete ? (
           <button onClick={handleClick}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[12.5px] font-semibold transition-all"
             style={{ background: module.glowColor, color: module.accentColor, border: `1px solid ${module.accentColor}40` }}>
-            <CheckCircle2 className="h-4 w-4" /> Review Module
+            <CheckCircle2 className="h-3.5 w-3.5" /> Review
           </button>
         ) : hasProgress ? (
           <button onClick={handleClick}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90 shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${module.accentColor}cc, ${module.accentColor})`, boxShadow: `0 4px 16px ${module.accentColor}30` }}>
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[12.5px] font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: module.accentColor, boxShadow: `0 2px 12px ${module.accentColor}30` }}>
             Continue →
           </button>
         ) : (
           <button onClick={handleClick}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90"
-            style={{ background: `linear-gradient(135deg, ${module.accentColor}cc, ${module.accentColor})`, boxShadow: `0 4px 16px ${module.accentColor}25` }}>
-            Start Module →
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-[12.5px] font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: module.accentColor, boxShadow: `0 2px 12px ${module.accentColor}20` }}>
+            Start →
           </button>
         )}
       </div>
@@ -571,83 +557,82 @@ export default function ModulesPage({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] pb-16 lg:pb-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
-      {/* ── Sticky header ── */}
-      <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex items-start justify-between gap-4">
+      {/* ── Header ── */}
+      <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <span className="text-[11px] font-semibold uppercase tracking-[1px] text-[hsl(var(--primary))]">Training Library</span>
-              <h1 className="text-[28px] font-bold leading-tight text-[hsl(var(--foreground))] mt-0.5" style={{ fontFamily: "'Syne', sans-serif" }}>
-                Your Modules
+              <p className="text-[10.5px] font-semibold uppercase tracking-[1.5px] text-[hsl(var(--primary))] mb-1">Training Library</p>
+              <h1 className="text-[22px] sm:text-[24px] font-bold leading-none text-[hsl(var(--foreground))]">
+                Unit Modules
               </h1>
-              <p className="text-[13.5px] text-[hsl(var(--muted-foreground))] mt-1">
-                {loading ? "Loading…" : `${stats.accessible} accessible · ${stats.inProgress} in progress · ${stats.completed} completed`}
-              </p>
             </div>
             {userAccess === "free" && (
               <button onClick={handleUpgrade}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white flex-shrink-0 hover:opacity-90 transition-all shadow-lg"
-                style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.8))" }}>
-                <Sparkles className="h-4 w-4" /> Upgrade to Premium
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-[12.5px] sm:text-[13px] font-semibold text-white flex-shrink-0 hover:opacity-90 transition-all"
+                style={{ background: "hsl(var(--primary))" }}>
+                <Sparkles className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Upgrade to </span>Premium
               </button>
             )}
           </div>
 
           {/* Stats strip */}
           {!loading && !error && (
-            <div className="flex items-center gap-6 mt-4 pt-4 border-t border-[hsl(var(--border))]">
-              {[
-                { label: "Total modules",    value: modules.length },
-                { label: "Accessible",       value: stats.accessible },
-                { label: "Hours of content", value: `${stats.totalHours}h` },
-                { label: "In progress",      value: stats.inProgress },
-              ].map((s) => (
-                <div key={s.label}>
-                  <span className="text-[18px] font-bold text-[hsl(var(--foreground))]">{s.value}</span>
-                  <span className="text-[11px] text-[hsl(var(--muted-foreground))] ml-1.5">{s.label}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-1.5 mt-4 text-[13px] text-[hsl(var(--muted-foreground))]">
+              <span className="font-semibold text-[hsl(var(--foreground))]">{modules.length}</span> modules
+              <span className="opacity-30">·</span>
+              <span className="font-semibold text-[hsl(var(--foreground))]">{stats.accessible}</span> accessible
+              {stats.inProgress > 0 && <>
+                <span className="opacity-30">·</span>
+                <span className="font-semibold text-[hsl(var(--foreground))]">{stats.inProgress}</span> in progress
+              </>}
+              {stats.completed > 0 && <>
+                <span className="opacity-30">·</span>
+                <span className="font-semibold text-[hsl(var(--foreground))]">{stats.completed}</span> completed
+              </>}
+              <span className="opacity-30">·</span>
+              <span className="font-semibold text-[hsl(var(--foreground))]">{stats.totalHours}h</span> of content
             </div>
           )}
         </div>
       </div>
 
       {/* ── Main content ── */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
 
         {/* Toolbar */}
-        <div className="flex flex-col gap-3 mb-8">
-          {/* Row 1: Search + right controls */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-              <input type="text" placeholder="Search modules, topics…" value={search}
+        <div className="flex flex-col gap-3 mb-5">
+          {/* Search + controls row */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <input type="text" placeholder="Search modules…" value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[13.5px] text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--primary)/0.4)] focus:bg-[hsl(var(--background))] transition-all" />
+                className="w-full pl-9 pr-4 py-2 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[13px] text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--primary)/0.4)] focus:bg-[hsl(var(--background))] transition-all" />
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
               {/* Status filter */}
-              <div className="relative">
-                <select value={filter} onChange={(e) => setFilter(e.target.value as FilterState)}
-                  className="appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[12.5px] text-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--primary)/0.3)] cursor-pointer transition-all">
-                  <option value="all">All status</option>
-                  <option value="available">Available</option>
-                  <option value="in-progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="locked">Locked</option>
-                </select>
-                <Filter className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] pointer-events-none" />
-              </div>
+              <select value={filter} onChange={(e) => setFilter(e.target.value as FilterState)}
+                className="appearance-none pl-3 pr-3 py-2 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[12px] text-[hsl(var(--muted-foreground))] focus:outline-none cursor-pointer transition-all hidden sm:block">
+                <option value="all">All</option>
+                <option value="available">Available</option>
+                <option value="in-progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="locked">Locked</option>
+              </select>
 
               {/* View toggle */}
-              <div className="flex items-center bg-[hsl(var(--muted))] border border-[hsl(var(--border))] rounded-xl p-1 gap-0.5">
+              <div className="flex items-center bg-[hsl(var(--muted))] border border-[hsl(var(--border))] rounded-lg p-0.5 gap-0.5">
                 {(["grid", "list"] as ViewMode[]).map((v) => (
                   <button key={v} onClick={() => setViewMode(v)}
-                    className={cn("p-1.5 rounded-lg transition-all",
-                      viewMode === v ? "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
+                    className={cn("p-1.5 rounded-md transition-all",
+                      viewMode === v
+                        ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
+                        : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]")}>
                     {v === "grid" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
                   </button>
                 ))}
@@ -655,14 +640,30 @@ export default function ModulesPage({
             </div>
           </div>
 
-          {/* Row 2: Category pills */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Mobile filter row */}
+          <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+            {(["all", "available", "in-progress", "completed", "locked"] as FilterState[]).map((f) => (
+              <button key={f} onClick={() => setFilter(f)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-[11.5px] font-medium whitespace-nowrap transition-all border flex-shrink-0",
+                  filter === f
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-transparent"
+                    : "bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))]"
+                )}>
+                {f === "all" ? "All" : f === "in-progress" ? "In progress" : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Category pills — scrollable on mobile */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
             {categories.map((cat) => (
               <button key={cat} onClick={() => setActiveCategory(cat)}
-                className={cn("px-3 py-1.5 rounded-lg text-[12.5px] font-medium border transition-all",
+                className={cn(
+                  "px-3 py-1 rounded-full text-[12px] font-medium transition-all border whitespace-nowrap flex-shrink-0",
                   activeCategory === cat
-                    ? "bg-[hsl(var(--accent))] text-[hsl(var(--primary))] border-[hsl(var(--primary)/0.3)]"
-                    : "bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.3)] hover:text-[hsl(var(--foreground))]"
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-transparent"
+                    : "bg-transparent text-[hsl(var(--muted-foreground))] border-[hsl(var(--border))] hover:text-[hsl(var(--foreground))] hover:border-[hsl(var(--foreground)/0.3)]"
                 )}>
                 {cat}
               </button>
@@ -707,7 +708,7 @@ export default function ModulesPage({
                 </button>
               </div>
             ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                 {filtered.map((module, i) => (
                   <ModuleCard key={module.id} module={module} userAccess={userAccess}
                     viewMode="grid" onSelect={handleModuleSelect} onUpgrade={handleUpgrade} animDelay={i * 50} />
@@ -724,22 +725,22 @@ export default function ModulesPage({
 
             {/* Upgrade banner */}
             {userAccess === "free" && modules.some((m) => m.isPremium) && (
-              <div className="mt-10 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-5 border"
-                style={{ background: "linear-gradient(135deg, hsl(var(--accent)), hsl(var(--muted)))", borderColor: "hsl(var(--primary)/0.2)" }}>
-                <div className="h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 bg-[hsl(var(--accent))] border border-[hsl(var(--primary)/0.2)]">
-                  <Sparkles className="h-7 w-7 text-[hsl(var(--primary))]" />
+              <div className="mt-8 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-4 border border-[hsl(var(--border))]"
+                style={{ background: "hsl(var(--muted))" }}>
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-[hsl(var(--accent))]">
+                  <Sparkles className="h-5 w-5 text-[hsl(var(--primary))]" />
                 </div>
                 <div className="flex-1 text-center sm:text-left">
-                  <h3 className="text-[17px] font-bold text-[hsl(var(--foreground))] mb-1" style={{ fontFamily: "'Syne', sans-serif" }}>
+                  <h3 className="text-[15px] font-semibold text-[hsl(var(--foreground))] mb-0.5">
                     Unlock all {modules.filter((m) => m.isPremium).length} premium modules
                   </h3>
-                  <p className="text-[13px] text-[hsl(var(--muted-foreground))]">
-                    Get full access to every module, quiz, simulator and resource.
+                  <p className="text-[12.5px] text-[hsl(var(--muted-foreground))]">
+                    Full access to every module, quiz, simulator and resource.
                   </p>
                 </div>
                 <button onClick={handleUpgrade}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-bold text-white flex-shrink-0 hover:opacity-90 transition-all"
-                  style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.8))" }}>
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-[13px] font-semibold text-white flex-shrink-0 hover:opacity-90 transition-all"
+                  style={{ background: "hsl(var(--primary))" }}>
                   <Sparkles className="h-4 w-4" /> Upgrade to Premium
                 </button>
               </div>
