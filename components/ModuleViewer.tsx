@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { CheckCircle2, FileText, Download } from "lucide-react";
+import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,6 +50,21 @@ interface ModuleViewerProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SECTION_ICONS = ["📖", "💡", "🌐", "📐", "🧪", "📋", "⚡", "🎯", "🔍", "✨"];
+
+type Tool = "select" | "draw" | "highlight" | "erase";
+
+interface Stroke {
+  tool: "draw" | "highlight";
+  color: string;
+  width: number;
+  points: { x: number; y: number }[]; // world-space coords
+}
+
+interface EraseMask {
+  tool: "erase";
+  width: number;
+  points: { x: number; y: number }[];
+}
 
 // ─── Migrate legacy flat blocks → pages ──────────────────────────────────────
 
@@ -116,6 +131,32 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 export default function ModuleViewer({ moduleId, moduleData: initialData, userEmail, userId }: ModuleViewerProps) {
   const supabase = createClient();
   const contentRef = useRef<HTMLDivElement>(null);
+  const contentDivRef = useRef<HTMLDivElement>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  // ── Pan / Zoom ────────────────────────────────────────────────────────────
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan]   = useState({ x: 0, y: 0 });
+  const isPanning       = useRef(false);
+  const panStart        = useRef({ mx: 0, my: 0, px: 0, py: 0 });
+
+  // Keep refs in sync for use inside non-React event handlers
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { panRef.current  = pan;  }, [pan]);
+
+  // ── Drawing ───────────────────────────────────────────────────────────────
+  const [activeTool, setActiveTool] = useState<Tool>("select");
+  const [penColor, setPenColor]     = useState("#2966F4");
+  const [hlColor,  setHlColor]      = useState("#FFD600");
+  const [thickness, setThickness]   = useState(3);
+  const strokes     = useRef<(Stroke | EraseMask)[]>([]);
+  const currentStroke = useRef<(Stroke | EraseMask) | null>(null);
+  const isDrawing   = useRef(false);
+  const hlBuffer    = useRef<HTMLCanvasElement | null>(null);
+  // refs for zoom/pan used inside event handlers without stale closure
+  const zoomRef = useRef(1);
+  const panRef  = useRef({ x: 0, y: 0 });
 
   const [moduleData, setModuleData]             = useState<ModuleData | null>(initialData || null);
   const [loading, setLoading]                   = useState(!initialData);
@@ -226,7 +267,8 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   // Navigation
   const goTo = useCallback((idx: number) => {
     setActivePage(idx);
-    contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    setPan({ x: 0, y: 0 });
+    setZoom(1);
   }, []);
 
   const goNext = useCallback(async () => {
@@ -293,41 +335,30 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
     const score = isSubmitted ? questions.filter(isAnswerCorrect).length : 0;
 
     return (
-      <div key={block.id} style={{
-        background: "hsl(var(--card))",
-        border: "1px solid hsl(var(--border))",
-        borderTop: "3px solid hsl(var(--primary))",
-        boxShadow: "0 2px 8px hsl(var(--foreground) / 0.06)",
-        borderRadius: "calc(var(--radius) * 2)",
-        padding: "22px 24px",
-        marginBottom: 20,
-      }}>
-        {/* Quiz header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "hsl(var(--foreground))" }}>
-            🧪 {block.content?.title || "Quiz"}
+      <div key={block.id} style={{ marginBottom: 36, marginTop: 8 }}>
+
+        {/* Quiz title + progress */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "hsl(var(--primary))", textTransform: "uppercase", letterSpacing: "1px" }}>
+            {block.content?.title || "Quiz"}
           </div>
-          <div style={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }}>Q{currentIdx + 1} / {totalQ}</div>
+          <div style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>
+            {currentIdx + 1} / {totalQ}
+          </div>
         </div>
 
-        {/* Progress bar */}
-        <div style={{ height: 3, background: "hsl(var(--muted))", borderRadius: 99, overflow: "hidden", marginBottom: 20 }}>
+        {/* Thin progress bar */}
+        <div style={{ height: 2, background: "hsl(var(--border))", borderRadius: 99, overflow: "hidden", marginBottom: 20 }}>
           <div style={{
             width: `${((currentIdx + 1) / totalQ) * 100}%`, height: "100%",
-            background: "hsl(var(--primary))",
-            borderRadius: 99, transition: "width 0.3s"
+            background: "hsl(var(--primary))", borderRadius: 99, transition: "width 0.3s"
           }} />
         </div>
 
         {currentQuestion && (
-          <div style={{
-            background: "hsl(var(--secondary))",
-            border: "1px solid hsl(var(--border))",
-            borderRadius: "var(--radius)",
-            padding: "18px 20px",
-            marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "hsl(var(--foreground))", marginBottom: 16, lineHeight: 1.5 }}>
+          <div>
+            {/* Question text */}
+            <div style={{ fontSize: 16, fontWeight: 600, color: "hsl(var(--foreground))", marginBottom: 16, lineHeight: 1.6 }}>
               {currentQuestion.question}
             </div>
 
@@ -338,16 +369,15 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                   const selected = currentQuestion.type === "multi-select"
                     ? Array.isArray(quizAnswers[`${block.id}-${currentQuestion.id}`]) && quizAnswers[`${block.id}-${currentQuestion.id}`].includes(i)
                     : quizAnswers[`${block.id}-${currentQuestion.id}`] === i;
-                  const showResult = isSubmitted;
                   const isCorrect = currentQuestion.type === "multi-select"
                     ? Array.isArray(currentQuestion.correctAnswer) && (currentQuestion.correctAnswer as number[]).includes(i)
                     : currentQuestion.correctAnswer === i;
 
-                  let bg = "hsl(var(--background))";
-                  let border = "1px solid hsl(var(--border))";
-                  if (selected && !showResult) { bg = "hsl(var(--accent))"; border = "1px solid hsl(var(--primary))"; }
-                  if (showResult && isCorrect) { bg = "hsl(221 91% 96%)"; border = "1px solid hsl(var(--primary))"; }
-                  if (showResult && selected && !isCorrect) { bg = "hsl(0 84% 97%)"; border = "1px solid hsl(var(--destructive))"; }
+                  let borderColor = "hsl(var(--border))";
+                  let textColor   = "hsl(var(--foreground))";
+                  if (selected && !isSubmitted)          { borderColor = "hsl(var(--primary))"; }
+                  if (isSubmitted && isCorrect)           { borderColor = "hsl(var(--primary))"; textColor = "hsl(var(--primary))"; }
+                  if (isSubmitted && selected && !isCorrect) { borderColor = "hsl(var(--destructive))"; textColor = "hsl(var(--destructive))"; }
 
                   return (
                     <button key={i}
@@ -357,18 +387,26 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                           : i
                       )}
                       disabled={isSubmitted}
-                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: "var(--radius)", border, background: bg, cursor: isSubmitted ? "default" : "pointer", textAlign: "left", transition: "all 0.15s" }}>
-                      <div style={{
-                        width: 18, height: 18,
-                        borderRadius: currentQuestion.type === "multi-select" ? 4 : 99,
-                        border: selected ? "2px solid hsl(var(--primary))" : "2px solid hsl(var(--border))",
-                        background: selected ? "hsl(var(--primary))" : "transparent",
-                        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center"
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "10px 14px", borderRadius: 8,
+                        border: `1px solid ${borderColor}`,
+                        background: "transparent",
+                        cursor: isSubmitted ? "default" : "pointer",
+                        textAlign: "left", transition: "border-color 0.15s",
                       }}>
-                        {selected && <div style={{ width: 8, height: 8, borderRadius: 99, background: "hsl(var(--primary-foreground))" }} />}
+                      <div style={{
+                        width: 16, height: 16, flexShrink: 0,
+                        borderRadius: currentQuestion.type === "multi-select" ? 4 : 99,
+                        border: `2px solid ${selected ? "hsl(var(--primary))" : "hsl(var(--border))"}`,
+                        background: selected ? "hsl(var(--primary))" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {selected && <div style={{ width: 6, height: 6, borderRadius: 99, background: "#fff" }} />}
                       </div>
-                      <span style={{ fontSize: 14, color: "hsl(var(--foreground))" }}>{opt}</span>
-                      {showResult && isCorrect && <span style={{ marginLeft: "auto", fontSize: 12, color: "hsl(var(--primary))", fontWeight: 600 }}>✓ Correct</span>}
+                      <span style={{ fontSize: 14, color: textColor, lineHeight: 1.4 }}>{opt}</span>
+                      {isSubmitted && isCorrect && <span style={{ marginLeft: "auto", fontSize: 11, color: "hsl(var(--primary))", fontWeight: 700 }}>✓</span>}
+                      {isSubmitted && selected && !isCorrect && <span style={{ marginLeft: "auto", fontSize: 11, color: "hsl(var(--destructive))", fontWeight: 700 }}>✗</span>}
                     </button>
                   );
                 })}
@@ -377,18 +415,18 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
 
             {/* True/False */}
             {currentQuestion.type === "true-false" && (
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: 8 }}>
                 {["True", "False"].map((lbl, i) => {
-                  const selected = quizAnswers[`${block.id}-${currentQuestion.id}`] === i;
+                  const selected  = quizAnswers[`${block.id}-${currentQuestion.id}`] === i;
                   const isCorrect = currentQuestion.correctAnswer === i;
-                  let bg = "hsl(var(--background))";
-                  let border = "1px solid hsl(var(--border))";
-                  if (selected && !isSubmitted) { bg = "hsl(var(--accent))"; border = "1px solid hsl(var(--primary))"; }
-                  if (isSubmitted && isCorrect) { bg = "hsl(var(--accent))"; border = "1px solid hsl(var(--primary))"; }
-                  if (isSubmitted && selected && !isCorrect) { bg = "hsl(0 84% 97%)"; border = "1px solid hsl(var(--destructive))"; }
+                  let borderColor = "hsl(var(--border))";
+                  let color       = "hsl(var(--foreground))";
+                  if (selected && !isSubmitted)              { borderColor = "hsl(var(--primary))"; color = "hsl(var(--primary))"; }
+                  if (isSubmitted && isCorrect)              { borderColor = "hsl(var(--primary))"; color = "hsl(var(--primary))"; }
+                  if (isSubmitted && selected && !isCorrect) { borderColor = "hsl(var(--destructive))"; color = "hsl(var(--destructive))"; }
                   return (
                     <button key={lbl} onClick={() => !isSubmitted && handleQuizAnswer(block.id, currentQuestion.id, i)} disabled={isSubmitted}
-                      style={{ flex: 1, padding: "12px", borderRadius: "var(--radius)", border, background: bg, color: "hsl(var(--foreground))", fontSize: 14, fontWeight: 600, cursor: isSubmitted ? "default" : "pointer" }}>
+                      style={{ flex: 1, padding: "10px", borderRadius: 8, border: `1px solid ${borderColor}`, background: "transparent", color, fontSize: 14, fontWeight: 600, cursor: isSubmitted ? "default" : "pointer", transition: "all 0.15s" }}>
                       {lbl}
                     </button>
                   );
@@ -403,7 +441,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                   onChange={e => !isSubmitted && handleQuizAnswer(block.id, currentQuestion.id, e.target.value)}
                   disabled={isSubmitted}
                   placeholder="Type your answer…"
-                  style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--radius)", border: "1px solid hsl(var(--border))", background: "hsl(var(--background))", color: "hsl(var(--foreground))", fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid hsl(var(--border))", background: "transparent", color: "hsl(var(--foreground))", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
                 {isSubmitted && (
                   <div style={{ marginTop: 8, fontSize: 13, color: isAnswerCorrect(currentQuestion) ? "hsl(var(--primary))" : "hsl(var(--destructive))", fontWeight: 600 }}>
                     {isAnswerCorrect(currentQuestion) ? "✓ Correct!" : `✗ Keywords: ${currentQuestion.keywords?.join(", ")}`}
@@ -414,45 +452,45 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
 
             {/* Explanation */}
             {isSubmitted && currentQuestion.explanation && (
-              <div style={{ marginTop: 14, padding: "12px 14px", background: "hsl(var(--accent))", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: "var(--radius)" }}>
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid hsl(var(--border))" }}>
                 <span style={{ fontSize: 12, color: "hsl(var(--primary))", fontWeight: 600 }}>💡 </span>
-                <span style={{ fontSize: 13, color: "hsl(var(--foreground))" }}>{currentQuestion.explanation}</span>
+                <span style={{ fontSize: 13, color: "hsl(var(--muted-foreground))", lineHeight: 1.6 }}>{currentQuestion.explanation}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Quiz navigation / submit */}
-        {!isSubmitted ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <button
-              onClick={() => setQuizQuestionIndex(prev => ({ ...prev, [block.id]: Math.max(0, (prev[block.id] || 0) - 1) }))}
-              disabled={currentIdx === 0}
-              style={{ padding: "9px 18px", borderRadius: "var(--radius)", border: "1px solid hsl(var(--border))", background: "transparent", color: currentIdx === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--foreground))", fontSize: 13, cursor: currentIdx === 0 ? "not-allowed" : "pointer" }}>
-              ← Prev
-            </button>
-            {currentIdx < totalQ - 1 ? (
+        {/* Navigation / submit */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
+          {!isSubmitted ? (
+            <>
               <button
-                onClick={() => setQuizQuestionIndex(prev => ({ ...prev, [block.id]: Math.min(totalQ - 1, (prev[block.id] || 0) + 1) }))}
-                style={{ padding: "9px 20px", borderRadius: "var(--radius)", border: "none", background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Next →
+                onClick={() => setQuizQuestionIndex(prev => ({ ...prev, [block.id]: Math.max(0, (prev[block.id] || 0) - 1) }))}
+                disabled={currentIdx === 0}
+                style={{ fontSize: 13, color: currentIdx === 0 ? "hsl(var(--muted-foreground))" : "hsl(var(--foreground))", background: "none", border: "none", cursor: currentIdx === 0 ? "default" : "pointer", padding: 0 }}>
+                ← Previous
               </button>
-            ) : (
-              <button
-                onClick={() => submitQuiz(block.id, questions)}
-                style={{ padding: "9px 20px", borderRadius: "var(--radius)", border: "none", background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                Submit Quiz
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ padding: "14px 18px", background: "hsl(var(--accent))", border: "1px solid hsl(var(--primary) / 0.3)", borderRadius: "var(--radius)", textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "hsl(var(--primary))" }}>{score}/{totalQ}</div>
-            <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))", marginTop: 4 }}>
-              {score === totalQ ? "🎉 Perfect score!" : score >= totalQ / 2 ? "👍 Good work!" : "📚 Keep studying!"}
+              {currentIdx < totalQ - 1 ? (
+                <button
+                  onClick={() => setQuizQuestionIndex(prev => ({ ...prev, [block.id]: Math.min(totalQ - 1, (prev[block.id] || 0) + 1) }))}
+                  style={{ fontSize: 13, fontWeight: 600, color: "hsl(var(--primary))", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                  Next →
+                </button>
+              ) : (
+                <button
+                  onClick={() => submitQuiz(block.id, questions)}
+                  style={{ fontSize: 13, fontWeight: 700, color: "#fff", background: "hsl(var(--primary))", border: "none", borderRadius: 8, padding: "8px 18px", cursor: "pointer" }}>
+                  Submit
+                </button>
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: 14, color: "hsl(var(--muted-foreground))" }}>
+              Score: <span style={{ fontWeight: 700, color: score === totalQ ? "hsl(var(--primary))" : "hsl(var(--foreground))" }}>{score}/{totalQ}</span>
+              {" — "}{score === totalQ ? "🎉 Perfect!" : score >= totalQ / 2 ? "👍 Good work!" : "📚 Keep studying!"}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }, [quizAnswers, quizSubmitted, quizQuestionIndex, handleQuizAnswer, checkTextInputAnswer, submitQuiz]);
@@ -463,26 +501,26 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
         const level = block.content?.level || 2;
         const sizes: Record<number, string> = { 1: "2rem", 2: "1.5rem", 3: "1.2rem" };
         return (
-          <div key={block.id} style={{ fontSize: sizes[level] || "1.5rem", fontWeight: 800, color: "hsl(var(--foreground))", lineHeight: 1.2, marginBottom: 12, marginTop: level === 1 ? 8 : 28, paddingBottom: 10, borderBottom: level <= 2 ? "2px solid hsl(var(--primary) / 0.2)" : "none" }}>
+          <div key={block.id} style={{ fontSize: sizes[level] || "1.5rem", fontWeight: 800, color: "hsl(var(--foreground))", lineHeight: 1.2, marginBottom: 8, marginTop: level === 1 ? 8 : 32 }}>
             {block.content?.text}
           </div>
         );
       }
       case "text":
         return (
-          <div key={block.id} style={{ fontSize: 15, lineHeight: 1.8, color: "hsl(var(--foreground))", marginBottom: 16, background: "hsl(var(--card))", borderRadius: "var(--radius)", padding: "20px 24px", borderLeft: "3px solid hsl(var(--primary))", boxShadow: "0 1px 4px hsl(var(--foreground) / 0.05)" }}
+          <div key={block.id} style={{ fontSize: 15, lineHeight: 1.8, color: "hsl(var(--foreground))", marginBottom: 4 }}
             dangerouslySetInnerHTML={{ __html: block.content?.text || "" }} />
         );
       case "image":
         return (
-          <figure key={block.id} style={{ marginBottom: 24, background: "hsl(var(--card))", borderRadius: "var(--radius)", overflow: "hidden", boxShadow: "0 2px 8px hsl(var(--foreground) / 0.08)", border: "1px solid hsl(var(--border))" }}>
+          <figure key={block.id} style={{ marginBottom: 24, borderRadius: "var(--radius)", overflow: "hidden" }}>
             <img src={block.content?.url} alt={block.content?.caption || ""} style={{ width: "100%", display: "block" }} onError={e => (e.currentTarget.style.display = "none")} />
             {block.content?.caption && <figcaption style={{ fontSize: 12, color: "hsl(var(--muted-foreground))", textAlign: "center", padding: "8px 12px" }}>{block.content.caption}</figcaption>}
           </figure>
         );
       case "video":
         return (
-          <div key={block.id} style={{ marginBottom: 24, background: "hsl(var(--card))", borderRadius: "var(--radius)", overflow: "hidden", boxShadow: "0 2px 8px hsl(var(--foreground) / 0.08)", border: "1px solid hsl(var(--border))" }}>
+          <div key={block.id} style={{ marginBottom: 24, borderRadius: "var(--radius)", overflow: "hidden" }}>
             <div style={{ aspectRatio: "16/9", background: "hsl(var(--muted))" }}>
               <iframe src={block.content?.url} style={{ width: "100%", height: "100%", border: "none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
@@ -529,6 +567,331 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
     }
   }, [renderQuiz, downloadWatermarkedPDF, downloadingPdf, userEmail]);
 
+  // ── Canvas render — redraws all strokes with current transform ───────────
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const z = zoomRef.current;
+    const p = panRef.current;
+
+    // Helper: convert world point → canvas pixel
+    const toCanvas = (pt: { x: number; y: number }) => ({
+      x: pt.x * z + p.x,
+      y: pt.y * z + p.y,
+    });
+
+    // Draw all committed strokes
+    for (const s of strokes.current) {
+      if (s.points.length < 2) continue;
+      const pts = s.points.map(toCanvas);
+
+      if (s.tool === "erase") {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.globalAlpha = 1;
+        ctx.lineWidth   = s.width * z;
+        ctx.lineCap     = "round";
+        ctx.lineJoin    = "round";
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i].x + pts[i + 1].x) / 2;
+          const my = (pts[i].y + pts[i + 1].y) / 2;
+          ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+        ctx.stroke();
+        ctx.restore();
+      } else if (s.tool === "highlight") {
+        // Draw into offscreen, blit at opacity
+        const buf = document.createElement("canvas");
+        buf.width  = canvas.width;
+        buf.height = canvas.height;
+        const bCtx = buf.getContext("2d")!;
+        bCtx.strokeStyle = s.color;
+        bCtx.lineWidth   = s.width * z;
+        bCtx.lineCap     = "round";
+        bCtx.lineJoin    = "round";
+        bCtx.beginPath();
+        bCtx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i].x + pts[i + 1].x) / 2;
+          const my = (pts[i].y + pts[i + 1].y) / 2;
+          bCtx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        bCtx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+        bCtx.stroke();
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.drawImage(buf, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha  = 1;
+        ctx.strokeStyle  = s.color;
+        ctx.lineWidth    = s.width * z;
+        ctx.lineCap      = "round";
+        ctx.lineJoin     = "round";
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i].x + pts[i + 1].x) / 2;
+          const my = (pts[i].y + pts[i + 1].y) / 2;
+          ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }, []);
+
+  // Redraw whenever zoom or pan changes
+  useEffect(() => { redrawCanvas(); }, [zoom, pan, redrawCanvas]);
+
+  // ── Canvas resize ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const resize = () => {
+      const canvas = canvasRef.current;
+      const vp     = viewportRef.current;
+      if (!canvas || !vp) return;
+      canvas.width  = vp.offsetWidth;
+      canvas.height = vp.offsetHeight;
+      redrawCanvas();
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [redrawCanvas]);
+
+  // Reset strokes + view when page changes
+  useEffect(() => {
+    strokes.current = [];
+    currentStroke.current = null;
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    setPan({ x: 0, y: 0 });
+    setZoom(1);
+  }, [activePage]);
+
+  // ── Pan clamping — keeps content within reasonable bounds ────────────────
+  const clampPan = useCallback((px: number, py: number, z: number) => {
+    const vp = viewportRef.current;
+    if (!vp) return { x: px, y: py };
+    const vpW = vp.offsetWidth;
+    const vpH = vp.offsetHeight;
+    const contentW = 980 * z;
+    // Measure actual rendered content height, fall back to generous estimate
+    const rawH = contentDivRef.current?.offsetHeight ?? 2400;
+    const contentH = rawH * z;
+    const slack = Math.max(contentW / 2, vpW / 2);
+    const minX = -slack;
+    const maxX =  slack;
+    const minY = Math.min(0, vpH - contentH - 40); // 40px bottom breathing room
+    const maxY = 0;
+    return {
+      x: Math.min(maxX, Math.max(minX, px)),
+      y: Math.min(maxY, Math.max(minY, py)),
+    };
+  }, []);
+
+  // ── Middle-mouse pan ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 1) return;
+      e.preventDefault();
+      isPanning.current = true;
+      panStart.current  = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
+      el.style.cursor   = "grabbing";
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isPanning.current) return;
+      const nx = panStart.current.px + (e.clientX - panStart.current.mx);
+      const ny = panStart.current.py + (e.clientY - panStart.current.my);
+      setPan(clampPan(nx, ny, zoomRef.current));
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.button !== 1) return;
+      isPanning.current = false;
+      el.style.cursor   = "";
+    };
+
+    el.addEventListener("mousedown",  onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup",   onMouseUp);
+    return () => {
+      el.removeEventListener("mousedown",  onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup",   onMouseUp);
+    };
+  }, [clampPan]);
+
+  // ── Scroll-wheel: scroll up/down; Shift+wheel: zoom pivoted on cursor ──────
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Zoom pivoted on cursor
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        const rect  = el.getBoundingClientRect();
+        const mx    = e.clientX - rect.left;
+        const my    = e.clientY - rect.top;
+        setZoom(prevZoom => {
+          const nextZoom = Math.min(3, Math.max(0.4, +(prevZoom + delta).toFixed(2)));
+          setPan(prevPan => {
+            const nx = mx - ((mx - prevPan.x) / prevZoom) * nextZoom;
+            const ny = my - ((my - prevPan.y) / prevZoom) * nextZoom;
+            return clampPan(nx, ny, nextZoom);
+          });
+          return nextZoom;
+        });
+      } else {
+        // Plain scroll — pan vertically (and horizontally for trackpads)
+        setPan(prev => {
+          const z = zoomRef.current;
+          return clampPan(prev.x - e.deltaX, prev.y - e.deltaY, z);
+        });
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [clampPan]);
+
+  // ── Zoom button helpers ───────────────────────────────────────────────────
+  const zoomBy    = useCallback((d: number) => setZoom(z => Math.min(3, Math.max(0.4, +(z + d).toFixed(2)))), []);
+  const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+
+  // ── Canvas drawing — world-space coords, smoothed bezier ─────────────────
+  const canvasToWorld = (cx: number, cy: number) => ({
+    x: (cx - panRef.current.x) / zoomRef.current,
+    y: (cy - panRef.current.y) / zoomRef.current,
+  });
+
+  const getCanvasPoint = (e: React.PointerEvent) => {
+    const r = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  const onCanvasPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button === 1) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const pt    = getCanvasPoint(e);
+    const world = canvasToWorld(pt.x, pt.y);
+    isDrawing.current = true;
+    canvas.setPointerCapture(e.pointerId);
+
+    if (activeTool === "erase") {
+      currentStroke.current = { tool: "erase", width: thickness * 4, points: [world] };
+    } else if (activeTool === "highlight") {
+      currentStroke.current = { tool: "highlight", color: hlColor, width: thickness * 6, points: [world] };
+    } else {
+      currentStroke.current = { tool: "draw", color: penColor, width: thickness, points: [world] };
+    }
+  }, [activeTool, penColor, hlColor, thickness]);
+
+  const onCanvasPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current || !currentStroke.current) return;
+    const pt    = getCanvasPoint(e);
+    const world = canvasToWorld(pt.x, pt.y);
+    currentStroke.current.points.push(world);
+
+    // Live preview: redraw all committed + current in-progress stroke
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx   = canvas.getContext("2d")!;
+    const z     = zoomRef.current;
+    const p     = panRef.current;
+    const toCanvas = (wpt: { x: number; y: number }) => ({ x: wpt.x * z + p.x, y: wpt.y * z + p.y });
+
+    redrawCanvas();
+
+    const s   = currentStroke.current;
+    const pts = s.points.map(toCanvas);
+    if (pts.length < 2) return;
+
+    if (s.tool === "erase") {
+      ctx.save();
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = s.width * z;
+      ctx.lineCap   = "round";
+      ctx.lineJoin  = "round";
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2;
+        const my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.stroke();
+      ctx.restore();
+    } else if (s.tool === "highlight") {
+      const buf = document.createElement("canvas");
+      buf.width  = canvas.width;
+      buf.height = canvas.height;
+      const bCtx = buf.getContext("2d")!;
+      bCtx.strokeStyle = s.color;
+      bCtx.lineWidth   = s.width * z;
+      bCtx.lineCap     = "round";
+      bCtx.lineJoin    = "round";
+      bCtx.beginPath();
+      bCtx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2;
+        const my = (pts[i].y + pts[i + 1].y) / 2;
+        bCtx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      bCtx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      bCtx.stroke();
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(buf, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth   = s.width * z;
+      ctx.lineCap     = "round";
+      ctx.lineJoin    = "round";
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const mx = (pts[i].x + pts[i + 1].x) / 2;
+        const my = (pts[i].y + pts[i + 1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+      }
+      ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }, [activeTool, redrawCanvas]);
+
+  const onCanvasPointerUp = useCallback(() => {
+    isDrawing.current = false;
+    if (currentStroke.current && currentStroke.current.points.length >= 2) {
+      strokes.current = [...strokes.current, currentStroke.current];
+    }
+    currentStroke.current = null;
+    redrawCanvas();
+  }, [redrawCanvas]);
+
+  const clearCanvas = useCallback(() => {
+    strokes.current = [];
+    currentStroke.current = null;
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+  }, []);
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const accentColor = moduleData?.accent_color || "hsl(var(--primary))";
@@ -563,40 +926,23 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       <aside style={{
         width: 280, minHeight: "100vh",
         background: "#fff",
-        borderRight: "1px solid #e8eaed",
         display: "flex", flexDirection: "column",
         position: "sticky", top: 0, height: "100vh",
         overflowY: "auto", flexShrink: 0,
       }}>
 
-        {/* Module header — blue accent strip at top */}
-        <div style={{ background: "hsl(var(--primary))", padding: "18px 16px 16px" }}>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1.2px", fontWeight: 600, marginBottom: 4 }}>
+        {/* Module header — fixed height to match top bar */}
+        <div style={{ background: "hsl(var(--primary))", padding: "0 16px", height: 60, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "1.2px", fontWeight: 600 }}>
             {moduleData.category}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.35, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {moduleData.title}
-          </div>
-          {/* Progress bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1, height: 5, background: "rgba(255,255,255,0.2)", borderRadius: 99, overflow: "hidden" }}>
-              <div style={{
-                width: `${totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%`,
-                height: "100%", background: "#fff",
-                borderRadius: 99, transition: "width 0.5s cubic-bezier(.4,0,.2,1)"
-              }} />
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: 700, minWidth: 28, textAlign: "right" }}>
-              {totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%
-            </span>
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
-            {donePages}/{totalPages} pages · {pages.reduce((s, p) => s + (p.estimatedMinutes || 5), 0)} min total
           </div>
         </div>
 
         {/* Page nav */}
-        <nav style={{ padding: "10px 8px", flex: 1 }}>
+        <nav style={{ padding: "10px 8px", flex: 1, borderRight: "1px solid #e8eaed" }}>
           {pages.map((page, i) => {
             const isActive = i === activePage;
             const isCompleted = completed.has(i);
@@ -653,27 +999,44 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           })}
         </nav>
 
-        <div style={{ padding: "12px 16px", borderTop: "1px solid #e8eaed" }}>
-          <div style={{
-            fontSize: 11, textAlign: "center", fontWeight: 500,
-            color: isModuleComplete ? "hsl(var(--primary))" : "#9ca3af",
-          }}>
-            {isModuleComplete ? "🏅 Module Complete!" : "🏅 Complete all pages to finish"}
+        <div style={{ padding: "0 16px", height: 68, flexShrink: 0, borderTop: "1px solid #e8eaed", borderRight: "1px solid #e8eaed", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Progress</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "hsl(var(--primary))" }}>{totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%</span>
           </div>
+          <div style={{ height: 5, background: "hsl(var(--muted))", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{
+              width: `${totalPages > 0 ? Math.round((donePages / totalPages) * 100) : 0}%`,
+              height: "100%", background: "hsl(var(--primary))",
+              borderRadius: 99, transition: "width 0.5s cubic-bezier(.4,0,.2,1)"
+            }} />
+          </div>
+          <div style={{ fontSize: 10, color: "#9ca3af" }}>{donePages} of {totalPages} pages complete</div>
         </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <main ref={contentRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", background: "hsl(var(--muted))" }}>
+      <main ref={contentRef} style={{ flex: 1, display: "flex", flexDirection: "column", background: "hsl(var(--background))", position: "relative", overflow: "hidden" }}>
+
+        {/* Paper noise background */}
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "256px 256px",
+          opacity: 0.028,
+          mixBlendMode: "multiply",
+        }} />
 
         {/* Top bar */}
         <div style={{
-          padding: "16px 64px",
+          padding: "0 24px 0 32px",
+          height: 60, flexShrink: 0,
           display: "flex", alignItems: "center", gap: 12,
           background: "hsl(var(--primary))",
           position: "sticky", top: 0, zIndex: 10,
+          borderLeft: "1px solid rgba(255,255,255,0.15)",
         }}>
-          <span style={{ fontSize: 18 }}>{SECTION_ICONS[activePage % SECTION_ICONS.length]}</span>
           <div>
             <div style={{ fontSize: 11, color: "hsl(var(--primary-foreground) / 0.65)", textTransform: "uppercase", letterSpacing: "0.8px", fontWeight: 600 }}>
               Page {activePage + 1} of {totalPages}
@@ -682,40 +1045,179 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
               {currentPage?.title || `Page ${activePage + 1}`}
             </div>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+
+          {/* ── Zoom controls + hint ── */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>
+              Shift+scroll to zoom · Middle mouse to pan
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.12)", borderRadius: 10, padding: "4px 6px", border: "1px solid rgba(255,255,255,0.15)" }}>
+              <button title="Zoom out" onClick={() => zoomBy(-0.1)}
+                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                <ZoomOut style={{ width: 14, height: 14 }} />
+              </button>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.85)", minWidth: 36, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
+              <button title="Zoom in" onClick={() => zoomBy(0.1)}
+                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                <ZoomIn style={{ width: 14, height: 14 }} />
+              </button>
+              <button title="Reset view" onClick={resetView}
+                style={{ width: 30, height: 30, borderRadius: 7, border: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "#fff", cursor: "pointer" }}>
+                <RotateCcw style={{ width: 13, height: 13 }} />
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginLeft: 12 }}>
             {saving && <span style={{ fontSize: 11, color: "hsl(var(--primary-foreground) / 0.6)" }}>Saving…</span>}
             <span style={{ fontSize: 12, color: "hsl(var(--primary-foreground) / 0.7)", background: "hsl(var(--primary-foreground) / 0.12)", padding: "4px 10px", borderRadius: 99 }}>⏱ {currentPage?.estimatedMinutes || 5} min</span>
           </div>
         </div>
 
-        {/* Page content */}
-        <div style={{ padding: "44px 64px", maxWidth: 980, margin: "0 auto", width: "100%" }}>
-          {/* Page title heading */}
-          {currentPage?.title && (
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "hsl(var(--foreground))", marginBottom: 28, lineHeight: 1.15, display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ width: 40, height: 40, borderRadius: 10, background: "hsl(var(--primary))", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                {SECTION_ICONS[activePage % SECTION_ICONS.length]}
-              </span>
-              {currentPage.title}
-            </h2>
-          )}
+        {/* Pan/Zoom viewport — middle mouse pans, scroll zooms */}
+        <div
+          ref={viewportRef}
+          style={{ flex: 1, position: "relative", overflow: "hidden" }}
+        >
+          {/* Pannable / zoomable content */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: "0 0",
+          }}>
+            <div ref={contentDivRef} style={{ padding: "44px 64px", maxWidth: 980, margin: "0 auto", width: "100%", position: "relative", zIndex: 1 }}>
+              {currentPage?.title && (
+                <h2 style={{ fontSize: 28, fontWeight: 800, color: "hsl(var(--foreground))", marginBottom: 28, lineHeight: 1.15 }}>
+                  {currentPage.title}
+                </h2>
+              )}
+              <div style={{ minHeight: 300 }}>
+                {currentPage?.blocks && currentPage.blocks.length > 0
+                  ? currentPage.blocks.map(block => renderBlock(block))
+                  : <div style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, fontStyle: "italic" }}>No content on this page yet.</div>
+                }
+              </div>
+            </div>
+          </div>
 
-          <div style={{ minHeight: 300 }}>
-            {currentPage?.blocks && currentPage.blocks.length > 0
-              ? currentPage.blocks.map(block => renderBlock(block))
-              : <div style={{ color: "hsl(var(--muted-foreground))", fontSize: 14, fontStyle: "italic" }}>No content on this page yet.</div>
-            }
+          {/* Drawing canvas — fixed to viewport, not affected by pan/zoom */}
+          <canvas
+            ref={canvasRef}
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onCanvasPointerMove}
+            onPointerUp={onCanvasPointerUp}
+            onPointerLeave={onCanvasPointerUp}
+            style={{
+              position: "absolute", inset: 0, zIndex: 5,
+              pointerEvents: activeTool === "select" ? "none" : "auto",
+              cursor: activeTool === "draw" ? "crosshair"
+                    : activeTool === "highlight" ? "cell"
+                    : activeTool === "erase" ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='none' stroke='%23666' stroke-width='1.5'/%3E%3Ccircle cx='12' cy='12' r='1.5' fill='%23666'/%3E%3C/svg%3E") 12 12, crosshair`
+                    : "default",
+            }}
+          />
+
+          {/* ── Floating drawing toolbar — right side ── */}
+          <div style={{
+            position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+            zIndex: 20,
+            background: "hsl(var(--card))",
+            border: "1px solid hsl(var(--border))",
+            borderRadius: 14,
+            boxShadow: "0 4px 20px hsl(var(--foreground) / 0.10)",
+            padding: "10px 8px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          }}>
+            {/* Tool buttons */}
+            {([
+              { tool: "select"    as Tool, icon: MousePointer2, title: "Select / Click" },
+              { tool: "draw"      as Tool, icon: Pen,           title: "Pen" },
+              { tool: "highlight" as Tool, icon: Highlighter,   title: "Highlight" },
+              { tool: "erase"     as Tool, icon: Eraser,        title: "Eraser" },
+            ]).map(({ tool, icon: Icon, title }) => (
+              <button key={tool} title={title} onClick={() => setActiveTool(tool)}
+                style={{
+                  width: 34, height: 34, borderRadius: 8, border: "none",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: activeTool === tool ? "hsl(var(--primary))" : "transparent",
+                  color: activeTool === tool ? "#fff" : "hsl(var(--muted-foreground))",
+                  cursor: "pointer", transition: "all 0.15s",
+                }}>
+                <Icon style={{ width: 15, height: 15 }} />
+              </button>
+            ))}
+
+            {/* Divider */}
+            <div style={{ width: 20, height: 1, background: "hsl(var(--border))", margin: "2px 0" }} />
+
+            {/* Thickness slider */}
+            <div style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Size</div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <input type="range" min={1} max={12} step={1} value={thickness}
+                onChange={e => setThickness(Number(e.target.value))}
+                style={{ writingMode: "vertical-lr", direction: "rtl", width: 20, height: 72, cursor: "pointer", accentColor: "hsl(var(--primary))" }}
+              />
+              <span style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", fontWeight: 600 }}>{thickness}</span>
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: 20, height: 1, background: "hsl(var(--border))", margin: "2px 0" }} />
+
+            {/* Pen colour swatches */}
+            <div style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 2 }}>Pen</div>
+            {["#2966F4", "#e53e3e", "#38a169", "#d69e2e", "#805ad5", "#000000"].map(c => (
+              <button key={c} title={c} onClick={() => { setPenColor(c); setActiveTool("draw"); }}
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: penColor === c && activeTool === "draw" ? "2px solid hsl(var(--foreground))" : "2px solid transparent",
+                  background: c, cursor: "pointer", padding: 0, outline: "none",
+                  boxShadow: penColor === c && activeTool === "draw" ? "0 0 0 2px hsl(var(--background))" : "none",
+                  transition: "box-shadow 0.15s",
+                }} />
+            ))}
+
+            {/* Divider */}
+            <div style={{ width: 20, height: 1, background: "hsl(var(--border))", margin: "2px 0" }} />
+
+            {/* Highlighter colour swatches */}
+            <div style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 2 }}>HL</div>
+            {["#FFD600", "#68d391", "#76e4f7", "#f687b3", "#fbd38d"].map(c => (
+              <button key={c} title={c} onClick={() => { setHlColor(c); setActiveTool("highlight"); }}
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: hlColor === c && activeTool === "highlight" ? "2px solid hsl(var(--foreground))" : "2px solid transparent",
+                  background: c, cursor: "pointer", padding: 0, outline: "none",
+                  boxShadow: hlColor === c && activeTool === "highlight" ? "0 0 0 2px hsl(var(--background))" : "none",
+                  transition: "box-shadow 0.15s",
+                }} />
+            ))}
+
+            {/* Divider */}
+            <div style={{ width: 20, height: 1, background: "hsl(var(--border))", margin: "2px 0" }} />
+
+            {/* Clear all */}
+            <button onClick={clearCanvas} title="Clear all drawings"
+              style={{
+                width: 34, height: 34, borderRadius: 8, border: "none",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", color: "hsl(var(--destructive))",
+                cursor: "pointer", transition: "background 0.15s",
+              }}>
+              <Trash2 style={{ width: 14, height: 14 }} />
+            </button>
           </div>
         </div>
 
         {/* Bottom navigation */}
         <div style={{
-          padding: "20px 64px",
+          padding: "0 64px",
+          height: 68, flexShrink: 0,
           borderTop: "1px solid hsl(var(--border))",
           display: "flex", alignItems: "center", gap: 14,
           marginTop: "auto",
           background: "hsl(var(--card))",
           boxShadow: "0 -2px 12px hsl(var(--foreground) / 0.05)",
+          position: "relative", zIndex: 1,
         }}>
           <button onClick={goPrev} disabled={activePage === 0}
             style={{
@@ -730,9 +1232,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             ← Previous
           </button>
 
-          <div style={{ flex: 1 }}>
-            <ProgressBar current={donePages} total={totalPages} />
-          </div>
+          <div style={{ flex: 1 }} />
 
           {/* Per-page toggle */}
           {completed.has(activePage) ? (
@@ -776,7 +1276,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                 cursor: saving ? "not-allowed" : "pointer",
                 boxShadow: isModuleComplete ? "none" : "0 4px 14px hsl(var(--primary) / 0.3)",
               }}>
-              {isModuleComplete ? "✓ Module Complete!" : "🏆 Complete Module"}
+              {isModuleComplete ? "Module Complete!" : "Complete Module"}
             </button>
           )}
         </div>

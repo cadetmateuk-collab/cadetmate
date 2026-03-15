@@ -379,6 +379,11 @@ function CameraController({
   const prevNode = useRef<CameraNode | null>(null);
 
   useEffect(() => {
+    // Main camera must see layer 31 (panorama spheres) as well as default layer 0
+    camera.layers.enable(31);
+  }, [camera]);
+
+  useEffect(() => {
     if (prevNode.current === node) return;
     prevNode.current = node;
     const controls = orbitRef.current;
@@ -482,9 +487,16 @@ function PanoramaSpheres({
       {ALL_NODES.map((n, i) => (
         <mesh
           key={n}
-          ref={el => { meshRefs.current[n] = el; }}
+          ref={el => {
+            meshRefs.current[n] = el;
+            // Layer 31 = panorama-only layer. The Water mirror camera renders
+            // layer 0 by default, so it never sees the panorama spheres.
+            // This prevents the sphere (which tracks camera.position every frame)
+            // from appearing in the reflection and causing jitter.
+            el?.layers.set(31);
+          }}
           rotation={[0, Math.PI * 0.5, 0]}
-          renderOrder={i}
+          renderOrder={100 + i}
         >
           <sphereGeometry args={[500 - i, 60, 40]} />
           <meshBasicMaterial
@@ -860,6 +872,32 @@ const worldPos = useMemo(() => {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── ENVIRONMENT CONFIG — edit these to change sky, sun & water appearance ─────
+// ══════════════════════════════════════════════════════════════════════════════
+export const ENV = {
+  sky: {
+    // Sun position — spherical coords. elevation: 0=horizon, 90=overhead.
+    // azimuth: compass bearing in degrees (0=north, 90=east, 180=south etc.)
+    sunElevationDeg:  78,    // higher = brighter midday sky, lower = golden hour / dusk
+    sunAzimuthDeg:    210,   // direction the sun is coming from
+
+    // Sky atmosphere tweaks (three.js Sky shader uniforms)
+    turbidity:        8,     // 1=crystal clear, 20=very hazy/dusty
+    rayleigh:         1.2,   // 0=black sky, 3=deep blue, 6+ = orange/red sunset
+    mieCoefficient:   0.001, // sun halo size — higher = larger glow around sun
+    mieDirectionalG:  0.8,   // sun halo sharpness — 0=diffuse, 0.99=tight pinpoint
+  },
+  water: {
+    color:          0x31a4de, // base deep-water colour (hex)
+    sunColor:       0xb5e6ff, // colour of sun glint on water
+    distortionScale: 3.7,     // wave choppiness (overridden by waveHeight prop)
+    // WATER_Y: how far below camera the plane sits. More negative = lower horizon.
+    y:              -80,
+  },
+};
+// ══════════════════════════════════════════════════════════════════════════════
+
 // ── Sky + Sun ─────────────────────────────────────────────────────────────────
 function SkyAndSun({ onSunReady }: { onSunReady: (sun: THREE.Vector3) => void }) {
   const { scene, gl } = useThree();
@@ -868,13 +906,17 @@ function SkyAndSun({ onSunReady }: { onSunReady: (sun: THREE.Vector3) => void })
     sky.scale.setScalar(450);
     scene.add(sky);
     const sun = new THREE.Vector3();
-    sun.setFromSphericalCoords(1, THREE.MathUtils.degToRad(78), THREE.MathUtils.degToRad(210));
+    sun.setFromSphericalCoords(
+      1,
+      THREE.MathUtils.degToRad(ENV.sky.sunElevationDeg),
+      THREE.MathUtils.degToRad(ENV.sky.sunAzimuthDeg),
+    );
     const u = sky.material.uniforms;
     u['sunPosition'].value.copy(sun);
-    u['turbidity'].value        = 8;
-    u['rayleigh'].value         = 1.2;
-    u['mieCoefficient'].value   = 0.005;
-    u['mieDirectionalG'].value  = 0.8;
+    u['turbidity'].value       = ENV.sky.turbidity;
+    u['rayleigh'].value        = ENV.sky.rayleigh;
+    u['mieCoefficient'].value  = ENV.sky.mieCoefficient;
+    u['mieDirectionalG'].value = ENV.sky.mieDirectionalG;
     const pmrem = new THREE.PMREMGenerator(gl);
     scene.environment = pmrem.fromScene(sky as unknown as THREE.Scene).texture;
     pmrem.dispose();
@@ -884,55 +926,61 @@ function SkyAndSun({ onSunReady }: { onSunReady: (sun: THREE.Vector3) => void })
   return null;
 }
 
-// ── Ocean — Three.js Water ────────────────────────────────────────────────────
+// ── Ocean — three.js Water shader with reflections ────────────────────────────
+const WATER_Y = ENV.water.y;
+
 function OceanPlane({ speedKnots = 8, waveHeight = 1.2, sunPosition }: {
   speedKnots?:  number;
   waveHeight?:  number;
   sunPosition?: THREE.Vector3;
 }) {
-  const { scene, camera } = useThree();
-  const waterRef = useRef<Water | null>(null);
+  const { scene } = useThree();
+  const waterRef  = useRef<Water | null>(null);
 
   useEffect(() => {
-    const geo     = new THREE.PlaneGeometry(10000, 10000);
+    const geo     = new THREE.PlaneGeometry(20000, 20000);
     const normals = new THREE.TextureLoader().load(
       'https://threejs.org/examples/textures/waternormals.jpg',
       (t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
     );
     const water = new Water(geo, {
-      textureWidth:    256,
-      textureHeight:   256,
+      textureWidth:    512,
+      textureHeight:   512,
       waterNormals:    normals,
-      sunDirection:    sunPosition?.clone().normalize() ?? new THREE.Vector3(0, 1, 0),
-      sunColor:        0xfff5e0,
-      waterColor:      0x003d5c,
-      distortionScale: Math.max(0.02, waveHeight * 0.8),
+      sunDirection:    sunPosition?.clone().normalize() ?? new THREE.Vector3(0.70707, 0.70707, 0),
+      sunColor:        ENV.water.sunColor,
+      waterColor:      ENV.water.color,
+      distortionScale: ENV.water.distortionScale,
+      clipBias:        0.1,
       fog:             false,
     });
-    water.rotation.x  = -Math.PI / 2;
-    water.position.y  = -80;      // slightly below eye level
-    water.renderOrder = -10;
-    waterRef.current  = water;
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = WATER_Y;
+    water.renderOrder = 0;
+    (water.material as THREE.ShaderMaterial).depthWrite = false;
+    waterRef.current = water;
     scene.add(water);
-    return () => { scene.remove(water); geo.dispose(); (water.material as THREE.Material).dispose(); };
+    return () => {
+      scene.remove(water);
+      geo.dispose();
+      (water.material as THREE.Material).dispose();
+    };
   }, []);
+
+  useEffect(() => {
+    if (waterRef.current)
+      waterRef.current.material.uniforms['distortionScale'].value = Math.max(0.5, waveHeight * 3.7);
+  }, [waveHeight]);
 
   useEffect(() => {
     if (waterRef.current && sunPosition)
       waterRef.current.material.uniforms['sunDirection'].value.copy(sunPosition).normalize();
   }, [sunPosition]);
 
-  useEffect(() => {
-    if (waterRef.current)
-      waterRef.current.material.uniforms['distortionScale'].value = Math.max(0.2, waveHeight * 0.8);
-  }, [waveHeight]);
-
   useFrame((_, delta) => {
     const w = waterRef.current;
     if (!w) return;
-    w.material.uniforms['time'].value += delta * (0.6 + speedKnots * 0.04);
-    w.position.x = camera.position.x;
-    w.position.z = camera.position.z;
+    w.material.uniforms['time'].value += delta * (0.5 + speedKnots * 0.05);
   });
 
   return null;
@@ -983,14 +1031,14 @@ function Scene({
               key={key}
               def={d}
               transitionRef={transitionRef}
-              renderOrder={20 + i}
+              renderOrder={120 + i}
             />
           ) : (
             <BridgeScreen
               key={key}
               def={d}
               transitionRef={transitionRef}
-              renderOrder={20 + i}
+              renderOrder={120 + i}
             />
           );
         })}
@@ -1000,7 +1048,7 @@ function Scene({
           <BridgeObject
             key={key}
             def={objectDefs[key]}
-            renderOrder={50 + i}
+            renderOrder={150 + i}
           />
         ))}
 

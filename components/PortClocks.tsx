@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react'
 
 const PORTS = [
-  { name: 'Shanghai',    tz: 'Asia/Shanghai',    lat: '31.2°N', lng: '121.5°E' },
-  { name: 'Singapore',   tz: 'Asia/Singapore',   lat: '1.3°N',  lng: '103.8°E' },
-  { name: 'Rotterdam',   tz: 'Europe/Amsterdam', lat: '51.9°N', lng: '4.5°E'   },
-  { name: 'Houston',     tz: 'America/Chicago',  lat: '29.7°N', lng: '95.3°W'  },
-  { name: 'Tokyo',       tz: 'Asia/Tokyo',       lat: '35.6°N', lng: '139.7°E' },
-  { name: 'Southampton', tz: 'Europe/London',    lat: '50.9°N', lng: '1.4°W'   },
-  { name: 'Hamburg',     tz: 'Europe/Berlin',    lat: '53.5°N', lng: '10.0°E'  },
-  { name: 'Jebel Ali',   tz: 'Asia/Dubai',       lat: '24.9°N', lng: '55.1°E'  },
-  { name: 'Busan',       tz: 'Asia/Seoul',       lat: '35.1°N', lng: '129.0°E' },
-  { name: 'Manila',      tz: 'Asia/Manila',      lat: '14.6°N', lng: '120.9°E' },
+  { name: 'Houston',     tz: 'America/Chicago',  lat: '29.7°N', lng: '95.3°W'  },  // -95.3
+  { name: 'Southampton', tz: 'Europe/London',    lat: '50.9°N', lng: '1.4°W'   },  // -1.4
+  { name: 'Rotterdam',   tz: 'Europe/Amsterdam', lat: '51.9°N', lng: '4.5°E'   },  // +4.5
+  { name: 'Hamburg',     tz: 'Europe/Berlin',    lat: '53.5°N', lng: '10.0°E'  },  // +10.0
+  { name: 'Jebel Ali',   tz: 'Asia/Dubai',       lat: '24.9°N', lng: '55.1°E'  },  // +55.1
+  { name: 'Singapore',   tz: 'Asia/Singapore',   lat: '1.3°N',  lng: '103.8°E' },  // +103.8
+  { name: 'Manila',      tz: 'Asia/Manila',      lat: '14.6°N', lng: '120.9°E' },  // +120.9
+  { name: 'Shanghai',    tz: 'Asia/Shanghai',    lat: '31.2°N', lng: '121.5°E' },  // +121.5
+  { name: 'Busan',       tz: 'Asia/Seoul',       lat: '35.1°N', lng: '129.0°E' },  // +129.0
+  { name: 'Tokyo',       tz: 'Asia/Tokyo',       lat: '35.6°N', lng: '139.7°E' },  // +139.7
 ] as const
 
 function getTime(tz: string) {

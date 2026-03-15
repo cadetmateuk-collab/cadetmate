@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   BookOpen, Briefcase, FileText, Anchor, Lightbulb,
-  ShoppingBag, ChevronLeft, Menu, LogOut, Moon, Sun,
+  ShoppingBag, ChevronLeft, Menu, LogOut,
   Lock, Sparkles, House, X, Compass, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -272,8 +272,8 @@ function SidebarContent({
         className={cn("flex-shrink-0 border-t", T.border)}
         style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.38) 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07)" }}
       >
-        {/* Theme toggle */}
-        {mounted && (
+        {/* Theme toggle — hidden for now */}
+        {false && mounted && (
           <div className={cn("pt-2", isCollapsed ? "flex justify-center" : "px-2")}>
             <button
               onClick={onToggleTheme}
@@ -512,26 +512,34 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
     <>
       {/* Mobile top bar */}
       <div
-        className="lg:hidden fixed top-0 left-0 right-0 h-14 border-b z-40 flex items-center justify-between px-4"
-        style={{ background: C.primary, borderColor: "rgba(255,255,255,0.1)" }}
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-4"
+        style={{ background: C.primary, borderBottom: "1px solid rgba(255,255,255,0.1)" }}
       >
         <button
           onClick={() => setIsMobileOpen(true)}
-          className="p-2 rounded-lg text-white/80 hover:text-white transition-colors"
+          className="p-2 rounded-lg transition-colors"
+          style={{ color: "rgba(255,255,255,0.8)" }}
           aria-label="Open menu"
         >
           <Menu className="h-5 w-5" />
         </button>
         <div className="flex items-center gap-2">
-          <div
-            className="relative h-7 w-7 rounded-lg overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.15)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)" }}
-          >
-            <Image src="/images/logo.png" alt="Cadet Mate" fill className="object-contain p-0.5" priority />
+          <div className="relative h-7 w-7 flex-shrink-0">
+            <Image src="/images/c2.png" alt="Cadet Mate" fill className="object-contain" priority />
           </div>
-          <span className="font-semibold text-[14px] text-white">Cadet Mate</span>
+          <span className="font-semibold text-[14px] text-white tracking-wide">Cadet Mate</span>
         </div>
-        <div className="w-10" />
+        {/* Right side — show user initials if logged in, else spacer */}
+        <div className="w-10 flex justify-end">
+          {userProfile && (
+            <div
+              className="h-8 w-8 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}
+            >
+              <span className="text-[11px] font-bold text-white">{userProfile.initials}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mobile backdrop */}
@@ -545,12 +553,13 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           "hidden lg:flex lg:relative lg:h-screen overflow-hidden",
           "transition-[width] duration-300 ease-in-out",
           isCollapsed ? "lg:w-[56px]" : "lg:w-60",
-          isMobileOpen && "fixed inset-y-0 left-0 z-50 flex w-64 lg:hidden",
+          isMobileOpen && "!flex fixed inset-y-0 left-0 z-50 w-72",
           className,
         )}
         style={{
           background:  C.primary,
           borderRight: "1px solid rgba(255,255,255,0.08)",
+          height: isMobileOpen ? "100dvh" : undefined,
         }}
       >
         {/* Noise grain overlay */}
@@ -567,10 +576,8 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
         />
 
         <div
-          className={cn(
-            "relative z-20 flex flex-col h-full overflow-hidden transition-[width] duration-300 ease-in-out",
-            isCollapsed ? "w-[56px]" : "w-60",
-          )}
+          className="relative z-20 flex flex-col h-full overflow-hidden"
+          style={{ width: isMobileOpen ? "100%" : isCollapsed ? "56px" : "240px" }}
         >
           <SidebarContent {...contentProps} />
         </div>
