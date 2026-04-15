@@ -5,6 +5,7 @@ import {
   Save, X, Search, AlertTriangle
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import AdminModal from '@/components/AdminModal'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,7 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
     onChange({ ...post, title, slug: isCreating ? generateSlug(title) : post.slug });
 
   return (
+    <AdminModal onClose={onClose}>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white z-10">
@@ -228,6 +230,7 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
         </div>
       </div>
     </div>
+    </AdminModal>
   );
 }
 

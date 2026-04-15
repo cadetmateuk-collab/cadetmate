@@ -12,6 +12,7 @@ import {
   User,
   TrendingUp
 } from 'lucide-react';
+import AdminModal from '@/components/AdminModal'
 
 export default function BlogAdmin() {
   const [posts, setPosts] = useState([
@@ -119,8 +120,7 @@ export default function BlogAdmin() {
 
   if (isEditing && currentPost) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <AdminModal onClose={handleCancel}>
           {/* Editor Header */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between">
@@ -315,8 +315,7 @@ export default function BlogAdmin() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+      </AdminModal>
     );
   }
 

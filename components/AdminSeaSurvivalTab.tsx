@@ -5,6 +5,7 @@ import {
   Save, X, Search, AlertTriangle, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import AdminModal from '@/components/AdminModal'
 
 const supabase = createClient();
 
@@ -48,6 +49,7 @@ function ArticleModal({ article, isCreating, saving, categories, onClose, onSave
   const canSave = !!article.title && !!article.slug && !!article.category;
 
   return (
+    <AdminModal onClose={onClose}>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
         style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}>
@@ -111,6 +113,7 @@ function ArticleModal({ article, isCreating, saving, categories, onClose, onSave
         </div>
       </div>
     </div>
+    </AdminModal>
   );
 }
 

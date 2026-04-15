@@ -124,7 +124,7 @@ export default function AdminPage() {
           background-color: hsl(var(--background));
           font-family: 'DM Sans', sans-serif;
           position: relative;
-          overflow-x: hidden;
+          overflow-x: clip; /* clip doesn't create a stacking context; hidden does */
         }
 
         .adm-dot-grid {
@@ -132,7 +132,7 @@ export default function AdminPage() {
           background-image: radial-gradient(circle, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
           background-size: 28px 28px;
           mask-image: radial-gradient(ellipse 85% 85% at 50% 20%, black 40%, transparent 100%);
-          z-index: 0;
+          z-index: -1;
         }
 
         .adm-glow {
@@ -140,16 +140,16 @@ export default function AdminPage() {
           top: -200px; left: 50%; transform: translateX(-50%);
           width: 900px; height: 900px; border-radius: 50%;
           background: radial-gradient(circle, hsl(var(--primary) / 0.05) 0%, transparent 66%);
-          z-index: 0;
+          z-index: -1;
         }
 
         .adm-noise {
           pointer-events: none; position: fixed; inset: 0;
-          opacity: 0.025; mix-blend-mode: multiply; z-index: 0;
+          opacity: 0.025; z-index: -1;
         }
 
         .adm-header {
-          position: sticky; top: 0; z-index: 10;
+          position: sticky; top: 0; z-index: 40;
           background: hsl(var(--background) / 0.92);
           backdrop-filter: blur(14px);
           border-bottom: 1px solid hsl(var(--border));
@@ -250,11 +250,32 @@ export default function AdminPage() {
         }
 
         .adm-content {
-          position: relative; z-index: 1;
+          position: relative;
           max-width: 980px;
           margin: 0 auto;
           padding: 2.25rem 2.5rem 6rem;
         }
+          /* GLOBAL MODAL LAYER */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(6px);
+  z-index: 9998;
+}
+
+.modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+
+  background: hsl(var(--background));
+  border-radius: 12px;
+  padding: 1.5rem;
+  min-width: 320px;
+}
       `}</style>
 
       <div className="adm-page">

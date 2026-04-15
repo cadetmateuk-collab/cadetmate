@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import AdminModal from '@/components/AdminModal'
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
@@ -194,7 +195,7 @@ function CategoryManager({ onClose, onUpdate, addToast }: CategoryManagerProps) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <AdminModal onClose={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -286,7 +287,7 @@ function CategoryManager({ onClose, onUpdate, addToast }: CategoryManagerProps) 
           <button onClick={onClose} className="w-full py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium">Close</button>
         </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
@@ -336,7 +337,7 @@ function EditPanel({ module, categories, onSave, onClose }: EditPanelProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <AdminModal onClose={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderTop: `3px solid ${selectedCatColor}` }}>
           <div>
@@ -473,7 +474,7 @@ function EditPanel({ module, categories, onSave, onClose }: EditPanelProps) {
           <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors text-sm font-medium">Cancel</button>
         </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
