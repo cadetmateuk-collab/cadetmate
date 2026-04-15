@@ -3,6 +3,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { ActivityTrackerProvider } from "@/components/ActivityTrackerProvider";
+import SupportWidget from '@/components/SupportWidget'
+
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -22,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={bricolage.className}>
+        <SupportWidget />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

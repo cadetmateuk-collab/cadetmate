@@ -28,5 +28,19 @@ export async function updateSession(request: NextRequest) {
   // Do not add any logic between createServerClient and getUser()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Protect /admin routes — redirect to login if not authenticated
+  if (!user && request.nextUrl.pathname.startsWith('/admin')) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
   return supabaseResponse
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
 import * as THREE from 'three';
 import { Water } from 'three/examples/jsm/objects/Water.js';
 import { Sky }   from 'three/examples/jsm/objects/Sky.js';
+import { LogbookPlaneMesh, LogbookPlaneHandle, LogEntry, ShipInfo } from './LogbookPlane';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TO ADD A NEW CAMERA NODE:
@@ -244,6 +245,20 @@ export const SCREENS = {
       radar:      [ 0,  0, 0] as [number, number, number],
       psWing:     [ 0,  0, 0] as [number, number, number],
       sbWing:     [ 0,  0, 0] as [number, number, number],
+    },
+  },
+  logbookPlane: {
+    blenderPos:  [6.9, -1.3, 89.4]  as [number, number, number],
+    blenderRot:  [75, 0, 0]          as [number, number, number],
+    texture:     '/shipimages/logbook-blank.png',   // plain fallback; overridden by canvas texture
+    blenderSize: [0.55, 0.38]        as [number, number],
+    scale:       95,                 // 498 / dist_back_to_logbook — tune in-engine
+    visibility:  'bridge'            as const,
+    nodeAdjust: {
+      back: [0,0,0], helm: [0,0,0], psSofa: [0,0,0], sbDesk: [0,0,0],
+      psEcdis: [0,0,0], psRadio: [0,0,0], psLookout: [0,0,0],
+      sbLogbook: [0,0,0],   // ← tune this one first; it's the close-up node
+      sbLookout: [0,0,0], radar: [0,0,0], psWing: [0,0,0], sbWing: [0,0,0],
     },
   },
   // ── Add new screen planes here ─────────────────────────────────────────────
@@ -886,7 +901,7 @@ export const ENV = {
     turbidity:        8,     // 1=crystal clear, 20=very hazy/dusty
     rayleigh:         1.2,   // 0=black sky, 3=deep blue, 6+ = orange/red sunset
     mieCoefficient:   0.001, // sun halo size — higher = larger glow around sun
-    mieDirectionalG:  0.8,   // sun halo sharpness — 0=diffuse, 0.99=tight pinpoint
+    mieDirectionalG:  0.9,   // sun halo sharpness — 0=diffuse, 0.99=tight pinpoint
   },
   water: {
     color:          0x31a4de, // base deep-water colour (hex)
@@ -929,10 +944,11 @@ function SkyAndSun({ onSunReady }: { onSunReady: (sun: THREE.Vector3) => void })
 // ── Ocean — three.js Water shader with reflections ────────────────────────────
 const WATER_Y = ENV.water.y;
 
-function OceanPlane({ speedKnots = 8, waveHeight = 1.2, sunPosition }: {
-  speedKnots?:  number;
-  waveHeight?:  number;
-  sunPosition?: THREE.Vector3;
+function OceanPlane({ speedKnots = 8, waveHeight = 1.2, waveAngleDeg = 0, sunPosition }: {
+  speedKnots?:   number;
+  waveHeight?:   number;
+  waveAngleDeg?: number;
+  sunPosition?:  THREE.Vector3;
 }) {
   const { scene } = useThree();
   const waterRef  = useRef<Water | null>(null);
@@ -954,7 +970,9 @@ function OceanPlane({ speedKnots = 8, waveHeight = 1.2, sunPosition }: {
       clipBias:        0.1,
       fog:             false,
     });
+    const rad = THREE.MathUtils.degToRad(waveAngleDeg);
     water.rotation.x = -Math.PI / 2;
+    water.rotation.z = rad;
     water.position.y = WATER_Y;
     water.renderOrder = 0;
     (water.material as THREE.ShaderMaterial).depthWrite = false;
@@ -971,6 +989,12 @@ function OceanPlane({ speedKnots = 8, waveHeight = 1.2, sunPosition }: {
     if (waterRef.current)
       waterRef.current.material.uniforms['distortionScale'].value = Math.max(0.5, waveHeight * 3.7);
   }, [waveHeight]);
+
+  useEffect(() => {
+    const w = waterRef.current;
+    if (!w) return;
+    w.rotation.z = THREE.MathUtils.degToRad(waveAngleDeg);
+  }, [waveAngleDeg]);
 
   useEffect(() => {
     if (waterRef.current && sunPosition)
@@ -994,12 +1018,14 @@ function Scene({
   objectDefs = {},
   speedKnots,
   waveHeight,
+  waveAngleDeg,
 }: {
-  cameraNode:   CameraNode;
-  screenDefs:   Record<ScreenKey, ScreenDef>;
-  objectDefs?:  Record<string, ObjectDef>;
-  speedKnots?:  number;
-  waveHeight?:  number;
+  cameraNode:    CameraNode;
+  screenDefs:    Record<ScreenKey, ScreenDef>;
+  objectDefs?:   Record<string, ObjectDef>;
+  speedKnots?:   number;
+  waveHeight?:   number;
+  waveAngleDeg?: number;
 }) {
   const orbitRef      = useRef<OrbitControlsType>(null);
   const transitionRef = useRef<TransitionRef>({ fromNode: 'back', toNode: 'back' });
@@ -1019,7 +1045,7 @@ function Scene({
       <ZoomController />
       <Suspense fallback={null}>
         <SkyAndSun onSunReady={setSunPos} />
-        <OceanPlane speedKnots={speedKnots} waveHeight={waveHeight} sunPosition={sunPos} />
+        <OceanPlane speedKnots={speedKnots} waveHeight={waveHeight} waveAngleDeg={waveAngleDeg} sunPosition={sunPos} />
 
         <PanoramaSpheres node={cameraNode} transitionRef={transitionRef} />
 
@@ -1066,12 +1092,14 @@ export function BridgeScene({
   objectDefs = {},
   speedKnots,
   waveHeight,
+  waveAngleDeg,
 }: {
-  cameraNode?:  CameraNode;
-  screenDefs:   Record<ScreenKey, ScreenDef>;
-  objectDefs?:  Record<string, ObjectDef>;
-  speedKnots?:  number;
-  waveHeight?:  number;
+  cameraNode?:   CameraNode;
+  screenDefs:    Record<ScreenKey, ScreenDef>;
+  objectDefs?:   Record<string, ObjectDef>;
+  speedKnots?:   number;
+  waveHeight?:   number;
+  waveAngleDeg?: number;
 }) {
   const [loading, setLoading] = useState(true);
   const [blur, setBlur]       = useState(0);
@@ -1104,7 +1132,7 @@ export function BridgeScene({
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
           shadows={false}
         >
-          <Scene cameraNode={cameraNode} screenDefs={screenDefs} objectDefs={objectDefs} speedKnots={speedKnots} waveHeight={waveHeight} />
+          <Scene cameraNode={cameraNode} screenDefs={screenDefs} objectDefs={objectDefs} speedKnots={speedKnots} waveHeight={waveHeight} waveAngleDeg={waveAngleDeg} />
         </Canvas>
       </div>
     </div>

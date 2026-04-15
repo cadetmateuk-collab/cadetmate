@@ -1,6 +1,7 @@
 import { CadetMateSidebar } from "@/components/Sidebar"
 import ActivityTracker from '@/components/ActivityTracker'
 import type { Metadata } from 'next'
+import SupportWidget from '@/components/SupportWidget'
 
 export const metadata: Metadata = {
   title: {
@@ -26,7 +27,7 @@ export default function AppLayout({
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <ActivityTracker />
-
+<SupportWidget />
       {/* Sidebar — desktop only in flow; mobile UI is portalled to body */}
       <CadetMateSidebar />
 
