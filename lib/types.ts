@@ -16,6 +16,7 @@ export interface FlashcardPack {
   storage_path?: string | null;
   is_premium: boolean;
   price_cents: number;
+  stripe_price_id?: string | null;
   status: PackStatus;
   card_count: number;
   created_at?: string;

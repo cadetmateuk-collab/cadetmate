@@ -24,7 +24,7 @@ interface Pack {
   id: string; slug: string; title: string; description: string;
   category: string; tags: string[]; difficulty: Difficulty;
   thumbnail_url?: string | null; is_premium: boolean; price_cents: number;
-  status: Status; card_count: number;
+  stripe_price_id?: string | null; status: Status; card_count: number;
 }
 interface Card {
   id: string; pack_id: string; position: number; card_type: CardType;
@@ -95,6 +95,7 @@ export default function AdminFlashcardsTab() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Pack | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -103,6 +104,25 @@ export default function AdminFlashcardsTab() {
     setLoading(false);
   }
   useEffect(() => { refresh(); }, []);
+
+  async function fetchStripePrice(priceId: string) {
+    if (!priceId.startsWith('price_')) {
+      alert('That doesn\'t look like a Price ID — it should start with price_');
+      return;
+    }
+    setStripeLoading(true);
+    try {
+      const res = await fetch(`/api/stripe-price?priceId=${encodeURIComponent(priceId)}`);
+      if (!res.ok) { alert('Could not fetch price from Stripe — check the ID is correct'); return; }
+      const { unit_amount } = await res.json();
+      setEditing((e) => e ? { ...e, price_cents: unit_amount, stripe_price_id: priceId } : e);
+    } catch {
+      alert('Failed to reach Stripe');
+    } finally {
+      setStripeLoading(false);
+    }
+  }
+
 
   async function openPack(p: Pack) {
     setEditing(p);
@@ -126,7 +146,7 @@ export default function AdminFlashcardsTab() {
       slug: editing.slug, title: editing.title, description: editing.description,
       category: editing.category, tags: editing.tags, difficulty: editing.difficulty,
       thumbnail_url: editing.thumbnail_url, is_premium: editing.is_premium,
-      price_cents: editing.price_cents, status: editing.status,
+      price_cents: editing.price_cents, stripe_price_id: editing.stripe_price_id, status: editing.status,
       card_count: cards.length,
     }).eq('id', editing.id);
     if (error) return alert(error.message);
@@ -267,9 +287,50 @@ export default function AdminFlashcardsTab() {
                 </div>
               </label>
               {editing.is_premium && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={lbl}>Price (pence)</div>
-                  <Input type="number" value={editing.price_cents} onChange={(v: number) => setEditing({ ...editing, price_cents: v })} />
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {/* Stripe Price ID with lookup */}
+                  <div>
+                    <div style={lbl}>Stripe Price ID</div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <input
+                        value={editing.stripe_price_id ?? ''}
+                        onChange={(e) => setEditing({ ...editing, stripe_price_id: e.target.value })}
+                        placeholder="price_1ABC…"
+                        style={{
+                          flex: 1, padding: '7px 10px', borderRadius: C.radiusSm,
+                          fontSize: 12, border: `1px solid ${C.border}`, background: C.bg,
+                          color: C.fg, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const,
+                        }}
+                      />
+                      <button
+                        onClick={() => editing.stripe_price_id && fetchStripePrice(editing.stripe_price_id)}
+                        disabled={stripeLoading || !editing.stripe_price_id}
+                        title="Fetch price from Stripe"
+                        style={{
+                          padding: '7px 10px', borderRadius: C.radiusSm, fontSize: 11, fontWeight: 600,
+                          background: C.primaryLight, color: C.primary, border: `1px solid ${C.primary}33`,
+                          cursor: stripeLoading || !editing.stripe_price_id ? 'not-allowed' : 'pointer',
+                          opacity: stripeLoading || !editing.stripe_price_id ? 0.5 : 1,
+                          whiteSpace: 'nowrap' as const,
+                        }}
+                      >
+                        {stripeLoading ? '…' : '↓ Fetch'}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 10, color: C.mutedFg, marginTop: 3 }}>
+                      Paste the <code>price_1…</code> ID from Stripe → Product catalogue → Pricing
+                    </div>
+                  </div>
+                  {/* Price display (auto-filled by fetch, or manual override) */}
+                  <div>
+                    <div style={lbl}>Price (pence) — e.g. 499 = £4.99</div>
+                    <Input type="number" value={editing.price_cents} onChange={(v: number) => setEditing({ ...editing, price_cents: v })} />
+                  </div>
+                  {editing.price_cents > 0 && (
+                    <div style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>
+                      = £{(editing.price_cents / 100).toFixed(2)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,10 +1,10 @@
 'use client';
-// Pack detail page with mode picker + premium gate.
+// Pack detail page with mode picker + Stripe premium gate.
 // Drop in at app/flashcards/[slug]/page.tsx
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Sparkles, Lock, Zap, Brain, Flame, Heart, Target, Shuffle } from 'lucide-react';
+import { ChevronLeft, Sparkles, Lock, Zap, Brain, Flame, Heart, Target, Shuffle, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StudyShell } from '@/components/StudyShell';
 import { ProgressRing } from '@/components/ProgressRing';
@@ -14,12 +14,12 @@ import type { StudyMode } from '@/lib/types';
 const supabase = createClient();
 
 const MODES: { key: StudyMode; em: string; title: string; sub: string; icon: any }[] = [
-  { key: 'standard',     em: '📖', title: 'Standard',       sub: 'Flip through cards at your own pace',     icon: Shuffle },
-  { key: 'smart_review', em: '🧠', title: 'Smart Review',   sub: 'Spaced repetition (SM-2). Due cards first', icon: Brain },
-  { key: 'exam_cram',    em: '🔥', title: 'Exam Cram',      sub: 'Weakest cards on repeat',                  icon: Flame },
-  { key: 'match',        em: '🎯', title: 'Match',          sub: 'Match terms to definitions',               icon: Target },
-  { key: 'quick_fire',   em: '⚡', title: 'Quick Fire',     sub: '60-second timed challenge',                icon: Zap },
-  { key: 'survival',     em: '🛟', title: 'Survival',       sub: '3 lives, no second chances',               icon: Heart },
+  { key: 'standard',     em: '📖', title: 'Standard',       sub: 'Flip through cards at your own pace',       icon: Shuffle },
+  { key: 'smart_review', em: '🧠', title: 'Smart Review',   sub: 'Spaced repetition (SM-2). Due cards first',  icon: Brain },
+  { key: 'exam_cram',    em: '🔥', title: 'Exam Cram',      sub: 'Weakest cards on repeat',                    icon: Flame },
+  { key: 'match',        em: '🎯', title: 'Match',          sub: 'Match terms to definitions',                 icon: Target },
+  { key: 'quick_fire',   em: '⚡', title: 'Quick Fire',     sub: '60-second timed challenge',                  icon: Zap },
+  { key: 'survival',     em: '🛟', title: 'Survival',       sub: '3 lives, no second chances',                 icon: Heart },
 ];
 
 export default function PackDetailPage() {
@@ -30,21 +30,74 @@ export default function PackDetailPage() {
   const { stats } = usePackStats(userId, pack?.id);
   const [owned, setOwned] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [justPurchased, setJustPurchased] = useState(false);
 
   useEffect(() => {
     if (userId && pack) loadOwnership(userId, pack.id).then(setOwned);
   }, [userId, pack]);
 
+  // Handle return from Stripe Checkout (success=1 query param)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === '1') {
+      setJustPurchased(true);
+      setOwned(true);
+      // Clean up the URL without a hard reload
+      const clean = window.location.pathname;
+      window.history.replaceState({}, '', clean);
+    }
+  }, []);
+
   const locked = pack?.is_premium && !owned;
   const pct = stats && pack ? stats.cards_mastered / Math.max(1, pack.card_count) : 0;
 
   async function unlock() {
-    if (!userId || !pack) return;
+    if (!userId) {
+      // Not logged in — redirect to sign in
+      router.push('/sign-in?next=' + encodeURIComponent(`/flashcards/${slug}`));
+      return;
+    }
+    if (!pack) return;
+
+    // Free premium pack — unlock directly without Stripe
+    if (!pack.price_cents || pack.price_cents === 0) {
+      await supabase
+        .from('flashcard_pack_ownership')
+        .insert({ user_id: userId, pack_id: pack.id, source: 'free_unlock' });
+      setOwned(true);
+      return;
+    }
+
+    // Paid pack — create Stripe Checkout session
     setPurchasing(true);
-    // Free unlock or stub for payment flow. Replace with Stripe/Paddle integration.
-    await supabase.from('flashcard_pack_ownership').insert({ user_id: userId, pack_id: pack.id, source: 'unlock' });
-    setOwned(true);
-    setPurchasing(false);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packId: pack.id,
+          priceId: pack.stripe_price_id,   // column you added to flashcard_packs
+          slug,
+        }),
+      });
+
+      if (!res.ok) {
+        const { error } = await res.json();
+        alert(error ?? 'Could not start checkout. Please try again.');
+        return;
+      }
+
+      const { url } = await res.json();
+      if (url) {
+        window.location.href = url; // redirect to Stripe-hosted checkout
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      alert('Something went wrong. Please try again.');
+    } finally {
+      setPurchasing(false);
+    }
   }
 
   function start(mode: StudyMode) {
@@ -65,6 +118,23 @@ export default function PackDetailPage() {
 
       {pack && (
         <div className="bp-anim-1">
+
+          {/* Post-purchase success banner */}
+          {justPurchased && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '12px 16px', borderRadius: 12, marginBottom: 20,
+              background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+              border: '1px solid #86efac', color: '#15803d',
+            }}>
+              <CheckCircle size={18} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>Pack unlocked!</div>
+                <div style={{ fontSize: 12, opacity: 0.85 }}>You now have full access to all {pack.card_count} cards.</div>
+              </div>
+            </div>
+          )}
+
           <span className="bp-cat-badge">{pack.category}</span>
           {pack.is_premium && (
             <span className="bp-cat-badge" style={{ marginLeft: 8, background: 'linear-gradient(135deg,#fef3c7,#fcd34d)', color: '#92400e' }}>
@@ -101,8 +171,17 @@ export default function PackDetailPage() {
                 <button className="fc-btn fc-btn-skip" onClick={() => router.push('/flashcards')} style={{ flex: 'none', padding: '10px 18px' }}>
                   Browse free packs
                 </button>
-                <button className="fc-btn fc-btn-flip" onClick={unlock} disabled={purchasing} style={{ flex: 'none', padding: '10px 22px' }}>
-                  {pack.price_cents > 0 ? `Buy · £${(pack.price_cents / 100).toFixed(2)}` : 'Unlock'}
+                <button
+                  className="fc-btn fc-btn-flip"
+                  onClick={unlock}
+                  disabled={purchasing}
+                  style={{ flex: 'none', padding: '10px 22px', opacity: purchasing ? 0.7 : 1 }}
+                >
+                  {purchasing
+                    ? 'Redirecting…'
+                    : pack.price_cents > 0
+                      ? `Buy · £${(pack.price_cents / 100).toFixed(2)}`
+                      : 'Unlock free'}
                 </button>
               </div>
               <p style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginTop: 14 }}>
@@ -110,22 +189,21 @@ export default function PackDetailPage() {
               </p>
             </div>
           ) : (
-            <>
-              <div className="fc-modes bp-anim-3">
-                {MODES.map((m) => (
-                  <button key={m.key} className="fc-mode" onClick={() => start(m.key)}>
-                    <span className="fc-mode-em">{m.em}</span>
-                    <div className="fc-mode-title">{m.title}</div>
-                    <div className="fc-mode-sub">{m.sub}</div>
-                  </button>
-                ))}
-              </div>
-            </>
+            <div className="fc-modes bp-anim-3">
+              {MODES.map((m) => (
+                <button key={m.key} className="fc-mode" onClick={() => start(m.key)}>
+                  <span className="fc-mode-em">{m.em}</span>
+                  <div className="fc-mode-title">{m.title}</div>
+                  <div className="fc-mode-sub">{m.sub}</div>
+                </button>
+              ))}
+            </div>
           )}
 
-          {/* Preview list */}
+          {/* Preview / card list */}
           <h3 style={{ fontFamily: "'Syne',sans-serif", fontSize: '1rem', fontWeight: 700, margin: '2rem 0 10px' }}>
-            {locked ? 'Preview' : 'Cards'} <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>({cards.length})</span>
+            {locked ? 'Preview' : 'Cards'}{' '}
+            <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>({cards.length})</span>
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {(locked ? cards.slice(0, 3) : cards).map((c, i) => (
@@ -135,10 +213,7 @@ export default function PackDetailPage() {
                 border: '1px solid hsl(var(--border))', fontSize: 13, lineHeight: 1.5,
                 display: 'flex', gap: 12, alignItems: 'center',
               }}>
-                <span style={{
-                  fontSize: 11, color: 'hsl(var(--muted-foreground))', minWidth: 24,
-                  fontFamily: "'Lora',serif",
-                }}>{i + 1}</span>
+                <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', minWidth: 24, fontFamily: "'Lora',serif" }}>{i + 1}</span>
                 <span style={{ flex: 1 }}>{c.front}</span>
                 <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>→</span>
                 <span style={{ flex: 1, color: 'hsl(var(--muted-foreground))' }}>{c.back}</span>
