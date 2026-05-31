@@ -16,10 +16,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.CheckoutSession;
+    const session = event.data.object as any;
     const { user_id, pack_id } = session.metadata!;
 
-    const supabase = createClient();
+    const supabase = await createClient();  // ← inside the function, with await
     await supabase.from('flashcard_pack_ownership').upsert(
       { user_id, pack_id, source: 'stripe', stripe_session_id: session.id },
       { onConflict: 'user_id,pack_id' }
