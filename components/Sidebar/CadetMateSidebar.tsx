@@ -7,6 +7,7 @@ import {
   BookOpen, Briefcase, FileText, Anchor, Lightbulb,
   ShoppingBag, ChevronLeft, Menu, LogOut,
   Lock, Sparkles, House, X, Compass, Settings,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumLockModal } from "../PremiumLockModal";
@@ -249,6 +250,7 @@ function SidebarContent({
         <NavItem icon={Sparkles}    label="Free Content" href="/free-content" isActive={isActive("/free-content")} isCollapsed={isCollapsed} navRef={navRef} />
 
         <SectionLabel isCollapsed={isCollapsed}>Resources</SectionLabel>
+        <NavItem icon={WalletCards}  label="Flashcards"        href="/flashcards"             isActive={isActive("/flashcards")}             locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={BookOpen}  label="Unit Modules"        href="/unit-modules"             isActive={isActive("/unit-modules")}             locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={Briefcase} label="Work Based Learning" href="/work-based-learning" isActive={isActive("/work-based-learning")} locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={FileText}  label="TRB"                 href="/trb"                 isActive={isActive("/trb")}                 locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />

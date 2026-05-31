@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   HelpCircle, Pin, ShipWheel, FileText, BookOpen,
   User, BarChart2, Sparkles, Anchor, MessageCircle, Calendar,
+  WalletCards,
 } from 'lucide-react'
 import AdminQuestionsTab      from '@/components/AdminQuestionsTab'
 import AdminNoticeboardTab    from '@/components/AdminNoticeboardTab'
@@ -15,6 +16,7 @@ import AdminUsersTab          from '@/components/AdminUsersTab'
 import AdminAnalyticsTab      from '@/components/AdminAnalyticsTab'
 import AdminSupportTab        from '@/components/AdminSupportTab'
 import AdminTRBTasksTab       from '@/components/AdminTRBTasksTab'
+import AdminFlashcardsTab     from '@/components/AdminFlashcardsTab'
 
 // ─── Tab groups ───────────────────────────────────────────────
 const TAB_GROUPS = [
@@ -40,6 +42,7 @@ const TAB_GROUPS = [
       { id: 'modules', label: 'Modules', icon: <BookOpen size={15} />, component: AdminModuleManagementTab },
       { id: 'trb', label: 'TRB Tasks', icon: <FileText size={15} />, component: AdminTRBTasksTab },
       { id: 'sea-survival', label: 'Sea Survival', icon: <Anchor size={15} />, component: AdminSeaSurvivalTab },
+      { id: 'flashcards', label: 'Flashcards', icon: <WalletCards size={15} />, component: AdminFlashcardsTab },
     ],
   },
 ]
