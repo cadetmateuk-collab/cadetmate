@@ -1,4 +1,6 @@
 'use client';
+import { NoCopy } from '@/components/NoCopy';
+
 /** Shared chrome styles for the user-facing flashcard pages.
  *  Mirrors the bp-* and trb-* aesthetic from the uploaded files. */
 export function StudyShell({ children }: { children: React.ReactNode }) {
@@ -9,7 +11,7 @@ export function StudyShell({ children }: { children: React.ReactNode }) {
         <div className="bp-dot-grid" aria-hidden="true" />
         <div className="bp-glow"     aria-hidden="true" />
         <div className="bp-noise"    aria-hidden="true" />
-        <div className="bp-content">{children}</div>
+        <NoCopy className="bp-content">{children}</NoCopy>
       </div>
     </>
   );
@@ -63,24 +65,77 @@ const css = `
 .fc-sl { font-size:10px; color:hsl(var(--muted-foreground)); margin-top:3px; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
 
 /* 3-D flip card */
-.fc-scene { width:100%; height:280px; perspective:1400px; perspective-origin:50% 38%; margin-bottom:1.25rem; }
+.fc-scene { width:100%; perspective:1400px; perspective-origin:50% 38%; margin-bottom:1.25rem; }
 .fc-scene.clickable { cursor:pointer; }
-.fc-card { position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform .62s cubic-bezier(.4,0,.2,1); border-radius:20px; will-change:transform; }
+.fc-card {
+  position:relative; width:100%; transform-style:preserve-3d;
+  transition:transform .62s cubic-bezier(.4,0,.2,1); border-radius:20px; will-change:transform;
+  display:grid;
+}
 .fc-card.is-flipped { transform:rotateY(180deg); }
 .fc-card.is-entering { animation:fc-in .36s cubic-bezier(.4,0,.2,1) both; }
-.fc-face { position:absolute; inset:0; border-radius:20px; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:34px 36px; text-align:center; overflow:hidden; }
-.fc-front { background:hsl(var(--card, var(--background))); border:1px solid hsl(var(--border)); box-shadow:0 4px 8px hsl(var(--foreground)/.04), 0 12px 32px hsl(var(--foreground)/.08), 0 28px 56px hsl(var(--foreground)/.05); }
-.fc-front::after { content:''; position:absolute; inset:0; border-radius:20px; pointer-events:none; background-image:repeating-linear-gradient(0deg, transparent, transparent 31px, hsl(var(--primary)/.06) 31px, hsl(var(--primary)/.06) 32px); }
-.fc-back { background:hsl(var(--foreground)); border:1px solid hsl(var(--foreground)/.12); box-shadow:0 4px 8px rgba(0,0,0,.18), 0 12px 32px rgba(0,0,0,.24), 0 28px 56px rgba(0,0,0,.18); transform:rotateY(180deg); color:hsl(var(--background)); }
-.fc-back::after { content:''; position:absolute; inset:0; border-radius:20px; pointer-events:none; background:radial-gradient(circle at 25% 35%, hsl(var(--primary)/.18) 0%, transparent 55%), radial-gradient(circle at 74% 70%, hsl(var(--primary)/.1) 0%, transparent 50%); }
-.fc-cat { position:absolute; top:15px; left:18px; z-index:1; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 10px; border-radius:99px; }
-.fc-front .fc-cat { color:hsl(var(--primary)); background:hsl(var(--primary)/.1); }
-.fc-back .fc-cat { color:hsl(var(--background)/.5); background:hsl(var(--background)/.12); }
-.fc-corner { position:absolute; bottom:13px; right:16px; z-index:1; font-size:10.5px; font-style:italic; color:hsl(var(--background)/.4); }
-.fc-q { font-family:'Lora',serif; font-size:19px; font-weight:600; line-height:1.5; color:hsl(var(--foreground)); position:relative; z-index:1; }
-.fc-a { font-family:'Lora',serif; font-size:15px; font-weight:400; line-height:1.8; color:hsl(var(--background)); position:relative; z-index:1; }
-.fc-hint { position:absolute; bottom:32px; font-size:11.5px; color:hsl(var(--muted-foreground)); font-style:italic; z-index:1; }
-.fc-cue { position:absolute; bottom:13px; left:50%; transform:translateX(-50%); font-size:11px; color:hsl(var(--muted-foreground)/.6); white-space:nowrap; z-index:1; pointer-events:none; }
+.fc-face {
+  grid-area:1 / 1;
+  position:relative;
+  border-radius:20px;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  display:flex; flex-direction:column; align-items:stretch;
+  padding:16px 24px 14px; text-align:center;
+  background:#ffffff;
+  border:1px solid hsl(var(--border));
+  box-shadow:0 4px 8px hsl(var(--foreground)/.04), 0 12px 32px hsl(var(--foreground)/.08);
+  min-height:260px;
+}
+.fc-front::after {
+  content:''; position:absolute; inset:0; border-radius:20px; pointer-events:none;
+  background-image:repeating-linear-gradient(0deg, transparent, transparent 31px, hsl(var(--primary)/.04) 31px, hsl(var(--primary)/.04) 32px);
+}
+.fc-back {
+  transform:rotateY(180deg);
+  background:#ffffff;
+}
+.fc-back::after {
+  content:''; position:absolute; inset:0; border-radius:20px; pointer-events:none;
+  background:radial-gradient(circle at 25% 35%, hsl(var(--primary)/.06) 0%, transparent 55%);
+}
+.fc-cat {
+  align-self:flex-start;
+  margin-bottom:10px;
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 10px; border-radius:99px;
+  color:hsl(var(--primary)); background:hsl(var(--primary)/.1);
+  position:relative; z-index:1;
+}
+.fc-body {
+  flex:1; width:100%; min-height:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  overflow-y:auto; padding:4px 0 8px;
+  position:relative; z-index:1;
+}
+.fc-footer {
+  flex-shrink:0; width:100%; padding-top:10px;
+  position:relative; z-index:1;
+}
+.fc-img { max-height:110px; max-width:100%; object-fit:contain; margin-bottom:12px; border-radius:8px; }
+.fc-corner { font-size:10.5px; font-style:italic; color:hsl(var(--muted-foreground)/.65); text-align:right; }
+.fc-q { font-family:'Lora',serif; font-size:19px; font-weight:600; line-height:1.5; color:hsl(var(--foreground)); }
+.fc-a { font-family:'Lora',serif; font-size:15px; font-weight:400; line-height:1.65; color:hsl(var(--foreground)); }
+.fc-text { width:100%; text-align:left; }
+.fc-text.fc-q, .fc-text.fc-a { text-align:center; }
+.fc-text.fc-a { text-align:left; }
+.fc-text p { margin:0 0 .45em; }
+.fc-text p:last-child { margin-bottom:0; }
+.fc-list {
+  margin:0; padding-left:1.2em; text-align:left; width:100%;
+  list-style:disc;
+}
+.fc-list li { margin-bottom:.35em; line-height:1.55; color:inherit; }
+.fc-list li:last-child { margin-bottom:0; }
+.fc-hint {
+  margin-top:10px; font-size:11.5px; color:hsl(var(--muted-foreground));
+  font-style:italic; width:100%;
+}
+.fc-cue { font-size:11px; color:hsl(var(--muted-foreground)/.6); text-align:center; white-space:nowrap; pointer-events:none; }
 
 /* Buttons */
 .fc-actions { display:flex; gap:10px; margin-top:12px; }
@@ -135,11 +190,22 @@ const css = `
 .fc-celebrate .em { font-size:48px; }
 .fc-celebrate h2 { font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:800; margin:0; }
 .fc-celebrate p { color:hsl(var(--muted-foreground)); font-size:.95rem; max-width:340px; line-height:1.6; }
+.fc-xp-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 14px; border-radius:999px;
+  background:hsl(var(--primary)/.1); color:hsl(var(--primary));
+  font-size:13px; font-weight:700;
+}
+.fc-xp-pop {
+  font-size:12px; font-weight:700; color:hsl(var(--primary));
+  text-align:center; margin-top:-6px; margin-bottom:10px;
+  animation:fadeUp .3s ease both;
+}
 
 @media (max-width:580px) {
   .bp-content { padding:1rem 1.1rem 4rem; }
   .bp-title { font-size:1.7rem; }
-  .fc-scene { height:240px; }
+  .fc-face { min-height:220px; padding:14px 18px 12px; }
   .fc-stats { grid-template-columns:repeat(2,1fr); }
 }
 `;

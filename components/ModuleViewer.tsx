@@ -1,18 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Menu, X, ChevronDown } from "lucide-react";
-
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < breakpoint);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, [breakpoint]);
-  return isMobile;
-}
 import { createClient } from "@/lib/supabase/client";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1212,7 +1202,12 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: "0 0",
           }}>
-            <div ref={contentDivRef} style={{
+            <div
+              ref={contentDivRef}
+              className="no-copy"
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              style={{
               padding: isMobile ? "24px 20px 0" : "44px 64px",
               maxWidth: 980, margin: "0 auto", width: "100%",
               position: "relative", zIndex: 1, boxSizing: "border-box",

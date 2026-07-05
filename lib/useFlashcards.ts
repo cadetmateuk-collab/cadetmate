@@ -132,33 +132,61 @@ export async function bumpPackStats(userId: string, packId: string, deltaSec: nu
   }, { onConflict: 'user_id,pack_id' });
 }
 
-export async function addXP(userId: string, gained: number) {
+export async function addXP(
+  userId: string,
+  gained: number,
+  opts?: { reviews?: number; timeSec?: number },
+): Promise<{ xp: number; gained: number; rank: string; streak: number } | null> {
+  const reviews = opts?.reviews ?? 0;
+  const timeSec = opts?.timeSec ?? 0;
+  if (gained <= 0 && reviews <= 0 && timeSec <= 0) return null;
+
   const today = new Date().toISOString().slice(0, 10);
   const { data: cur } = await supabase.from('flashcard_user_xp').select('*').eq('user_id', userId).maybeSingle();
   const last = cur?.last_study_day ? new Date(cur.last_study_day) : null;
   const todayD = new Date(today);
   let streak = cur?.current_streak ?? 0;
-  if (!last) streak = 1;
-  else {
-    const diff = Math.round((todayD.getTime() - last.getTime()) / 86400000);
-    if (diff === 0) streak = streak || 1;
-    else if (diff === 1) streak += 1;
-    else streak = 1;
+  if (reviews > 0 || gained > 0) {
+    if (!last) streak = 1;
+    else {
+      const diff = Math.round((todayD.getTime() - last.getTime()) / 86400000);
+      if (diff === 0) streak = streak || 1;
+      else if (diff === 1) streak += 1;
+      else streak = 1;
+    }
   }
+
   const xp = (cur?.xp ?? 0) + gained;
   const rank = rankForXP(xp).current;
+  const totalTime = (cur?.total_time_sec ?? 0) + timeSec;
+
   await supabase.from('flashcard_user_xp').upsert({
-    user_id: userId, xp, rank,
+    user_id: userId,
+    xp,
+    rank,
     current_streak: streak,
     longest_streak: Math.max(cur?.longest_streak ?? 0, streak),
-    last_study_day: today,
-    total_time_sec: cur?.total_time_sec ?? 0,
+    last_study_day: reviews > 0 || gained > 0 ? today : cur?.last_study_day ?? today,
+    total_time_sec: totalTime,
   }, { onConflict: 'user_id' });
-  await supabase.from('flashcard_study_days').upsert({
-    user_id: userId, day: today,
-    xp_earned: ((cur as any)?.xp_today ?? 0) + gained,
-    reviews: 0,
-  }, { onConflict: 'user_id,day' });
+
+  if (gained > 0 || reviews > 0) {
+    const { data: dayRow } = await supabase
+      .from('flashcard_study_days')
+      .select('xp_earned, reviews')
+      .eq('user_id', userId)
+      .eq('day', today)
+      .maybeSingle();
+
+    await supabase.from('flashcard_study_days').upsert({
+      user_id: userId,
+      day: today,
+      xp_earned: (dayRow?.xp_earned ?? 0) + gained,
+      reviews: (dayRow?.reviews ?? 0) + reviews,
+    }, { onConflict: 'user_id,day' });
+  }
+
+  return { xp, gained, rank, streak };
 }
 
 export function usePackStats(userId: string | null, packId?: string) {
@@ -175,10 +203,11 @@ export function usePackStats(userId: string | null, packId?: string) {
 
 export function useUserXP(userId: string | null) {
   const [xp, setXP] = useState<UserXP | null>(null);
-  useEffect(() => {
-    if (!userId) return;
-    supabase.from('flashcard_user_xp').select('*').eq('user_id', userId).maybeSingle()
-      .then(({ data }) => setXP((data ?? null) as UserXP | null));
+  const refresh = useCallback(async () => {
+    if (!userId) { setXP(null); return; }
+    const { data } = await supabase.from('flashcard_user_xp').select('*').eq('user_id', userId).maybeSingle();
+    setXP((data ?? null) as UserXP | null);
   }, [userId]);
-  return xp;
+  useEffect(() => { refresh(); }, [refresh]);
+  return { xp, refresh };
 }

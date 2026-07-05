@@ -125,3 +125,20 @@ export function rankForXP(xp: number): { current: string; next: string | null; t
 export const XP_PER_CORRECT = 10;
 export const XP_BONUS_PERFECT = 50;
 export const XP_BONUS_STREAK = 5;
+
+export function computeCardXP(isCorrect: boolean, streakAfter: number): number {
+  if (!isCorrect) return 0;
+  let xp = XP_PER_CORRECT;
+  if (streakAfter > 0 && streakAfter % 3 === 0) xp += XP_BONUS_STREAK;
+  return xp;
+}
+
+export function computeSessionBonus(ok: number, total: number): number {
+  return ok === total && total > 0 ? XP_BONUS_PERFECT : 0;
+}
+
+export function computeBulkSessionXP(ok: number, total: number, streak: number): number {
+  return ok * XP_PER_CORRECT
+    + computeSessionBonus(ok, total)
+    + Math.floor(streak / 3) * XP_BONUS_STREAK;
+}

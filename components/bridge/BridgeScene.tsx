@@ -846,10 +846,9 @@ function BridgeObject({
 const worldPos = useMemo(() => {
   const tx = def.blenderPos[0] - CAMERA_BLENDER.back[0];
   const ty = 0;
-  const tz = 0; // ← start at zero so we can see it
-  console.log('Throttle Three.js position:', tx, ty, tz);
+  const tz = 0;
   return new THREE.Vector3(tx, ty, tz);
-}, []);
+}, [def.blenderPos]);
 
   const euler = useMemo(() => blenderRotToThree(...def.blenderRot), []);
   const [sx, sy, sz] = def.blenderScale;

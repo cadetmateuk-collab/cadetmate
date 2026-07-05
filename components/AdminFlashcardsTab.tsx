@@ -527,7 +527,7 @@ function CardRow({ card, index, onChange, onDelete }: {
       </div>
       <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div><div style={lbl}>Front</div><Textarea value={card.front} onChange={(v: string) => onChange({ ...card, front: v })} /></div>
-        <div><div style={lbl}>Back</div><Textarea value={card.back} onChange={(v: string) => onChange({ ...card, back: v })} /></div>
+        <div><div style={lbl}>Back</div><Textarea value={card.back} onChange={(v: string) => onChange({ ...card, back: v })} placeholder="Use - at the start of each line for bullet points" /></div>
         {open && (
           <>
             <div><div style={lbl}>Hint</div><Input value={card.hint ?? ''} onChange={(v: string) => onChange({ ...card, hint: v })} /></div>

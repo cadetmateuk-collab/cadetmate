@@ -14,7 +14,15 @@ async function getSessionUser(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
   const { data: { user } } = await anonClient.auth.getUser(token);
-  return user;
+  if (!user) return null;
+
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  return profile?.role === 'admin' ? user : null;
 }
 
 // ── POST — create ─────────────────────────────────────────────────────────────

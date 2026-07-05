@@ -2,7 +2,7 @@
 // User-facing flashcard library.
 // Drop in at app/flashcards/page.tsx
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, BookOpen, Crown, Layers } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StudyShell } from '@/components/StudyShell';
@@ -20,19 +20,19 @@ const diffColor: Record<string, string> = {
 
 export default function FlashcardLibraryPage() {
   const userId = useCurrentUser();
-  const xp = useUserXP(userId);
+  const { xp } = useUserXP(userId);
   const { packs, loading, error } = usePacks();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>('All');
   const [progressByPack, setProgressByPack] = useState<Record<string, { seen: number; mastered: number; total: number }>>({});
 
-  useMemo(() => {
+  useEffect(() => {
     if (!userId || packs.length === 0) return;
     supabase.from('flashcard_pack_stats').select('pack_id, cards_seen, cards_mastered')
       .eq('user_id', userId)
       .then(({ data }) => {
-        const map: Record<string, any> = {};
-        (data ?? []).forEach((r: any) => {
+        const map: Record<string, { seen: number; mastered: number; total: number }> = {};
+        (data ?? []).forEach((r) => {
           const p = packs.find((x) => x.id === r.pack_id);
           map[r.pack_id] = { seen: r.cards_seen, mastered: r.cards_mastered, total: p?.card_count ?? 1 };
         });

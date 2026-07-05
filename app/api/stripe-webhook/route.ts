@@ -1,6 +1,6 @@
-import Stripe from 'stripe';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as any;
     const { user_id, pack_id } = session.metadata!;
 
-    const supabase = await createClient();  // ← inside the function, with await
+    const supabase = supabaseAdmin;
     await supabase.from('flashcard_pack_ownership').upsert(
       { user_id, pack_id, source: 'stripe', stripe_session_id: session.id },
       { onConflict: 'user_id,pack_id' }
@@ -28,5 +28,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ received: true });
 }
-
-export const config = { api: { bodyParser: false } }; // raw body needed

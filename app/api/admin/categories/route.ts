@@ -1,14 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdminApi } from '@/lib/auth/require-admin-api';
 
-// Create admin client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// GET - Fetch all categories
 export async function GET() {
+  const auth = await requireAdminApi();
+  if (auth.error) return auth.error;
+
   try {
     const { data, error } = await supabaseAdmin
       .from('categories')
@@ -18,25 +15,21 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-// POST - Add new category
 export async function POST(request: Request) {
+  const auth = await requireAdminApi();
+  if (auth.error) return auth.error;
+
   try {
     const { name, description } = await request.json();
 
     if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Category name is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
@@ -47,25 +40,21 @@ export async function POST(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data: data[0] });
-  } catch (error: any) {
-    console.error('Error adding category:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-// PUT - Update category
 export async function PUT(request: Request) {
+  const auth = await requireAdminApi();
+  if (auth.error) return auth.error;
+
   try {
     const { oldName, newName, description } = await request.json();
 
     if (!oldName || !newName || !newName.trim()) {
-      return NextResponse.json(
-        { error: 'Old name and new name are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Old name and new name are required' }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
@@ -77,26 +66,22 @@ export async function PUT(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data: data[0] });
-  } catch (error: any) {
-    console.error('Error updating category:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-// DELETE - Delete category
 export async function DELETE(request: Request) {
+  const auth = await requireAdminApi();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const name = searchParams.get('name');
 
     if (!name) {
-      return NextResponse.json(
-        { error: 'Category name is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
 
     const { error } = await supabaseAdmin
@@ -107,11 +92,8 @@ export async function DELETE(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error deleting category:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import type { TaskStep } from "../data/trbTasks";
 import { ImageIcon, Lightbulb } from "lucide-react";
+import { NoCopy } from "@/components/NoCopy";
 
 interface TaskDetailsProps {
   steps: TaskStep[];
@@ -8,7 +9,7 @@ interface TaskDetailsProps {
 
 const TaskDetails = ({ steps, guidance }: TaskDetailsProps) => {
   return (
-    <div className="px-5 pb-5 pt-1">
+    <NoCopy className="px-5 pb-5 pt-1">
       <div className="border-t border-border pt-5">
         {/* Guidance section */}
         {guidance && (
@@ -54,7 +55,7 @@ const TaskDetails = ({ steps, guidance }: TaskDetailsProps) => {
           ))}
         </ol>
       </div>
-    </div>
+    </NoCopy>
   );
 };
 

@@ -132,7 +132,11 @@ export default function QuestionOfDay() {
   const answered = answerState !== null
 
   return (
-    <div className="rounded-xl border border-border bg-muted/20 px-3.5 py-3">
+    <div
+      className="no-copy rounded-xl border border-border bg-muted/20 px-3.5 py-3"
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+    >
       <p className="text-xs font-medium leading-snug mb-3">{question.question}</p>
 
       <div className="space-y-1.5">

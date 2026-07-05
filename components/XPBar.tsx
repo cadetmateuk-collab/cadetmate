@@ -1,9 +1,10 @@
 'use client';
+import { memo } from 'react';
 import { rankForXP } from '../lib/algorithms';
 import { Flame } from 'lucide-react';
 import type { UserXP } from '../lib/types';
 
-export function XPBar({ xp }: { xp: UserXP | null }) {
+export const XPBar = memo(function XPBar({ xp }: { xp: UserXP | null }) {
   const total = xp?.xp ?? 0;
   const r = rankForXP(total);
   return (
@@ -51,4 +52,4 @@ export function XPBar({ xp }: { xp: UserXP | null }) {
       </div>
     </div>
   );
-}
+});

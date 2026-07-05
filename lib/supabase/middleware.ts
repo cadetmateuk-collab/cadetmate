@@ -31,7 +31,7 @@ export async function updateSession(request: NextRequest) {
   // Protect /admin routes — redirect to login if not authenticated
   if (!user && request.nextUrl.pathname.startsWith('/admin')) {
     const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = '/login'
+    loginUrl.pathname = '/auth'
     loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
   }

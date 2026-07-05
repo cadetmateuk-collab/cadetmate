@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { NoCopy } from '@/components/NoCopy';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 
@@ -237,7 +238,7 @@ export default async function SeaSurvivalArticlePage({
         <div className="bp-glow"     aria-hidden="true" />
         <div className="bp-noise"    aria-hidden="true" />
 
-        <div className="bp-content">
+        <NoCopy className="bp-content">
 
           <div className="bp-anim-1">
             <Link href="/sea-survival" className="bp-back">
@@ -278,7 +279,7 @@ export default async function SeaSurvivalArticlePage({
             ) : <span />}
           </div>
 
-        </div>
+        </NoCopy>
       </div>
     </>
   );

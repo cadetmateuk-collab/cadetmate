@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { notFound } from 'next/navigation';
 import { Calendar, Clock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { NoCopy } from '@/components/NoCopy';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -327,7 +328,7 @@ export default async function BlogPostPage({
         <div className="bp-glow" aria-hidden="true" />
         <div className="bp-noise" aria-hidden="true" />
 
-        <div className="bp-content">
+        <NoCopy className="bp-content">
 
           {/* Title */}
           <h1 className="bp-title bp-anim-2">{post.title}</h1>
@@ -375,7 +376,7 @@ export default async function BlogPostPage({
             )}
           </div>
 
-        </div>
+        </NoCopy>
       </div>
     </>
   );
