@@ -18,6 +18,8 @@
   "include": ["server.ts", "lib/**/*"],
   "exclude": [
     "lib/useSessionReporter.tsx",
-    "lib/hooks/useActivityTracker.ts"
+    "lib/hooks/useActivityTracker.ts",
+    "lib/hooks/useIsMobile.ts",
+    "lib/formatCardText.tsx"
   ]
 }
