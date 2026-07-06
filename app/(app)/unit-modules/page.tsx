@@ -557,7 +557,7 @@ export default function ModulesPage({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] pb-16 lg:pb-0" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] pb-16 lg:pb-0 font-sans">
       <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
       {/* ── Header ── */}
@@ -700,7 +700,7 @@ export default function ModulesPage({
             {filtered.length === 0 ? (
               <div className="text-center py-20">
                 <div className="text-5xl mb-4">🔍</div>
-                <h3 className="text-[18px] font-bold text-[hsl(var(--foreground))] mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>No modules found</h3>
+                <h3 className="text-[18px] font-bold text-[hsl(var(--foreground))] mb-2">No modules found</h3>
                 <p className="text-[14px] text-[hsl(var(--muted-foreground))]">Try adjusting your search or filters</p>
                 <button onClick={() => { setSearch(""); setActiveCategory("All"); setFilter("all"); }}
                   className="mt-4 px-4 py-2 rounded-xl text-[13px] font-medium text-[hsl(var(--primary))] border border-[hsl(var(--primary)/0.3)] hover:bg-[hsl(var(--accent))] transition-all">
@@ -760,7 +760,7 @@ export default function ModulesPage({
               <div className="h-16 w-16 rounded-2xl bg-[hsl(var(--accent))] border border-[hsl(var(--primary)/0.2)] flex items-center justify-center mx-auto mb-4">
                 <Sparkles className="h-8 w-8 text-[hsl(var(--primary))]" />
               </div>
-              <h2 className="text-[22px] font-bold text-[hsl(var(--foreground))] mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>Go Premium</h2>
+              <h2 className="text-[22px] font-bold text-[hsl(var(--foreground))] mb-2">Go Premium</h2>
               <p className="text-[14px] text-[hsl(var(--muted-foreground))] leading-relaxed">
                 Unlock every module, quiz, and simulator on CadetMate and ace your OOW oral.
               </p>

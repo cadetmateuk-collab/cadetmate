@@ -106,7 +106,6 @@ export default function AdminPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(14px); }
@@ -125,7 +124,7 @@ export default function AdminPage() {
         .adm-page {
           min-height: 100dvh;
           background-color: hsl(var(--background));
-          font-family: 'DM Sans', sans-serif;
+          font-family: inherit;
           position: relative;
           overflow-x: clip; /* clip doesn't create a stacking context; hidden does */
         }
@@ -179,7 +178,6 @@ export default function AdminPage() {
         }
 
         .adm-brand-name {
-          font-family: 'Syne', sans-serif;
           font-size: 1rem;
           font-weight: 800;
           letter-spacing: -0.025em;

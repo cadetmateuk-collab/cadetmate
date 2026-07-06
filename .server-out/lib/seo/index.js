@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.buildNoIndexMetadata = exports.buildPageMetadata = exports.absoluteUrl = exports.DEFAULT_OG_IMAGE = exports.DEFAULT_KEYWORDS = exports.DEFAULT_DESCRIPTION = exports.SITE_NAME = exports.SITE_URL = void 0;
+var site_1 = require("./site");
+Object.defineProperty(exports, "SITE_URL", { enumerable: true, get: function () { return site_1.SITE_URL; } });
+Object.defineProperty(exports, "SITE_NAME", { enumerable: true, get: function () { return site_1.SITE_NAME; } });
+Object.defineProperty(exports, "DEFAULT_DESCRIPTION", { enumerable: true, get: function () { return site_1.DEFAULT_DESCRIPTION; } });
+Object.defineProperty(exports, "DEFAULT_KEYWORDS", { enumerable: true, get: function () { return site_1.DEFAULT_KEYWORDS; } });
+Object.defineProperty(exports, "DEFAULT_OG_IMAGE", { enumerable: true, get: function () { return site_1.DEFAULT_OG_IMAGE; } });
+Object.defineProperty(exports, "absoluteUrl", { enumerable: true, get: function () { return site_1.absoluteUrl; } });
+var metadata_1 = require("./metadata");
+Object.defineProperty(exports, "buildPageMetadata", { enumerable: true, get: function () { return metadata_1.buildPageMetadata; } });
+Object.defineProperty(exports, "buildNoIndexMetadata", { enumerable: true, get: function () { return metadata_1.buildNoIndexMetadata; } });

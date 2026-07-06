@@ -19,7 +19,7 @@ export const XPBar = memo(function XPBar({ xp }: { xp: UserXP | null }) {
         background: 'hsl(var(--primary) / 0.12)',
         color: 'hsl(var(--primary))',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Syne', sans-serif", fontWeight: 800,
+        fontWeight: 800,
       }}>{r.current[0]}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{

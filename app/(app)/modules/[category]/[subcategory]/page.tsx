@@ -2,12 +2,38 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import ModuleViewer from '@/components/ModuleViewer'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 interface PageProps {
   params: Promise<{
     category: string
     subcategory: string
   }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { category, subcategory } = await params
+  const slug = `${category.toLowerCase()}/${subcategory.toLowerCase()}`
+
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+
+  const { data: moduleData } = await supabase
+    .from('modules')
+    .select('title, description, category, subcategory')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (!moduleData) return {}
+
+  return buildPageMetadata({
+    title: moduleData.title,
+    description: moduleData.description || `${moduleData.category} training module for deck cadets.`,
+    path: `/modules/${category}/${subcategory}`,
+  })
 }
 
 export default async function ModulePage({ params }: PageProps) {

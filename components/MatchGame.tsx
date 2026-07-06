@@ -72,7 +72,7 @@ export function MatchGame({ cards, onComplete }: {
                           isWrong  ? 'hsl(var(--destructive) / 0.08)' :
                           'hsl(var(--card, var(--background)) / 0.9)',
               color: 'hsl(var(--foreground))',
-              fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: 1.4,
+              fontSize: 13, lineHeight: 1.4,
               cursor: isMatched ? 'default' : 'pointer',
               opacity: isMatched ? 0.45 : 1,
               transition: 'all .15s ease', textAlign: 'center',

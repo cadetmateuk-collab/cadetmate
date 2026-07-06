@@ -1,24 +1,25 @@
-// app/(public)/layout.tsx
-import type { Metadata } from 'next'
+import type { Metadata } from 'next';
+import { DEFAULT_KEYWORDS, SITE_URL, DEFAULT_OG_IMAGE, SITE_NAME, DEFAULT_DESCRIPTION } from '@/lib/seo/site';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cadetmate.com'),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'CadetMate',
-    template: '%s | CadetMate',
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: 'The training platform built for UK deck cadets. Interactive modules, COLREGS, watchkeeping, STCW revision and more.',
-  keywords: ['deck cadet training UK', 'maritime cadet app', 'STCW revision', 'COLREGS training', 'OOW cadet', 'nautical science'],
+  description: DEFAULT_DESCRIPTION,
+  keywords: [...DEFAULT_KEYWORDS],
   openGraph: {
-    siteName: 'CadetMate',
+    siteName: SITE_NAME,
     type: 'website',
-    images: [{ url: '/images/CadetMateLogoBlueBGQWhiteFG.svg', alt: 'CadetMate' }],
+    locale: 'en_GB',
+    images: [{ url: DEFAULT_OG_IMAGE, alt: SITE_NAME }],
   },
   twitter: {
     card: 'summary_large_image',
   },
-}
+};
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return <>{children}</>;
 }

@@ -1,29 +1,37 @@
-import type { Metadata } from "next";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Bricolage_Grotesque } from "next/font/google";
-import "./globals.css";
-import { ActivityTrackerProvider } from "@/components/ActivityTrackerProvider";
-import SupportWidget from '@/components/SupportWidget'
-
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-bricolage",
-});
+import type { Metadata } from 'next';
+import { ThemeProvider } from '@/components/theme-provider';
+import { manrope } from '@/lib/fonts';
+import './globals.css';
+import { ActivityTrackerProvider } from '@/components/ActivityTrackerProvider';
+import SupportWidget from '@/components/SupportWidget';
+import { SITE_NAME, DEFAULT_DESCRIPTION, DEFAULT_OG_IMAGE, SITE_URL } from '@/lib/seo/site';
 
 export const metadata: Metadata = {
-  title: "CadetMate - Coming Soon",
-  description: "All-in-One Platform for UK Deck Cadets",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    siteName: SITE_NAME,
+    type: 'website',
+    locale: 'en_GB',
+    images: [{ url: DEFAULT_OG_IMAGE, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
-}) { 
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={bricolage.className}>
+    <html lang="en" suppressHydrationWarning className={manrope.variable}>
+      <body className={manrope.className}>
         <SupportWidget />
         <ThemeProvider
           attribute="class"

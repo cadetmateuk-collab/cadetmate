@@ -105,7 +105,7 @@ const TICKS=(()=>{
     out.push(<line key={`t${d}`} x1={CX+OUTER_R*cos} y1={CY+OUTER_R*sin} x2={CX+(OUTER_R-len)*cos} y2={CY+(OUTER_R-len)*sin} stroke="currentColor" strokeWidth={sw} opacity={op}/>);
     if(d%10===0){
       const lr=OUTER_R+13, lx=CX+lr*cos, ly=CY+lr*sin;
-      out.push(<text key={`l${d}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize={9} fontFamily="'Share Tech Mono',monospace" fill="currentColor" opacity={0.85} transform={`rotate(${d},${lx},${ly})`}>{d}</text>);
+      out.push(<text key={`l${d}`} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize={9} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="currentColor" opacity={0.85} transform={`rotate(${d},${lx},${ly})`}>{d}</text>);
     }
   }
   return out;
@@ -118,7 +118,7 @@ const SCALE=(()=>{
     const x=SX+i*step;
     out.push(
       <line key={`mj${i}`} x1={x} y1={SY-5} x2={x} y2={SY+3} stroke="currentColor" strokeWidth={0.8} opacity={0.7}/>,
-      <text key={`ml${i}`} x={x} y={SY-7} textAnchor="middle" fontSize={6.5} fontFamily="'Share Tech Mono',monospace" fill="currentColor" opacity={0.75}>{i}</text>
+      <text key={`ml${i}`} x={x} y={SY-7} textAnchor="middle" fontSize={6.5} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="currentColor" opacity={0.75}>{i}</text>
     );
     if(i<RANGE_UNITS)for(let j=1;j<=4;j++){const sx=x+j*step/5;out.push(<line key={`mn${i}${j}`} x1={sx} y1={SY-(j===2||j===3?2:4)} x2={sx} y2={SY+2} stroke="currentColor" strokeWidth={0.4} opacity={0.4}/>);}
   }
@@ -184,7 +184,7 @@ function RulerSVG({inst,selected,zoom}:{inst:RulerObj;selected:boolean;zoom:numb
     const mid=Math.round(Math.abs(t))%10===0;
     const th=maj?RULER_H*0.55:mid?RULER_H*0.38:RULER_H*0.2;
     ticks.push(<line key={t} x1={t} y1={0} x2={t} y2={-th} stroke="rgba(30,80,180,0.5)" strokeWidth={maj?0.8:0.4}/>);
-    if(maj&&Math.abs(t)>0)ticks.push(<text key={`lt${t}`} x={t} y={-th-2} textAnchor="middle" fontSize={3.5} fontFamily="'Share Tech Mono',monospace" fill="rgba(30,80,180,0.55)">{Math.abs(Math.round(t/10))}</text>);
+    if(maj&&Math.abs(t)>0)ticks.push(<text key={`lt${t}`} x={t} y={-th-2} textAnchor="middle" fontSize={3.5} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="rgba(30,80,180,0.55)">{Math.abs(Math.round(t/10))}</text>);
   }
 
   return(
@@ -246,7 +246,7 @@ function ProtractorSVG({inst,selected,zoom}:{inst:ProtractorObj;selected:boolean
     ticks.push(<line key={a} x1={inst.x+r1*Math.cos(rad)} y1={inst.y+r1*Math.sin(rad)} x2={inst.x+r2*Math.cos(rad)} y2={inst.y+r2*Math.sin(rad)} stroke="rgba(30,80,180,0.5)" strokeWidth={maj?0.8:0.4}/>);
     if(maj){
       const lr=inst.radius-17;
-      ticks.push(<text key={`la${a}`} x={inst.x+lr*Math.cos(rad)} y={inst.y+lr*Math.sin(rad)} textAnchor="middle" dominantBaseline="middle" fontSize={5} fontFamily="'Share Tech Mono',monospace" fill="rgba(30,80,180,0.65)" transform={`rotate(${inst.angleDeg+a},${inst.x+lr*Math.cos(rad)},${inst.y+lr*Math.sin(rad)})`}>{a}</text>);
+      ticks.push(<text key={`la${a}`} x={inst.x+lr*Math.cos(rad)} y={inst.y+lr*Math.sin(rad)} textAnchor="middle" dominantBaseline="middle" fontSize={5} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="rgba(30,80,180,0.65)" transform={`rotate(${inst.angleDeg+a},${inst.x+lr*Math.cos(rad)},${inst.y+lr*Math.sin(rad)})`}>{a}</text>);
     }
   }
 
@@ -574,7 +574,7 @@ export default function RadarPlottingSheet(){
   const selInst=instruments.find(i=>i.id===selectedInstr);
 
   return(
-    <div style={{display:"flex",height:"100vh",background:"hsl(var(--background))",color:"hsl(var(--foreground))",overflow:"hidden",fontFamily:"var(--font-dm-sans,system-ui,sans-serif)",userSelect:"none"}}>
+    <div style={{display:"flex",height:"100vh",background:"hsl(var(--background))",color:"hsl(var(--foreground))",overflow:"hidden",fontFamily:"var(--font-manrope,system-ui,sans-serif)",userSelect:"none"}}>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
 
         {/* Top bar */}
@@ -601,10 +601,10 @@ export default function RadarPlottingSheet(){
           <StItem label="Brg" value={statusBrg} accent/>
           <StDiv/>
           <StItem label="Rng" value={statusRng}/>
-          {statusExtra&&<><StDiv/><span style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"'Share Tech Mono',monospace",paddingLeft:12}}>{statusExtra}</span></>}
-          {snapPt&&<><StDiv/><span style={{fontSize:10,color:"#2966F4",fontFamily:"'Share Tech Mono',monospace",paddingLeft:12}}>⊙ snap</span></>}
+          {statusExtra&&<><StDiv/><span style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"var(--font-manrope),system-ui,sans-serif",paddingLeft:12}}>{statusExtra}</span></>}
+          {snapPt&&<><StDiv/><span style={{fontSize:10,color:"#2966F4",fontFamily:"var(--font-manrope),system-ui,sans-serif",paddingLeft:12}}>⊙ snap</span></>}
           <div style={{flex:1}}/>
-          <span style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"'Share Tech Mono',monospace",paddingRight:14}}>P pencil · L line · E erase · S select · Del remove · Esc cancel</span>
+          <span style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"var(--font-manrope),system-ui,sans-serif",paddingRight:14}}>P pencil · L line · E erase · S select · Del remove · Esc cancel</span>
         </div>
 
         {/* Viewport */}
@@ -621,17 +621,17 @@ export default function RadarPlottingSheet(){
               {/* ── Sheet — pointerEvents none so instruments/draws capture first ── */}
               <g pointerEvents="none" style={{userSelect:"none"} as React.CSSProperties}>
                 <rect x={0} y={0} width={SHEET_W} height={SHEET_H} rx={2} fill="none" stroke="hsl(var(--border))" strokeWidth={1/zoom}/>
-                <text x={18} y={22} fontSize={7} fontFamily="'Share Tech Mono',monospace" fill="hsl(var(--foreground))">CADETMATE</text>
-                <text x={280} y={22} textAnchor="middle" fontSize={7.5} fontWeight={700} fontFamily="'Share Tech Mono',monospace" fill="hsl(var(--foreground))">WORKSHEET</text>
-                <text x={280} y={54} textAnchor="middle" fontSize={18} fontFamily="'Share Tech Mono',serif" letterSpacing="0.05em" fill="hsl(var(--foreground))">RADAR PLOTTING SHEET</text>
+                <text x={18} y={22} fontSize={7} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="hsl(var(--foreground))">CADETMATE</text>
+                <text x={280} y={22} textAnchor="middle" fontSize={7.5} fontWeight={700} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="hsl(var(--foreground))">WORKSHEET</text>
+                <text x={280} y={54} textAnchor="middle" fontSize={18} fontFamily="var(--font-manrope),system-ui,sans-serif" letterSpacing="0.05em" fill="hsl(var(--foreground))">RADAR PLOTTING SHEET</text>
                 <circle cx={CX} cy={CY} r={OUTER_R} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.5}/>
                 <circle cx={CX} cy={CY} r={232} fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.5} opacity={0.35}/>
                 <line x1={CX} y1={CY-8} x2={CX} y2={CY+8} stroke="hsl(var(--muted-foreground))" strokeWidth={0.8}/>
                 <line x1={CX-8} y1={CY} x2={CX+8} y2={CY} stroke="hsl(var(--muted-foreground))" strokeWidth={0.8}/>
                 {TICKS}
-                <text x={18} y={600} fontSize={6.5} fontFamily="'Share Tech Mono',monospace" fill="hsl(var(--foreground))">Range Scale</text>
+                <text x={18} y={600} fontSize={6.5} fontFamily="var(--font-manrope),system-ui,sans-serif" fill="hsl(var(--foreground))">Range Scale</text>
                 {SCALE}
-                <text x={18} y={613} fontSize={6.5} fontStyle="italic" fontFamily="'Share Tech Mono',monospace" fill="hsl(var(--muted-foreground))">(This is not a metric scale)</text>
+                <text x={18} y={613} fontSize={6.5} fontStyle="italic" fontFamily="var(--font-manrope),system-ui,sans-serif" fill="hsl(var(--muted-foreground))">(This is not a metric scale)</text>
               </g>
 
               {/* ── Instruments ── */}
@@ -709,14 +709,14 @@ export default function RadarPlottingSheet(){
               <NudgeBtn onClick={()=>nudgeAngle(-5)}>−5°</NudgeBtn>
               <NudgeBtn onClick={()=>nudgeAngle(5)}>+5°</NudgeBtn>
             </div>
-            <span style={{fontSize:9,fontFamily:"'Share Tech Mono',monospace",color:"hsl(var(--foreground))",minWidth:32,textAlign:"center"}}>{angle}°</span>
+            <span style={{fontSize:9,fontFamily:"var(--font-manrope),system-ui,sans-serif",color:"hsl(var(--foreground))",minWidth:32,textAlign:"center"}}>{angle}°</span>
             {/* Size */}
             <div style={{fontSize:8,color:"hsl(var(--muted-foreground))",fontWeight:500,marginTop:2}}>{selInst.kind==="ruler"?"Length":"Radius"}</div>
             <div style={{display:"flex",gap:2,alignItems:"center"}}>
               <NudgeBtn onClick={()=>nudgeSize(-20)}>−20</NudgeBtn>
               <NudgeBtn onClick={()=>nudgeSize(20)}>+20</NudgeBtn>
             </div>
-            <span style={{fontSize:9,fontFamily:"'Share Tech Mono',monospace",color:"hsl(var(--foreground))",minWidth:32,textAlign:"center"}}>{size}</span>
+            <span style={{fontSize:9,fontFamily:"var(--font-manrope),system-ui,sans-serif",color:"hsl(var(--foreground))",minWidth:32,textAlign:"center"}}>{size}</span>
             {/* Remove */}
             <button onClick={()=>removeInstr(selInst.id)} title="Remove (Del)" style={{width:34,height:28,borderRadius:6,border:"none",display:"flex",alignItems:"center",justifyContent:"center",background:"transparent",color:"hsl(var(--destructive))",cursor:"pointer",marginTop:2}}><Trash2 size={12}/></button>
           </>);
@@ -746,7 +746,6 @@ export default function RadarPlottingSheet(){
         <button onClick={clearAll} title="Clear all drawings" style={{width:34,height:34,borderRadius:8,border:"none",display:"flex",alignItems:"center",justifyContent:"center",background:"transparent",color:"hsl(var(--destructive))",cursor:"pointer"}}><Trash2 size={14}/></button>
       </div>
 
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&display=swap');`}</style>
     </div>
   );
 }
@@ -754,7 +753,7 @@ export default function RadarPlottingSheet(){
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
 function NudgeBtn({onClick,children}:{onClick:()=>void;children:React.ReactNode}){
-  return <button onClick={onClick} style={{height:22,padding:"0 5px",borderRadius:5,border:"0.5px solid hsl(var(--border))",fontSize:9,fontFamily:"'Share Tech Mono',monospace",background:"transparent",color:"hsl(var(--foreground))",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{children}</button>;
+  return <button onClick={onClick} style={{height:22,padding:"0 5px",borderRadius:5,border:"0.5px solid hsl(var(--border))",fontSize:9,fontFamily:"var(--font-manrope),system-ui,sans-serif",background:"transparent",color:"hsl(var(--foreground))",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{children}</button>;
 }
 function TopBtn({onClick,title,children}:{onClick:()=>void;title:string;children:React.ReactNode}){
   return <button onClick={onClick} title={title} style={{width:28,height:28,borderRadius:7,border:"none",display:"flex",alignItems:"center",justifyContent:"center",background:"transparent",color:"#fff",cursor:"pointer"}}>{children}</button>;
@@ -763,8 +762,8 @@ function FbDiv(){return <div style={{width:20,height:1,background:"hsl(var(--bor
 function StItem({label,value,accent=false}:{label:string;value:string;accent?:boolean}){
   return(
     <div style={{display:"flex",alignItems:"center",gap:4,padding:"0 12px",height:"100%"}}>
-      <span style={{fontSize:9,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:"'Share Tech Mono',monospace"}}>{label}</span>
-      <span style={{fontSize:11,fontWeight:700,fontFamily:"'Share Tech Mono',monospace",color:accent?"hsl(var(--primary))":"hsl(var(--foreground))"}}>{value}</span>
+      <span style={{fontSize:9,color:"hsl(var(--muted-foreground))",textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:"var(--font-manrope),system-ui,sans-serif"}}>{label}</span>
+      <span style={{fontSize:11,fontWeight:700,fontFamily:"var(--font-manrope),system-ui,sans-serif",color:accent?"hsl(var(--primary))":"hsl(var(--foreground))"}}>{value}</span>
     </div>
   );
 }

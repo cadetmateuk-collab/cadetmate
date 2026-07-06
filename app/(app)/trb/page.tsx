@@ -36,7 +36,6 @@ const Index = () => {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(18px); }
@@ -59,7 +58,7 @@ const Index = () => {
         .trb-page {
           min-height: 100dvh;
           background-color: hsl(var(--background));
-          font-family: 'DM Sans', sans-serif;
+          font-family: inherit;
           position: relative;
           overflow-x: hidden;
         }
@@ -119,7 +118,6 @@ const Index = () => {
           animation: pulseRing 2s ease-out infinite;
         }
         .trb-title {
-          font-family: 'Syne', sans-serif;
           font-size: clamp(2.25rem, 5vw, 3.75rem);
           font-weight: 800;
           letter-spacing: -0.03em;

@@ -7,21 +7,16 @@ import {
 } from 'lucide-react'
 import PortClocks from '@/components/PortClocks'
 import QuestionOfDay from '@/components/QuestionOfDay'
+import { buildPageMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { absoluteUrl } from '@/lib/seo/site'
 
-export const metadata: Metadata = {
-  title: 'CadetMate | UK Deck Cadet Maritime Training Platform',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'UK Deck Cadet Maritime Training Platform',
   description:
     'The training platform built for UK deck cadets. Interactive modules, COLREGS, watchkeeping, STCW revision and more. Start free today.',
-  keywords: ['deck cadet training UK', 'maritime cadet app', 'STCW revision', 'COLREGS training', 'OOW cadet', 'nautical science'],
-  openGraph: {
-    title: 'CadetMate | UK Deck Cadet Maritime Training',
-    description: 'Interactive training modules for UK deck cadets. COLREGS, watchkeeping, signals and more.',
-    url: 'https://cadetmate.co.uk/home',
-    siteName: 'CadetMate',
-    images: [{ url: '/images/CadetMateLogoBlueBGQWhiteFG.svg', alt: 'CadetMate' }],
-    type: 'website',
-  },
-}
+  path: '/home',
+})
 
 const FEATURES = [
   { label: 'Interactive Modules', icon: BookOpen,      description: 'Hands-on lessons built for cadets' },
@@ -111,6 +106,18 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'CadetMate',
+        url: absoluteUrl('/home'),
+        description: 'UK deck cadet maritime training platform with modules, flashcards, and simulators.',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: absoluteUrl('/unit-modules'),
+          'query-input': 'required name=search_term',
+        },
+      }} />
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(18px); }

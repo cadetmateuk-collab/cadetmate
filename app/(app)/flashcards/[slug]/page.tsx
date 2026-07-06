@@ -163,7 +163,7 @@ export default function PackDetailPage() {
               border: '1px solid hsl(var(--primary)/.2)', textAlign: 'center',
             }}>
               <Lock size={28} style={{ color: 'hsl(var(--primary))', marginBottom: 10 }} />
-              <h3 style={{ fontFamily: "'Syne',sans-serif", fontSize: '1.3rem', margin: '0 0 6px' }}>Premium pack</h3>
+              <h3 style={{ fontSize: '1.3rem', margin: '0 0 6px', fontWeight: 700 }}>Premium pack</h3>
               <p style={{ color: 'hsl(var(--muted-foreground))', fontSize: '.92rem', margin: '0 0 16px' }}>
                 Unlock {pack.card_count} cards and full progress tracking across devices.
               </p>
@@ -201,7 +201,7 @@ export default function PackDetailPage() {
           )}
 
           {/* Preview / card list */}
-          <h3 style={{ fontFamily: "'Syne',sans-serif", fontSize: '1rem', fontWeight: 700, margin: '2rem 0 10px' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '2rem 0 10px' }}>
             {locked ? 'Preview' : 'Cards'}{' '}
             <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>({cards.length})</span>
           </h3>
@@ -213,7 +213,7 @@ export default function PackDetailPage() {
                 border: '1px solid hsl(var(--border))', fontSize: 13, lineHeight: 1.5,
                 display: 'flex', gap: 12, alignItems: 'center',
               }}>
-                <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', minWidth: 24, fontFamily: "'Lora',serif" }}>{i + 1}</span>
+                <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', minWidth: 24, fontWeight: 600 }}>{i + 1}</span>
                 <span style={{ flex: 1 }}>{c.front}</span>
                 <span style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>→</span>
                 <span style={{ flex: 1, color: 'hsl(var(--muted-foreground))' }}>{c.back}</span>

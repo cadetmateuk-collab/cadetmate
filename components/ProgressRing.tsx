@@ -20,7 +20,7 @@ export function ProgressRing({
       <div style={{
         position: 'absolute', inset: 0, display: 'flex',
         alignItems: 'center', justifyContent: 'center',
-        fontFamily: "'Lora', serif", fontWeight: 700, fontSize: 13,
+        fontWeight: 700, fontSize: 13,
         color: 'hsl(var(--foreground))',
       }}>
         {label ?? `${Math.round(value * 100)}%`}

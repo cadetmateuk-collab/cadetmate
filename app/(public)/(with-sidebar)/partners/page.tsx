@@ -119,7 +119,6 @@ export default function PartnersPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(18px); }
@@ -145,7 +144,7 @@ export default function PartnersPage() {
         .pp-page {
           min-height: 100dvh;
           background-color: hsl(var(--background));
-          font-family: 'DM Sans', sans-serif;
+          font-family: inherit;
           position: relative;
           overflow-x: hidden;
         }
@@ -208,7 +207,7 @@ export default function PartnersPage() {
           animation: pulseRing 2s ease-out infinite;
         }
         .pp-title {
-          font-family: 'Syne', sans-serif;
+          font-family: inherit;
           font-size: clamp(2.25rem, 5vw, 3.75rem);
           font-weight: 800;
           letter-spacing: -0.03em;
@@ -240,7 +239,7 @@ export default function PartnersPage() {
           text-align: center;
         }
         .pp-stat-num {
-          font-family: 'Syne', sans-serif;
+          font-family: inherit;
           font-size: 2rem;
           font-weight: 800;
           letter-spacing: -0.03em;
@@ -283,7 +282,7 @@ export default function PartnersPage() {
           color: hsl(var(--muted-foreground));
           cursor: pointer;
           transition: all 0.18s ease;
-          font-family: 'DM Sans', sans-serif;
+          font-family: inherit;
           letter-spacing: 0.01em;
         }
         .pp-filter-btn:hover:not(.active) {
@@ -366,7 +365,7 @@ export default function PartnersPage() {
           justify-content: center;
           width: 3rem; height: 3rem;
           border-radius: 0.625rem;
-          font-family: 'Syne', sans-serif;
+          font-family: inherit;
           font-weight: 800;
           font-size: 0.8125rem;
           letter-spacing: 0.03em;
@@ -395,7 +394,7 @@ export default function PartnersPage() {
         }
 
         .pp-card-name {
-          font-family: 'Syne', sans-serif;
+          font-family: inherit;
           font-size: 1.25rem;
           font-weight: 800;
           letter-spacing: -0.02em;
@@ -462,7 +461,7 @@ export default function PartnersPage() {
           flex-wrap: wrap;
         }
         .pp-cta-text h2 {
-          font-family: 'Syne', sans-serif;
+          font-family: inherit;
           font-size: 1.5rem;
           font-weight: 800;
           letter-spacing: -0.025em;
@@ -485,7 +484,7 @@ export default function PartnersPage() {
           color: hsl(var(--background));
           font-size: 0.875rem;
           font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
+          font-family: inherit;
           border: none;
           cursor: pointer;
           transition: opacity 0.15s, transform 0.15s;

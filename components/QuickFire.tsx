@@ -41,7 +41,7 @@ export function QuickFire({ cards, onDone }: {
         padding: '22px 20px', borderRadius: 16,
         background: 'hsl(var(--card, var(--background)))',
         border: '1px solid hsl(var(--border))',
-        fontFamily: "'Lora', serif", fontSize: 18, lineHeight: 1.5,
+        fontSize: 18, lineHeight: 1.5,
         marginBottom: 14, minHeight: 100,
       }}>{c?.front}</div>
       {c?.card_type === 'multiple_choice' ? (

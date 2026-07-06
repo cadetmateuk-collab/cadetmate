@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Calendar, Clock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { NoCopy } from '@/components/NoCopy';
+import { buildPageMetadata } from '@/lib/seo/metadata';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -398,13 +399,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .eq('slug', slug)
     .single();
   if (!post) return {};
-  return {
+  return buildPageMetadata({
     title: post.title,
     description: post.excerpt,
-    openGraph: {
-      title: post.title,
-      description: post.excerpt,
-      images: post.image ? [post.image] : [],
-    },
-  };
+    path: `/free-content/${slug}`,
+    image: post.image ?? undefined,
+    imageAlt: post.title,
+  });
 }

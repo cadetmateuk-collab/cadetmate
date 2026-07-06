@@ -183,7 +183,7 @@ const SCENARIOS: Scenario[] = [
 ];
 
 // ── Colours matching BridgeNav palette ────────────────────────────────────────
-const MONO_FONT = '"IBM Plex Mono", "Courier New", monospace';
+const MONO_FONT = 'var(--font-manrope), system-ui, sans-serif';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
@@ -858,21 +858,21 @@ export default function ShipBridgeSimulator() {
             <div style={{ background: 'white', borderBottom: '4px solid black', padding: '0.75rem 1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                 <div style={{ flex: 1 }}>
-                  <h1 style={{ fontFamily: 'Courier New, monospace', fontSize: '1.25rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.5rem' }}>SHIP'S DECK LOG SHEET</h1>
-                  <div style={{ fontFamily: 'Courier New, monospace', fontSize: '0.65rem', textAlign: 'right' }}>
+                  <h1 style={{ fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '1.25rem', fontWeight: 900, textAlign: 'center', marginBottom: '0.5rem' }}>SHIP'S DECK LOG SHEET</h1>
+                  <div style={{ fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '0.65rem', textAlign: 'right' }}>
                     Vessel Name: MV Soho<br />IMO: 16348275<br />Callsign: D1WX7
                   </div>
                 </div>
                 <button onClick={() => setShowLogbook(false)} style={{
                   marginLeft: '1rem', width: '32px', height: '32px', background: '#b91c1c',
                   border: '2px solid #ef4444', color: 'white', borderRadius: '50%',
-                  fontFamily: 'Courier New, monospace', fontSize: '1.2rem', fontWeight: 900,
+                  fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '1.2rem', fontWeight: 900,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>×</button>
               </div>
 
               {/* Ship info row */}
-              <div style={{ border: '2px solid black', padding: '0.35rem', fontFamily: 'Courier New, monospace', fontSize: '0.65rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              <div style={{ border: '2px solid black', padding: '0.35rem', fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '0.65rem', fontWeight: 700, marginBottom: '0.5rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '0.25rem' }}>USE BLACK INK TO FILL IN THIS LOG</div>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                   {(['shipType', 'hullNumber'] as const).map(field => (
@@ -895,7 +895,7 @@ export default function ShipBridgeSimulator() {
               </div>
 
               {/* Column headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: '72px 80px 80px 72px 100px 1fr', border: '2px solid black', fontFamily: 'Courier New, monospace', fontSize: '0.6rem', fontWeight: 700, background: '#f3f4f6' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '72px 80px 80px 72px 100px 1fr', border: '2px solid black', fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '0.6rem', fontWeight: 700, background: '#f3f4f6' }}>
                 {['TIME', 'HEADING', 'SPEED', 'DEPTH', 'VISIBILITY', 'RECORD OF ALL EVENTS OF THE DAY'].map(h => (
                   <div key={h} style={{ borderRight: '1px solid black', padding: '4px', textAlign: 'center' }}>{h}</div>
                 ))}
@@ -905,7 +905,7 @@ export default function ShipBridgeSimulator() {
             {/* Rows */}
             <div style={{ flex: 1, overflowY: 'auto', background: 'white' }}>
               {logEntries.map((entry, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '72px 80px 80px 72px 100px 1fr', borderBottom: '1px solid black', fontFamily: 'Courier New, monospace', fontSize: '0.6rem' }}>
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '72px 80px 80px 72px 100px 1fr', borderBottom: '1px solid black', fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontSize: '0.6rem' }}>
                   {(['time', 'heading', 'speed', 'depth', 'visibility'] as const).map(field => (
                     <input key={field} type="text" value={entry[field]}
                       onChange={e => updateLogEntry(i, field, e.target.value)}
@@ -927,10 +927,10 @@ export default function ShipBridgeSimulator() {
             </div>
 
             {/* Footer */}
-            <div style={{ background: 'white', borderTop: '4px solid black', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Courier New, monospace' }}>
+            <div style={{ background: 'white', borderTop: '4px solid black', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'var(--font-manrope), system-ui, sans-serif' }}>
               <button onClick={addLogEntry} style={{
                 background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '4px',
-                padding: '0.4rem 0.9rem', fontFamily: 'Courier New, monospace', fontWeight: 700,
+                padding: '0.4rem 0.9rem', fontFamily: 'var(--font-manrope), system-ui, sans-serif', fontWeight: 700,
                 fontSize: '0.7rem', cursor: 'pointer',
               }}>+ ADD NEW ENTRY</button>
               <span style={{ fontSize: '0.6rem', color: '#6b7280' }}>{logEntries.length} entries</span>

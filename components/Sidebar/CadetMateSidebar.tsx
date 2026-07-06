@@ -4,10 +4,11 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  BookOpen, Briefcase, FileText, Anchor, Lightbulb,
+  BookOpen, FileText, Anchor,
   ShoppingBag, ChevronLeft, Menu, LogOut,
   Lock, Sparkles, House, X, Compass, Settings,
   WalletCards,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PremiumLockModal } from "../PremiumLockModal";
@@ -248,14 +249,13 @@ function SidebarContent({
         <NavItem icon={House}       label="Home"         href="/home"         isActive={isActive("/home")}         isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={ShoppingBag} label="Store"        href="/store"        isActive={isActive("/store")}        isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={Sparkles}    label="Free Content" href="/free-content" isActive={isActive("/free-content")} isCollapsed={isCollapsed} navRef={navRef} />
+        <NavItem icon={MessageSquare} label="Community" href="/community" isActive={isActive("/community")} isCollapsed={isCollapsed} navRef={navRef} />
 
         <SectionLabel isCollapsed={isCollapsed}>Resources</SectionLabel>
         <NavItem icon={WalletCards}  label="Flashcards"        href="/flashcards"             isActive={isActive("/flashcards")}             locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={BookOpen}  label="Unit Modules"        href="/unit-modules"             isActive={isActive("/unit-modules")}             locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
-        <NavItem icon={Briefcase} label="Work Based Learning" href="/work-based-learning" isActive={isActive("/work-based-learning")} locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={FileText}  label="TRB"                 href="/trb"                 isActive={isActive("/trb")}                 locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={Anchor}    label="Sea Survival"        href="/sea-survival"        isActive={isActive("/sea-survival")}        locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
-        <NavItem icon={Lightbulb} label="General Tips"        href="/general-tips"        isActive={isActive("/general-tips")}        locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
 
         <SectionLabel isCollapsed={isCollapsed}>Simulators</SectionLabel>
         <NavItem icon={Compass}  label="Emergencies" href="/simulator"  isActive={isActive("/simulator")}  locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
@@ -652,6 +652,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
             { icon: House,       label: "Home",         href: "/home" },
             { icon: ShoppingBag, label: "Store",        href: "/store" },
             { icon: Sparkles,    label: "Free Content", href: "/free-content" },
+            { icon: MessageSquare, label: "Community", href: "/community" },
           ].map(({ icon: Icon, label, href }) => (
             <MobileNavRow key={href} icon={Icon} label={label} href={href} isActive={pathname.startsWith(href)} onClose={closeMobileMenu} />
           ))}
@@ -659,11 +660,10 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           {/* Section: Resources */}
           <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Resources</p>
           {[
+            { icon: WalletCards, label: "Flashcards",           href: "/flashcards",          locked: !isPremium },
             { icon: BookOpen,  label: "Unit Modules",        href: "/unit-modules",        locked: !isPremium },
-            { icon: Briefcase, label: "Work Based Learning",  href: "/work-based-learning", locked: !isPremium },
             { icon: FileText,  label: "TRB",                  href: "/trb",                 locked: !isPremium },
             { icon: Anchor,    label: "Sea Survival",         href: "/sea-survival",        locked: !isPremium },
-            { icon: Lightbulb, label: "General Tips",         href: "/general-tips",        locked: !isPremium },
           ].map(({ icon: Icon, label, href, locked }) => (
             <MobileNavRow key={href} icon={Icon} label={label} href={href} isActive={pathname.startsWith(href)} locked={locked} onLockedClick={handleLockedClick} onClose={closeMobileMenu} />
           ))}

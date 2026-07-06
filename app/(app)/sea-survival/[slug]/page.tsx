@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { NoCopy } from '@/components/NoCopy';
+import { buildPageMetadata } from '@/lib/seo/metadata';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 
@@ -309,13 +310,11 @@ export async function generateMetadata({
     .eq('slug', slug)
     .single();
   if (!article) return {};
-  return {
+  return buildPageMetadata({
     title: article.title,
-    description: `${article.category} — Sea Survival`,
-    openGraph: {
-      title: article.title,
-      description: `${article.category} — Sea Survival`,
-      images: article.image ? [article.image] : [],
-    },
-  };
+    description: `${article.category} — Sea Survival training for deck cadets.`,
+    path: `/sea-survival/${slug}`,
+    image: article.image ?? undefined,
+    imageAlt: article.title,
+  });
 }
