@@ -61,6 +61,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Legacy article URL: /free-content/{slug} → /free-content/{category}/{slug}
+  // Handled here (not a route file) to avoid Next.js dynamic segment conflicts.
   if (pathname.startsWith('/free-content/')) {
     const subpath = pathname.slice('/free-content/'.length);
     if (subpath && !subpath.includes('/')) {
