@@ -1,8 +1,17 @@
 import type { Metadata } from 'next';
 import { buildNoIndexMetadata } from '@/lib/seo/metadata';
+import { PageBackground } from '@/components/layout/PageBackground';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 export const metadata: Metadata = buildNoIndexMetadata('Sign In');
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <div className="relative min-h-screen bg-background">
+      <PageBackground />
+      <PageContainer className="min-h-screen flex items-center justify-center py-8">
+        {children}
+      </PageContainer>
+    </div>
+  );
 }

@@ -55,7 +55,7 @@ export default function PackDetailPage() {
   async function unlock() {
     if (!userId) {
       // Not logged in — redirect to sign in
-      router.push('/sign-in?next=' + encodeURIComponent(`/flashcards/${slug}`));
+      router.push(`/auth?redirectTo=${encodeURIComponent(`/flashcards/${slug}`)}`);
       return;
     }
     if (!pack) return;

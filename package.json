@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "ts-node --transpile-only --project tsconfig.server.json -r tsconfig-paths/register server.ts",
+    "dev:next": "next dev --turbopack",
     "build": "next build && tsc --project tsconfig.server.json",
     "start": "NODE_ENV=production node -r ./tsconfig-paths-bootstrap.js .server-out/server.js",
     "lint": "eslint"

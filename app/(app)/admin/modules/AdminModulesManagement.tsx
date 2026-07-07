@@ -625,7 +625,7 @@ const AdminModulesManagement: React.FC = () => {
 
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="w-full flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Module Management</h1>
             <p className="text-sm text-gray-500 mt-0.5">{modules.length} modules · {visibleCount} visible · {hiddenCount} hidden · {premiumCount} premium</p>
@@ -647,7 +647,7 @@ const AdminModulesManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-6">
+      <div className="py-6">
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

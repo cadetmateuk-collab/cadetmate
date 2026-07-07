@@ -8,9 +8,6 @@ export function StudyShell({ children }: { children: React.ReactNode }) {
     <>
       <style>{css}</style>
       <div className="bp-page">
-        <div className="bp-dot-grid" aria-hidden="true" />
-        <div className="bp-glow"     aria-hidden="true" />
-        <div className="bp-noise"    aria-hidden="true" />
         <NoCopy className="bp-content">{children}</NoCopy>
       </div>
     </>
@@ -32,12 +29,8 @@ const css = `
 .bp-anim-3 { animation: fadeUp .4s ease both .20s; }
 .bp-anim-4 { animation: fadeUp .4s ease both .28s; }
 
-.bp-page { min-height:100dvh; background:hsl(var(--background)); position:relative; overflow-x:hidden; font-family:inherit; color:hsl(var(--foreground)); }
-.bp-dot-grid { pointer-events:none; position:fixed; inset:0; z-index:0; background-image:radial-gradient(circle, hsl(var(--foreground)/0.07) 1px, transparent 1px); background-size:28px 28px; mask-image:radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%); -webkit-mask-image:radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%); }
-.bp-glow { pointer-events:none; position:fixed; top:-200px; left:50%; transform:translateX(-50%); z-index:0; width:900px; height:900px; border-radius:50%; background:radial-gradient(circle, hsl(var(--primary)/0.055) 0%, transparent 66%); }
-.bp-noise { pointer-events:none; position:fixed; inset:0; z-index:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"); background-repeat:repeat; background-size:180px 180px; opacity:.025; mix-blend-mode:multiply; }
-.bp-content { position:relative; z-index:1; max-width:680px; margin:0 auto; padding:1.25rem 2.5rem 6rem; }
-.bp-content.wide { max-width:1100px; }
+.bp-page { min-height:100dvh; background:transparent; position:relative; overflow-x:hidden; font-family:inherit; color:hsl(var(--foreground)); }
+.bp-content { position:relative; z-index:1; width:100%; max-width:none; margin:0; padding:0 0 4rem; }
 
 /* Back link */
 .bp-back { display:inline-flex; align-items:center; gap:.25rem; font-size:.6875rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:hsl(var(--muted-foreground)/.6); text-decoration:none; transition:color .15s; margin-bottom:1.75rem; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; }
@@ -47,7 +40,8 @@ const css = `
 .bp-eyebrow { display:inline-flex; align-items:center; gap:.5rem; font-size:.75rem; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:hsl(var(--primary)); padding:.35rem .9rem; border:1px solid hsl(var(--primary)/.25); border-radius:999px; background:hsl(var(--primary)/.06); margin-bottom:1rem; }
 .bp-eyebrow-dot { width:5px; height:5px; border-radius:50%; background:hsl(var(--primary)); animation:pulseRing 2s ease-out infinite; }
 .bp-cat-badge { display:inline-block; font-size:.6875rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:hsl(var(--primary)); background:hsl(var(--primary)/.1); padding:.2rem .625rem; border-radius:999px; margin-bottom:.75rem; }
-.bp-title { font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; line-height:1.1; margin:0 0 1.25rem; background:linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--foreground)/.7) 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.bp-title { font-size:clamp(2rem,5vw,3rem); font-weight:800; letter-spacing:-.03em; line-height:1.1; margin:0 0 1.25rem; color:hsl(var(--foreground)); -webkit-text-fill-color:currentColor; }
+.bp-content, .bp-content *:not(.bp-title):not(.fc-md-link):not(.fc-rbtn):not(.fc-btn-flip) { -webkit-text-fill-color:currentColor; }
 .bp-subtitle { font-size:1.0625rem; color:hsl(var(--muted-foreground)); max-width:520px; line-height:1.65; font-weight:300; }
 .bp-divider { width:100%; border:none; border-top:1px solid hsl(var(--border)); margin-bottom:2rem; }
 
@@ -76,7 +70,9 @@ const css = `
   will-change:transform;
 }
 .fc-card.is-flipped { transform:rotateY(180deg); }
-.fc-card.is-entering { animation:fc-in .38s cubic-bezier(0.23,1,0.32,1) both; }
+/* Enter animation on wrapper — never override flip transform on .fc-card */
+.fc-enter { width:100%; height:100%; min-height:300px; }
+.fc-enter.is-entering { animation:fc-in .38s cubic-bezier(0.23,1,0.32,1) both; }
 
 .fc-face {
   position:absolute; inset:0;
@@ -101,10 +97,10 @@ const css = `
   box-sizing:border-box;
 }
 .fc-front .fc-face-inner {
-  background-image:repeating-linear-gradient(0deg, transparent, transparent 31px, hsl(var(--primary)/.035) 31px, hsl(var(--primary)/.035) 32px);
+  background:#ffffff;
 }
 .fc-back .fc-face-inner {
-  background:linear-gradient(180deg, #ffffff 0%, hsl(var(--primary)/.02) 100%);
+  background:#ffffff;
 }
 
 .fc-cat {
@@ -141,8 +137,8 @@ const css = `
 .fc-md--question .fc-md-p { text-align:center; }
 .fc-md--answer { font-size:14.5px; line-height:1.65; color:hsl(var(--foreground)); }
 
-.fc-md-h1 { font-size:1.25rem; font-weight:800; margin:0 0 .5em; line-height:1.2; letter-spacing:-.02em; }
-.fc-md-h2 { font-size:1.1rem; font-weight:700; margin:.6em 0 .4em; line-height:1.25; }
+.fc-md-h1 { font-size:1.25rem; font-weight:800; margin:0 0 .5em; line-height:1.2; letter-spacing:-.02em; color:hsl(var(--foreground)); }
+.fc-md-h2 { font-size:1.1rem; font-weight:700; margin:.6em 0 .4em; line-height:1.25; color:hsl(var(--foreground)); }
 .fc-md-h3 { font-size:1rem; font-weight:700; margin:.5em 0 .35em; line-height:1.3; color:hsl(var(--foreground)/.9); }
 .fc-md-p  { margin:0 0 .55em; line-height:1.65; }
 .fc-md-p:last-child { margin-bottom:0; }
@@ -261,7 +257,7 @@ const css = `
 /* Celebration */
 .fc-celebrate { display:flex; flex-direction:column; align-items:center; gap:14px; padding:36px 24px; text-align:center; animation:pop .5s cubic-bezier(.34,1.56,.64,1) both; }
 .fc-celebrate .em { font-size:48px; }
-.fc-celebrate h2 { font-size:1.8rem; font-weight:800; margin:0; }
+.fc-celebrate h2 { font-size:1.8rem; font-weight:800; margin:0; color:hsl(var(--foreground)); }
 .fc-celebrate p { color:hsl(var(--muted-foreground)); font-size:.95rem; max-width:340px; line-height:1.6; }
 .fc-xp-badge {
   display:inline-flex; align-items:center; gap:6px;
@@ -276,7 +272,7 @@ const css = `
 }
 
 @media (max-width:580px) {
-  .bp-content { padding:1rem 1.1rem 4rem; }
+  .bp-content { padding:1rem 0 4rem; }
   .bp-title { font-size:1.7rem; }
   .fc-scene { min-height:260px; }
   .fc-card { min-height:260px; }

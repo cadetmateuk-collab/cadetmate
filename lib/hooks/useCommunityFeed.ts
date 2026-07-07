@@ -8,9 +8,10 @@ interface UseCommunityFeedOptions {
   sort: FeedSort;
   period: TopPeriod;
   category?: string;
+  filter?: 'mine' | 'saved';
 }
 
-export function useCommunityFeed({ sort, period, category }: UseCommunityFeedOptions) {
+export function useCommunityFeed({ sort, period, category, filter }: UseCommunityFeedOptions) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -26,6 +27,7 @@ export function useCommunityFeed({ sort, period, category }: UseCommunityFeedOpt
       try {
         const params = new URLSearchParams({ sort, period: period ?? 'all', limit: '20' });
         if (category) params.set('category', category);
+        if (filter) params.set('filter', filter);
         if (append && nextCursor) params.set('cursor', nextCursor);
 
         const res = await fetch(`/api/community/posts?${params}`);
@@ -47,7 +49,7 @@ export function useCommunityFeed({ sort, period, category }: UseCommunityFeedOpt
         setLoadingMore(false);
       }
     },
-    [sort, period, category],
+    [sort, period, category, filter],
   );
 
   useEffect(() => {

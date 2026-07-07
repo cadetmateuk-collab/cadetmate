@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/lib/auth/get-user';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { buildNoIndexMetadata } from '@/lib/seo/metadata';
@@ -6,8 +6,7 @@ import { buildNoIndexMetadata } from '@/lib/seo/metadata';
 export const metadata: Metadata = buildNoIndexMetadata('Simulator');
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect('/auth');
 

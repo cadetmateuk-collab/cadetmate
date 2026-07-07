@@ -38,7 +38,7 @@ const TaskList = ({ tasks, searchTerm }: TaskListProps) => {
           onClick={() => setActiveCategory("All")}
           className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
             activeCategory === "All"
-              ? "bg-primary text-primary-foreground border-primary"
+              ? "bg-primary text-white border-primary"
               : "bg-card text-muted-foreground border-border hover:border-primary/30"
           }`}
         >
@@ -52,7 +52,7 @@ const TaskList = ({ tasks, searchTerm }: TaskListProps) => {
               onClick={() => setActiveCategory(cat)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
                 activeCategory === cat
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "bg-primary text-white border-primary"
                   : "bg-card text-muted-foreground border-border hover:border-primary/30"
               }`}
             >

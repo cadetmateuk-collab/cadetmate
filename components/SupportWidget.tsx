@@ -1,8 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { MessageCircle, X, Send, CheckCircle, ChevronDown, AlertCircle, MessageCircleQuestionMark } from 'lucide-react'
+
+const HIDE_WIDGET_PREFIXES = [
+  '/home',
+  '/pricing',
+  '/about',
+  '/contact',
+  '/resources',
+  '/free-content',
+  '/community-preview',
+  '/partners',
+]
 
 const CATEGORIES = [
   'Bug / Something broken',
@@ -16,6 +28,7 @@ const CATEGORIES = [
 type Step = 'closed' | 'form' | 'success'
 
 export default function SupportWidget() {
+  const pathname = usePathname()
   const supabase = createClient()
   const [step, setStep]           = useState<Step>('closed')
   const [subject, setSubject]     = useState('')
@@ -114,6 +127,11 @@ export default function SupportWidget() {
     setCategory(CATEGORIES[0])
     setError(null)
   }
+
+  const hideOnPage = HIDE_WIDGET_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+  if (hideOnPage) return null
 
   return (
     <>

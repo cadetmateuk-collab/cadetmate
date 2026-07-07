@@ -182,7 +182,7 @@ export default function BlogAdmin() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  URL: /blog/{currentPost.slug}
+                  URL: /free-content/{currentPost.slug}
                 </p>
               </div>
 
@@ -321,7 +321,7 @@ export default function BlogAdmin() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="py-8">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-6">

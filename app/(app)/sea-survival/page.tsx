@@ -110,8 +110,8 @@ export default function SeaSurvivalPage() {
         /* ── Content ── */
         .ss-content {
           position:relative; z-index:1;
-          max-width:1100px; margin:0 auto;
-          padding:3rem 2.5rem 7rem;
+          width:100%;
+          padding:3rem 0 7rem;
         }
 
         /* ── Header ── */

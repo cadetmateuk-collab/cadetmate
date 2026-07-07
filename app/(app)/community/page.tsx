@@ -14,15 +14,28 @@ import { EmptyState } from '@/components/community/EmptyState';
 import { ToastContainer } from '@/components/community/ToastContainer';
 import { useToast } from '@/lib/hooks/useToast';
 import { useCommunityFeed, useCategories, useInfiniteScroll } from '@/lib/hooks/useCommunityFeed';
+import { CommunityLeaderboard } from '@/components/community/CommunityLeaderboard';
 import type { FeedSort, TopPeriod } from '@/lib/community/types';
+
+function parseSort(value: string | null): FeedSort {
+  if (value === 'new' || value === 'top' || value === 'hot') return value;
+  return 'hot';
+}
 
 function CommunityFeed() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toasts, addToast } = useToast();
-  const [sort, setSort] = useState<FeedSort>('hot');
+  const activeTab = searchParams.get('tab');
+  const urlSort = searchParams.get('sort');
+  const urlFilter = searchParams.get('filter');
+
+  const [sort, setSort] = useState<FeedSort>(() => parseSort(urlSort));
   const [period, setPeriod] = useState<TopPeriod>('all');
   const [category, setCategory] = useState<string | undefined>(searchParams.get('category') ?? undefined);
+  const [feedFilter, setFeedFilter] = useState<'mine' | 'saved' | undefined>(
+    urlFilter === 'mine' || urlFilter === 'saved' ? urlFilter : undefined,
+  );
   const [showForm, setShowForm] = useState(false);
   const [userId, setUserId] = useState<string | undefined>();
   const categories = useCategories();
@@ -31,6 +44,7 @@ function CommunityFeed() {
     sort,
     period,
     category,
+    filter: feedFilter,
   });
 
   const sentinelRef = useInfiniteScroll(loadMore, hasMore, loadingMore);
@@ -42,7 +56,28 @@ function CommunityFeed() {
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat) setCategory(cat);
+
+    const nextSort = parseSort(searchParams.get('sort'));
+    setSort(nextSort);
+
+    const nextFilter = searchParams.get('filter');
+    setFeedFilter(nextFilter === 'mine' || nextFilter === 'saved' ? nextFilter : undefined);
   }, [searchParams]);
+
+  const updateUrl = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    const query = params.toString();
+    router.replace(query ? `/community?${query}` : '/community', { scroll: false });
+  };
+
+  const handleSortChange = (nextSort: FeedSort) => {
+    setSort(nextSort);
+    updateUrl({ sort: nextSort === 'hot' ? null : nextSort, tab: null });
+  };
 
   const handleCreateClick = () => {
     if (!userId) {
@@ -88,33 +123,58 @@ function CommunityFeed() {
       )}
 
       <div className="mb-4 cm-anim-3">
-        <FeedFilters
-          sort={sort}
-          period={period}
-          category={category}
-          categories={categories}
-          onSortChange={setSort}
-          onPeriodChange={setPeriod}
-          onCategoryChange={setCategory}
-        />
+        {activeTab === 'leaderboard' ? (
+          <CommunityLeaderboard />
+        ) : (
+          <>
+            <FeedFilters
+              sort={sort}
+              period={period}
+              category={category}
+              categories={categories}
+              onSortChange={handleSortChange}
+              onPeriodChange={setPeriod}
+              onCategoryChange={(cat) => {
+                setCategory(cat);
+                updateUrl({ category: cat ?? null });
+              }}
+            />
+
+            {feedFilter && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Showing {feedFilter === 'mine' ? 'your posts' : 'saved posts'}.
+                <button
+                  type="button"
+                  className="ml-1 text-primary hover:underline"
+                  onClick={() => {
+                    setFeedFilter(undefined);
+                    updateUrl({ filter: null });
+                  }}
+                >
+                  Clear filter
+                </button>
+              </p>
+            )}
+          </>
+        )}
       </div>
 
-      {error && (
+      {activeTab !== 'leaderboard' && error && (
         <div className="p-4 mb-4 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20">
           {error}
         </div>
       )}
 
-      {loading ? (
+      {activeTab !== 'leaderboard' && loading ? (
         <PostSkeletonList />
-      ) : posts.length === 0 ? (
+      ) : activeTab !== 'leaderboard' && posts.length === 0 ? (
         <EmptyState
           title="No posts yet"
           description="Start the conversation — create the first post in this community."
           actionLabel="Create Post"
           onAction={handleCreateClick}
         />
-      ) : (
+      ) : activeTab !== 'leaderboard' ? (
         <div className="space-y-3 cm-anim-3">
           {posts.map((post) => (
             <PostCard
@@ -126,7 +186,7 @@ function CommunityFeed() {
           <div ref={sentinelRef} className="h-4" />
           {loadingMore && <PostSkeletonList count={2} />}
         </div>
-      )}
+      ) : null}
     </>
   );
 }

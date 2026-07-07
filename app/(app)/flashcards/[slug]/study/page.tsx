@@ -48,23 +48,37 @@ export default function StudyPage() {
   const [lastXpPop, setLastXpPop] = useState<number | null>(null);
   const startRef = useRef(Date.now());
   const xpAwardedRef = useRef(0);
+  const ratingRef = useRef(false);
 
-  // Load progress
+  // Load progress once auth + pack are ready (avoids double-init when userId resolves)
   useEffect(() => {
-    if (!pack || cards.length === 0) return;
+    if (!pack || cards.length === 0 || !userId) return;
+
+    let cancelled = false;
     (async () => {
-      const s = userId
-        ? await loadProgress(userId, pack.id, cards)
-        : cards.map((c) => ({ card: c, progress: {
-            user_id: '', card_id: c.id, pack_id: pack.id,
-            interval_days: 0, repetitions: 0, ease_factor: 2.5,
-            next_review: new Date().toISOString(), last_quality: null,
-            times_viewed: 0, times_correct: 0, mastery: 0,
-          }}));
+      const s = await loadProgress(userId, pack.id, cards);
+      if (cancelled) return;
       setStates(s);
       setCurrent(pickNext(s, mode));
+      setFlipped(false);
+      setReviewed(0);
+      setCorrect(0);
+      setStreak(0);
+      setDone(false);
+      setSessionXp(0);
+      setLastXpPop(null);
+      startRef.current = Date.now();
+      xpAwardedRef.current = 0;
+      ratingRef.current = false;
     })();
-  }, [pack, cards, userId, mode]);
+
+    return () => { cancelled = true; };
+  }, [pack?.id, cards.length, userId, mode]);
+
+  // Always show the front when advancing to a new card
+  useEffect(() => {
+    setFlipped(false);
+  }, [current?.card.id]);
 
   // Keyboard shortcuts (standard/smart/cram modes)
   useEffect(() => {
@@ -96,28 +110,48 @@ export default function StudyPage() {
   }
 
   async function rate(quality: number) {
-    if (!current) return;
-    const next = sm2(current.progress, quality);
-    setStates((ss) => ss.map((s) => (s.card.id === current.card.id ? { ...s, progress: next } : s)));
-    if (userId) await saveProgress({ ...next, user_id: userId });
+    if (!current || ratingRef.current) return;
+    ratingRef.current = true;
+
+    const ratedCard = current;
+    const cardId = ratedCard.card.id;
+    const next = sm2(ratedCard.progress, quality);
     const isOk = quality >= 3;
     const nextStreak = isOk ? streak + 1 : 0;
-    setCorrect((c) => c + (isOk ? 1 : 0));
+    const nextReviewed = reviewed + 1;
+    const nextCorrect = correct + (isOk ? 1 : 0);
+
+    const updated = states.map((s) =>
+      s.card.id === cardId ? { ...s, progress: next } : s,
+    );
+
+    setStates(updated);
+    setCorrect(nextCorrect);
     setStreak(nextStreak);
-    setReviewed((n) => n + 1);
+    setReviewed(nextReviewed);
     setFlipped(false);
+    setCurrent(pickNext(updated, mode, cardId));
 
-    if (userId) {
-      const cardXp = computeCardXP(isOk, nextStreak);
-      await awardXp(cardXp, 1);
-    }
+    try {
+      if (userId) {
+        await saveProgress({ ...next, user_id: userId });
+        const cardXp = computeCardXP(isOk, nextStreak);
+        await awardXp(cardXp, 1);
+      }
 
-    if (reviewed + 1 >= SESSION_GOAL || quality < 3 && mode === 'survival') {
-      await finish(reviewed + 1, correct + (isOk ? 1 : 0), nextStreak);
-      return;
+      if (nextReviewed >= SESSION_GOAL || (quality < 3 && mode === 'survival')) {
+        await finish(nextReviewed, nextCorrect, nextStreak);
+        return;
+      }
+    } finally {
+      ratingRef.current = false;
     }
-    const updated = states.map((s) => (s.card.id === current.card.id ? { ...s, progress: next } : s));
-    setCurrent(pickNext(updated, mode, current.card.id));
+  }
+
+  function skipCard() {
+    if (!current) return;
+    setFlipped(false);
+    setCurrent(pickNext(states, mode, current.card.id));
   }
 
   async function finish(total: number, ok: number, finalStreak = streak) {
@@ -225,7 +259,7 @@ export default function StudyPage() {
         </>
       )}
 
-      {done ? celebrate : loading || !current ? (
+      {done ? celebrate : loading || !userId || !current ? (
         <div className="bp-loading"><div className="bp-spinner" /><span>Preparing your session…</span></div>
       ) : (
         <>
@@ -237,14 +271,19 @@ export default function StudyPage() {
             <div className="fc-prog-track"><div className="fc-prog-fill" style={{ width: `${pct * 100}%` }} /></div>
           </div>
 
-          <FlashcardView card={current.card} flipped={flipped}
-            onFlip={() => setFlipped((f) => !f)} category={pack?.category} />
+          <FlashcardView
+            key={current.card.id}
+            card={current.card}
+            flipped={flipped}
+            onFlip={() => setFlipped((f) => !f)}
+            category={pack?.category}
+          />
 
           {lastXpPop && <div className="fc-xp-pop">+{lastXpPop} XP</div>}
 
           {!flipped ? (
             <div className="fc-actions">
-              <button className="fc-btn fc-btn-skip" onClick={() => { const nx = pickNext(states, mode, current.card.id); setCurrent(nx); }}>
+              <button className="fc-btn fc-btn-skip" onClick={skipCard}>
                 Skip
               </button>
               <button className="fc-btn fc-btn-flip" onClick={() => setFlipped(true)}>Reveal answer</button>

@@ -64,8 +64,7 @@ export default async function DashboardPage() {
   const currentStreak = stats?.daily_streak || 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="py-8">
 
         {/* Header */}
         <div className="flex justify-between items-start mb-8">
@@ -82,7 +81,7 @@ export default async function DashboardPage() {
 
         {/* Subscription Status Banner */}
         {!isPremium && (
-          <Card className="mb-8 border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <Card className="mb-8 border border-border bg-background">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
@@ -376,7 +375,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-      </div>
     </div>
   )
 }

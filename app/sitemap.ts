@@ -10,6 +10,11 @@ const supabase = createClient(
 /** Public indexable static routes (kebab-case, lowercase). */
 const STATIC_ROUTES: { path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/home', priority: 1.0, changeFrequency: 'weekly' },
+  { path: '/pricing', priority: 0.9, changeFrequency: 'monthly' },
+  { path: '/about', priority: 0.7, changeFrequency: 'monthly' },
+  { path: '/contact', priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/resources', priority: 0.85, changeFrequency: 'weekly' },
+  { path: '/community-preview', priority: 0.75, changeFrequency: 'daily' },
   { path: '/partners', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/free-content', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/community', priority: 0.8, changeFrequency: 'daily' },

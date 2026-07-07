@@ -114,13 +114,20 @@ export default function FlashcardLibraryPage() {
         .fl-chip.on {
           background: hsl(var(--primary)); color: #fff;
           border-color: hsl(var(--primary)); font-weight: 700;
+          -webkit-text-fill-color: currentColor;
         }
 
         /* ── Grid ── */
         .fl-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 14px;
+        }
+        @media (max-width: 900px) {
+          .fl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 520px) {
+          .fl-grid { grid-template-columns: 1fr; }
         }
 
         /* ── Card ── */

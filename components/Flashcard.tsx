@@ -27,7 +27,8 @@ export const FlashcardView = memo(function FlashcardView({
       aria-label={flipped ? 'Flip to question' : 'Flip to answer'}
       aria-pressed={flipped}
     >
-      <div className={`fc-card${flipped ? ' is-flipped' : ''}${entering ? ' is-entering' : ''}`}>
+      <div className={`fc-enter${entering ? ' is-entering' : ''}`}>
+        <div className={`fc-card${flipped ? ' is-flipped' : ''}`}>
         <div className="fc-face fc-front" aria-hidden={flipped}>
           <div className="fc-face-inner">
             {category && <span className="fc-cat">{category}</span>}
@@ -50,6 +51,7 @@ export const FlashcardView = memo(function FlashcardView({
             </div>
             <div className="fc-footer fc-corner">Rate your recall ↓</div>
           </div>
+        </div>
         </div>
       </div>
     </div>

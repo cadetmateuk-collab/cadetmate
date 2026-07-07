@@ -252,9 +252,8 @@ export default function AdminPage() {
 
         .adm-content {
           position: relative;
-          max-width: 980px;
-          margin: 0 auto;
-          padding: 2.25rem 2.5rem 6rem;
+          width: 100%;
+          padding: 2.25rem 0 6rem;
         }
           /* GLOBAL MODAL LAYER */
 .modal-overlay {

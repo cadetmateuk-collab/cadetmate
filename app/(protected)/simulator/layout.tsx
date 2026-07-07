@@ -1,11 +1,17 @@
-export default function ShipBridgeLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+import type { Metadata } from 'next';
+import { buildNoIndexMetadata } from '@/lib/seo/metadata';
+import { requirePremium } from '@/lib/auth/get-user';
+import { ProtectedToolBar } from '@/components/layout/ProtectedToolBar';
+
+export const metadata: Metadata = buildNoIndexMetadata('Emergency Simulator');
+
+export default async function SimulatorLayout({ children }: { children: React.ReactNode }) {
+  await requirePremium();
+
   return (
-    <div className="w-screen h-screen overflow-hidden">
-      {children}
-    </div>
+    <>
+      <ProtectedToolBar title="Emergency Simulator" backHref="/practice" backLabel="Back to Practice" />
+      <div className="pt-10">{children}</div>
+    </>
   );
 }

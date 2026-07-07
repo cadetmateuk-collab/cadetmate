@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Search, Lock, CheckCircle2, Clock, ChevronRight, Sparkles,
   BookOpen, LayoutGrid, List, Loader2,
@@ -424,6 +424,23 @@ function ModuleCard({
   );
 }
 
+// ─── Category URL aliases (from nav links) ────────────────────────────────────
+
+const CATEGORY_ALIASES: Record<string, string> = {
+  colregs: "COLREGs",
+  navigation: "Navigation",
+  meteorology: "Meteorology",
+  cargo: "Cargo",
+};
+
+function resolveCategoryFromParam(param: string | null, categories: string[]): string | null {
+  if (!param) return null;
+  const alias = CATEGORY_ALIASES[param.toLowerCase()];
+  if (alias && categories.includes(alias)) return alias;
+  const match = categories.find((c) => c.toLowerCase() === param.toLowerCase());
+  return match ?? null;
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 interface ModulesPageProps {
@@ -432,12 +449,23 @@ interface ModulesPageProps {
   onUpgradeClick?: () => void;
 }
 
-export default function ModulesPage({
-  userAccess = "premium",
+export default function ModulesPage(props: ModulesPageProps) {
+  return (
+    <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <ModulesPageInner {...props} />
+    </Suspense>
+  );
+}
+
+function ModulesPageInner({
+  userAccess: userAccessProp,
   onModuleSelect,
   onUpgradeClick,
 }: ModulesPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [resolvedAccess, setResolvedAccess] = useState<AccessLevel>(userAccessProp ?? "free");
 
   const [modules,           setModules]           = useState<Module[]>([]);
   const [loading,           setLoading]           = useState(true);
@@ -447,6 +475,8 @@ export default function ModulesPage({
   const [filter,            setFilter]            = useState<FilterState>("all");
   const [viewMode,          setViewMode]          = useState<ViewMode>("grid");
   const [showUpgradeModal,  setShowUpgradeModal]  = useState(false);
+
+  const userAccess = userAccessProp ?? resolvedAccess;
 
   // ── Fetch from Supabase ────────────────────────────────────────────────────
   useEffect(() => {
@@ -463,6 +493,16 @@ export default function ModulesPage({
         if (modulesRes.error) throw modulesRes.error;
 
         const userId = sessionRes.data.session?.user?.id ?? null;
+
+        if (!userAccessProp && userId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", userId)
+            .maybeSingle();
+          const role = profile?.role;
+          setResolvedAccess(role === "admin" ? "admin" : role === "premium" ? "premium" : "free");
+        }
 
         // Pull section-level progress rows for this user (if logged in)
         // Shape: { module_id → Set<section_index> }
@@ -511,12 +551,19 @@ export default function ModulesPage({
       }
     }
     load();
-  }, []);
+  }, [userAccessProp]);
 
   const categories = useMemo(
     () => ["All", ...Array.from(new Set(modules.map((m) => m.category)))],
     [modules]
   );
+
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+    if (!categoryParam || modules.length === 0) return;
+    const resolved = resolveCategoryFromParam(categoryParam, categories.slice(1));
+    if (resolved) setActiveCategory(resolved);
+  }, [searchParams, modules, categories]);
 
   const filtered = useMemo(() => {
     return modules.filter((m) => {
@@ -562,7 +609,7 @@ export default function ModulesPage({
 
       {/* ── Header ── */}
       <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="py-4 sm:py-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[10.5px] font-semibold uppercase tracking-[1.5px] text-[hsl(var(--primary))] mb-1">Training Library</p>
@@ -601,7 +648,7 @@ export default function ModulesPage({
       </div>
 
       {/* ── Main content ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="py-4 sm:py-6">
 
         {/* Toolbar */}
         <div className="flex flex-col gap-3 mb-5">

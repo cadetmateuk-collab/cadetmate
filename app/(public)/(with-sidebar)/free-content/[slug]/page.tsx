@@ -99,57 +99,18 @@ export default async function BlogPostPage({
         /* ── Page shell ── */
         .bp-page {
           min-height: 100dvh;
-          background-color: hsl(var(--background));
+          background: transparent;
           position: relative;
           overflow-x: hidden;
-        }
-
-        /* Dot grid — same as home */
-        .bp-dot-grid {
-          pointer-events: none;
-          position: fixed;
-          inset: 0;
-          background-image: radial-gradient(circle, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
-          background-size: 28px 28px;
-          mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          z-index: 0;
-        }
-
-        /* Glow — same as home */
-        .bp-glow {
-          pointer-events: none;
-          position: fixed;
-          top: -200px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 900px;
-          height: 900px;
-          border-radius: 50%;
-          background: radial-gradient(circle, hsl(var(--primary) / 0.055) 0%, transparent 66%);
-          z-index: 0;
-        }
-
-        /* Noise — same as home */
-        .bp-noise {
-          pointer-events: none;
-          position: fixed;
-          inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-          background-repeat: repeat;
-          background-size: 180px 180px;
-          opacity: 0.025;
-          mix-blend-mode: multiply;
-          z-index: 0;
         }
 
         /* ── Content wrapper — wide, centred ── */
         .bp-content {
           position: relative;
           z-index: 1;
-          max-width: 1000px;
+          width: 100%;
           margin: 0 auto;
-          padding: 1.25rem 2.5rem 6rem;
+          padding: 1.25rem 0 6rem;
           text-align: center;
         }
 
@@ -177,10 +138,7 @@ export default async function BlogPostPage({
           line-height: 1.1;
           margin: 0 auto 1.25rem;
           max-width: 820px;
-          background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.7) 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: hsl(var(--foreground));
         }
 
         /* ── Byline — inline, centred ── */
@@ -325,9 +283,6 @@ export default async function BlogPostPage({
       `}</style>
 
       <div className="bp-page">
-        <div className="bp-dot-grid" aria-hidden="true" />
-        <div className="bp-glow" aria-hidden="true" />
-        <div className="bp-noise" aria-hidden="true" />
 
         <NoCopy className="bp-content">
 
@@ -368,7 +323,7 @@ export default async function BlogPostPage({
 
           {/* Footer */}
           <div className="bp-footer">
-            <Link href="/blog" className="bp-footer-link">
+            <Link href="/free-content" className="bp-footer-link">
               <ArrowLeft size={11} />
               All articles
             </Link>

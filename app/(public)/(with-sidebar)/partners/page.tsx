@@ -143,41 +143,18 @@ export default function PartnersPage() {
         /* ── Page shell ── */
         .pp-page {
           min-height: 100dvh;
-          background-color: hsl(var(--background));
+          background: transparent;
           font-family: inherit;
           position: relative;
           overflow-x: hidden;
         }
 
-        /* ── Shared backgrounds ── */
-        .pp-dot-grid {
-          pointer-events: none; position: fixed; inset: 0;
-          background-image: radial-gradient(circle, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
-          background-size: 28px 28px;
-          mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          z-index: 0;
-        }
-        .pp-glow {
-          pointer-events: none; position: fixed;
-          top: -200px; left: 50%; transform: translateX(-50%);
-          width: 900px; height: 900px; border-radius: 50%;
-          background: radial-gradient(circle, hsl(var(--primary) / 0.055) 0%, transparent 66%);
-          z-index: 0;
-        }
-        .pp-noise {
-          pointer-events: none; position: fixed; inset: 0;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-          background-repeat: repeat; background-size: 180px 180px;
-          opacity: 0.025; mix-blend-mode: multiply; z-index: 0;
-        }
-
         /* ── Content ── */
         .pp-content {
           position: relative; z-index: 1;
-          max-width: 1100px;
+          width: 100%;
           margin: 0 auto;
-          padding: 3rem 2.5rem 6rem;
+          padding: 3rem 0 6rem;
         }
 
         /* ── Header ── */
@@ -213,10 +190,7 @@ export default function PartnersPage() {
           letter-spacing: -0.03em;
           line-height: 1.08;
           margin: 0 0 0.75rem;
-          background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.6) 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: hsl(var(--foreground));
         }
         .pp-subtitle {
           font-size: 1.0625rem;
@@ -243,10 +217,7 @@ export default function PartnersPage() {
           font-size: 2rem;
           font-weight: 800;
           letter-spacing: -0.03em;
-          background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.55));
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: hsl(var(--foreground));
           line-height: 1;
           margin-bottom: 0.2rem;
         }
@@ -508,9 +479,6 @@ export default function PartnersPage() {
       `}</style>
 
       <div className="pp-page">
-        <div className="pp-dot-grid" aria-hidden="true" />
-        <div className="pp-glow" aria-hidden="true" />
-        <div className="pp-noise" aria-hidden="true" />
 
         <div className="pp-content">
 

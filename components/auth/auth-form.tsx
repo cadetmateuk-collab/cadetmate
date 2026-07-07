@@ -1,18 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Mail, Lock, User, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Image from 'next/image'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
-export function AuthForm() {
+function safeRedirectPath(path: string | null): string {
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return '/dashboard'
+  return path
+}
+
+function AuthFormInner() {
+  const searchParams = useSearchParams()
+  const redirectTo = safeRedirectPath(searchParams.get('redirectTo'))
+
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,6 +33,12 @@ export function AuthForm() {
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    if (searchParams.get('mode') === 'signup') {
+      setMode('signup')
+    }
+  }, [searchParams])
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -35,7 +49,7 @@ export function AuthForm() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         setMessage({ type: 'success', text: 'Login successful!' })
-        router.push('/settings')
+        router.push(redirectTo)
         router.refresh()
       } else {
         const { error } = await supabase.auth.signUp({
@@ -350,5 +364,13 @@ export function AuthForm() {
       </div>
 
     </div>
+  )
+}
+
+export function AuthForm() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-md h-96 animate-pulse rounded-xl bg-muted" />}>
+      <AuthFormInner />
+    </Suspense>
   )
 }

@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
   const sort = searchParams.get('sort') ?? 'hot';
   const period = searchParams.get('period') ?? 'all';
   const category = searchParams.get('category');
+  const filter = searchParams.get('filter');
   const cursor = searchParams.get('cursor');
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 50);
 
@@ -37,6 +38,24 @@ export async function GET(request: NextRequest) {
       .eq('slug', category)
       .maybeSingle();
     if (cat) query = query.eq('category_id', cat.id);
+  }
+
+  if (filter === 'mine') {
+    if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    query = query.eq('user_id', user.id);
+  }
+
+  if (filter === 'saved') {
+    if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    const { data: saved } = await supabase
+      .from('saved_posts')
+      .select('post_id')
+      .eq('user_id', user.id);
+    const postIds = (saved ?? []).map((row) => row.post_id);
+    if (postIds.length === 0) {
+      return NextResponse.json({ posts: [], nextCursor: null, hasMore: false });
+    }
+    query = query.in('id', postIds);
   }
 
   const since = sort === 'top' ? topPeriodToDate(period) : null;
