@@ -18,7 +18,6 @@ import {
   APP_NAV_GROUPS,
   MOBILE_BOTTOM_NAV,
   filterNavForUser,
-  isGroupActive,
   isNavItemActive,
 } from '@/lib/navigation/config';
 import type { NavGroupConfig } from '@/lib/navigation/types';
@@ -28,11 +27,12 @@ import {
   NAV_LINK_ACTIVE,
   NAV_LINK_CLASS,
   NAV_LINK_IDLE,
+  HEADER_BAR_CLASS,
+  HEADER_BAR_WRAP,
 } from './NavDropdownPanel';
 
 /** Solid single-bar shell — centered on page like the public header */
-const HEADER_BAR =
-  'flex items-center gap-2 rounded-full border border-border bg-background px-2 py-1.5 shadow-sm';
+const HEADER_BAR = HEADER_BAR_CLASS;
 
 function AppNavDropdown({
   group,
@@ -47,7 +47,6 @@ function AppNavDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const active = isGroupActive(pathname, group.items);
   const router = useRouter();
 
   useEffect(() => {
@@ -83,7 +82,7 @@ function AppNavDropdown({
         className={cn(
           NAV_LINK_CLASS,
           'flex items-center gap-1',
-          active || open ? NAV_LINK_ACTIVE : NAV_LINK_IDLE,
+          NAV_LINK_IDLE,
         )}
       >
         {group.label}
@@ -98,7 +97,6 @@ function AppNavDropdown({
             return (
               <NavDropdownItem
                 key={item.id}
-                active={isNavItemActive(pathname, item.href, item.exact)}
                 onClick={(e) => {
                   setOpen(false);
                   if (locked) {
@@ -124,7 +122,6 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -149,13 +146,6 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     };
@@ -170,16 +160,11 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full flex-shrink-0 pt-3 pb-2">
-        <div className={cn(PAGE_SHELL_CLASS, 'flex justify-center')}>
+      <header className="sticky top-0 z-50 w-full shrink-0 overflow-visible bg-transparent pt-3 pb-3 pointer-events-none">
+        <div className={cn(PAGE_SHELL_CLASS, 'flex justify-center overflow-visible bg-transparent')}>
           {/* Desktop — one centered capsule: logo | nav | actions */}
-          <div
-            className={cn(
-              HEADER_BAR,
-              'hidden lg:flex',
-              scrolled && 'shadow-md',
-            )}
-          >
+          <div className={cn(HEADER_BAR_WRAP, 'hidden lg:block pointer-events-auto')}>
+            <div className={cn(HEADER_BAR, 'flex')}>
             <Link href="/dashboard" className="shrink-0 pl-1 transition-opacity hover:opacity-80">
               <CadetMateLogo size="sm" showWordmark={false} />
             </Link>
@@ -189,7 +174,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                 href="/dashboard"
                 className={cn(
                   NAV_LINK_CLASS,
-                  'flex items-center gap-1.5',
+                  'gap-1.5',
                   pathname === '/dashboard' ? NAV_LINK_ACTIVE : NAV_LINK_IDLE,
                 )}
               >
@@ -210,7 +195,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
             </nav>
 
             <div className="flex items-center gap-0.5 shrink-0 pr-0.5">
-              <GlobalSearch className="w-28 xl:w-36" />
+              <GlobalSearch />
               <NotificationCenter />
 
               {!isPremium && (
@@ -233,9 +218,9 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                 </button>
                 {profileOpen && (
                   <NavDropdownPanel align="right" className="w-52">
-                    <div className="px-3 py-2.5 border-b border-white/[0.08] mb-1">
-                      <p className="text-sm font-medium text-white truncate">{userProfile.name}</p>
-                      <p className="text-xs text-zinc-400 truncate">{userProfile.email}</p>
+                    <div className="px-3 py-2.5 border-b border-border mb-1">
+                      <p className="text-sm font-medium text-foreground truncate">{userProfile.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{userProfile.email}</p>
                     </div>
                     <NavDropdownItem onClick={() => { setProfileOpen(false); router.push('/profile'); }}>
                       Profile
@@ -245,7 +230,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                     </NavDropdownItem>
                     <NavDropdownItem
                       onClick={() => { setProfileOpen(false); router.push('/logout'); }}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <LogOut className="h-4 w-4" /> Log out
                     </NavDropdownItem>
@@ -253,16 +238,12 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                 )}
               </div>
             </div>
+            </div>
           </div>
 
           {/* Mobile — full-width capsule: logo | menu */}
-          <div
-            className={cn(
-              HEADER_BAR,
-              'lg:hidden w-full justify-between',
-              scrolled && 'shadow-md',
-            )}
-          >
+          <div className={cn(HEADER_BAR_WRAP, 'lg:hidden w-full pointer-events-auto')}>
+            <div className={cn(HEADER_BAR, 'flex w-full justify-between')}>
             <Link href="/dashboard" className="shrink-0 pl-1 transition-opacity hover:opacity-80">
               <CadetMateLogo size="sm" showWordmark={false} />
             </Link>
@@ -273,6 +254,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
             >
               <Menu className="h-4 w-4" />
             </button>
+            </div>
           </div>
         </div>
       </header>
@@ -308,9 +290,9 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                             router.push(item.href);
                           }}
                           className={cn(
-                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-left transition-colors',
+                            'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-left transition-colors min-h-[44px]',
                             isNavItemActive(pathname, item.href, item.exact)
-                              ? 'bg-primary/10 text-primary font-medium'
+                              ? 'bg-primary text-primary-foreground font-medium'
                               : 'hover:bg-muted',
                             locked && 'opacity-70',
                           )}
@@ -327,7 +309,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
             </nav>
           </div>
 
-          <div className="fixed bottom-3 left-3 right-3 z-[9998] flex lg:hidden items-center justify-around h-14 px-2 mx-auto max-w-lg rounded-full border border-border/50 bg-background/90 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] ring-1 ring-inset ring-white/50 pb-[env(safe-area-inset-bottom)]">
+          <div className="fixed bottom-3 left-3 right-3 z-[9998] flex lg:hidden items-center justify-around h-14 px-2 mx-auto max-w-lg rounded-lg border border-border bg-background shadow-nav pb-[env(safe-area-inset-bottom)]">
             {MOBILE_BOTTOM_NAV.map(({ id, href, icon: Icon }) => {
               const active = pathname.startsWith(href);
               return (
@@ -337,7 +319,6 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full"
                 >
                   <Icon className={cn('h-5 w-5 transition-colors', active ? 'text-primary' : 'text-muted-foreground')} />
-                  {active && <span className="w-1 h-1 rounded-full bg-primary" />}
                 </button>
               );
             })}

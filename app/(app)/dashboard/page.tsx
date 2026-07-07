@@ -5,13 +5,22 @@ import { createClient } from '@/lib/supabase/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import {
   BookOpen, Flame, Target, TrendingUp, MessageSquare, Newspaper,
-  Zap, ArrowRight, Trophy, Clock,
+  Zap, ArrowRight, Trophy, Clock, GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DashboardCard, PremiumTeaser, StatPill, ProgressBar, EmptyState } from '@/components/dashboard/DashboardWidgets';
+import {
+  DashboardCard,
+  PremiumTeaser,
+  StatCard,
+  ProgressBar,
+  SegmentedProgressBar,
+  EmptyState,
+} from '@/components/dashboard/DashboardWidgets';
 import QuestionOfDay from '@/components/QuestionOfDay';
 import { rankForXP } from '@/lib/algorithms';
 import { getRecentBlogPosts, getRecentCommunityPosts } from '@/lib/data/cached-queries';
+import { buildBlogPostPath } from '@/lib/blog/paths';
+import { WaveFlagIcon } from '@/components/icons/MaritimeIcons';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Dashboard',
@@ -61,53 +70,89 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-full">
-      <div className="border-b border-border bg-background">
-        <div className="py-8">
+      {/* Welcome hero */}
+      <div className="hero-block border-b border-border relative">
+        <div className="py-6 md:py-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Welcome back</p>
-              <h1 className="text-3xl font-bold tracking-tight">Good to see you, {firstName} 👋</h1>
-              <p className="text-muted-foreground mt-1 text-sm">
+              <p className="text-caption text-muted-foreground mb-1 uppercase tracking-wider font-semibold">
+                Welcome back
+              </p>
+              <h1 className="flex items-center gap-2">
+                Good to see you, {firstName}
+                <WaveFlagIcon className="h-7 w-7 text-brass shrink-0" />
+              </h1>
+              <p className="text-muted-foreground mt-2 text-caption md:text-body max-w-lg">
                 {streak > 0
                   ? `You're on a ${streak}-day study streak — keep it going!`
                   : 'Start a study streak today — complete any lesson or quiz.'}
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" asChild>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="min-h-[44px]" asChild>
                 <Link href="/learn">Continue Learning</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button size="sm" className="min-h-[44px]" asChild>
                 <Link href="/practice">Daily Practice</Link>
               </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-            <StatPill label="Study Streak" value={streak} sub="days in a row" />
-            <StatPill label="Level" value={rank.current} sub={`${totalXp} XP`} />
-            <StatPill label="Modules Done" value={stats?.modules_completed ?? 0} sub={`${stats?.modules_started ?? 0} started`} />
-            <StatPill label="Exam Readiness" value={`${examReadiness}%`} sub="overall score" />
+            <StatCard
+              label="Study Streak"
+              value={streak}
+              sub="days in a row"
+              icon={Flame}
+              variant="streak"
+            />
+            <StatCard
+              label="Level"
+              value={rank.current}
+              sub={`${totalXp} XP`}
+              icon={Trophy}
+              variant="level"
+            />
+            <StatCard
+              label="Modules Done"
+              value={stats?.modules_completed ?? 0}
+              sub={`${stats?.modules_started ?? 0} started`}
+              icon={GraduationCap}
+              variant="modules"
+            />
+            <StatCard
+              label="Exam Readiness"
+              value={`${examReadiness}%`}
+              icon={Target}
+              variant="readiness"
+              readinessPct={examReadiness}
+            />
           </div>
         </div>
       </div>
 
-      <div className="py-8">
+      <div className="py-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column — 2/3 */}
+          {/* Main column */}
           <div className="lg:col-span-2 space-y-6">
-            <DashboardCard title="Continue Studying" description="Pick up where you left off" icon={BookOpen} href="/learn">
+            <DashboardCard
+              title="Continue Studying"
+              description="Pick up where you left off"
+              icon={BookOpen}
+              accent="navy"
+              href="/learn"
+            >
               {recentModules.length > 0 ? (
                 <div className="space-y-2">
-                  {recentModules.map((m: any) => (
+                  {recentModules.map((m: { module_id: string; progress?: number; modules?: { title?: string; category?: string; subcategory?: string } }) => (
                     <Link
                       key={m.module_id}
                       href={`/modules/${m.modules?.category}/${m.modules?.subcategory}`}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/60 transition-colors group"
+                      className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/60 transition-colors group min-h-[44px]"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{m.modules?.title ?? 'Module'}</p>
-                        <ProgressBar value={m.progress ?? 0} label="Progress" />
+                        <ProgressBar value={m.progress ?? 0} label="Progress" variant="starboard" />
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                     </Link>
@@ -116,31 +161,41 @@ export default async function DashboardPage() {
               ) : (
                 <EmptyState
                   title="No modules started yet"
-                  description="Browse learning modules and start your first lesson."
-                  action={<Button size="sm" asChild><Link href="/unit-modules">Browse Modules</Link></Button>}
+                  description="Browse learning modules and chart your course to certification."
+                  action={
+                    <Button size="sm" className="min-h-[44px]" asChild>
+                      <Link href="/unit-modules">Browse Modules</Link>
+                    </Button>
+                  }
                 />
               )}
             </DashboardCard>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              <DashboardCard title="Daily Study Goal" icon={Target}>
-                <ProgressBar value={dailyMinutes} max={dailyGoal} label={`${dailyMinutes} / ${dailyGoal} min today`} />
-                <p className="text-xs text-muted-foreground mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <DashboardCard title="Daily Study Goal" icon={Target} accent="amber">
+                <ProgressBar
+                  value={dailyMinutes}
+                  max={dailyGoal}
+                  label={`${dailyMinutes} / ${dailyGoal} min today`}
+                  variant="brass"
+                />
+                <p className="text-caption text-muted-foreground mt-3">
                   Complete lessons, flashcards, or quizzes to hit your goal.
                 </p>
               </DashboardCard>
 
-              <DashboardCard title="Weekly Progress" icon={TrendingUp} href="/progress">
+              <DashboardCard title="Weekly Progress" icon={TrendingUp} accent="starboard" href="/progress">
                 <ProgressBar
                   value={gamification?.weekly_minutes ?? 0}
                   max={gamification?.weekly_goal_minutes ?? 180}
                   label="Minutes this week"
+                  variant="starboard"
                 />
               </DashboardCard>
             </div>
 
             {!isPremium && (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <PremiumTeaser
                   title="Unlock all 2,500+ oral questions"
                   description="Full question bank with explanations and mock oral exam mode."
@@ -153,77 +208,91 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            <DashboardCard title="Daily Challenge" description="Question of the day" icon={Zap}>
+            <DashboardCard
+              title="Daily Challenge"
+              description="Question of the day"
+              icon={Zap}
+              accent="challenge"
+            >
               <QuestionOfDay />
-              <Button size="sm" variant="outline" className="mt-3" asChild>
+              <Button size="sm" variant="outline" className="mt-3 min-h-[44px]" asChild>
                 <Link href="/practice#daily-quiz">More practice</Link>
               </Button>
             </DashboardCard>
           </div>
 
-          {/* Right column — 1/3 */}
+          {/* Sidebar column — drops below on mobile */}
           <div className="space-y-6">
-            <DashboardCard title="XP & Level" icon={Trophy}>
+            <DashboardCard title="XP & Level" icon={Trophy} accent="brass">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                <div className="h-12 w-12 rounded-md bg-brass/15 flex items-center justify-center text-lg font-bold text-brass border border-brass/20">
                   {rank.current[0]}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">{rank.current}</p>
-                  <p className="text-xs text-muted-foreground">{totalXp} XP total</p>
-                  <ProgressBar value={rank.pct * 100} label={rank.next ? `${rank.toNext} XP to ${rank.next}` : 'Max rank'} />
+                  <p className="text-caption text-muted-foreground">{totalXp} XP total</p>
+                  <div className="mt-2">
+                    <SegmentedProgressBar
+                      value={rank.pct * 100}
+                      label={rank.next ? `${rank.toNext} XP to ${rank.next}` : 'Max rank'}
+                    />
+                  </div>
                 </div>
               </div>
             </DashboardCard>
 
-            <DashboardCard title="Study Streak" icon={Flame} href="/progress?tab=streak">
+            <DashboardCard title="Study Streak" icon={Flame} accent="amber" href="/progress?tab=streak">
               <div className="text-center py-2">
-                <p className="text-4xl font-bold text-orange-500">{streak}</p>
-                <p className="text-xs text-muted-foreground mt-1">consecutive days</p>
+                <p className="text-4xl font-bold text-amber-signal animate-streak-pulse">{streak}</p>
+                <p className="text-caption text-muted-foreground mt-1">consecutive days</p>
               </div>
             </DashboardCard>
 
-            <DashboardCard title="Community Activity" icon={MessageSquare} href="/community">
+            <DashboardCard title="Community Activity" icon={MessageSquare} accent="navy" href="/community">
               {recentPosts.length > 0 ? (
                 <div className="space-y-2">
                   {recentPosts.map((p) => (
                     <Link
                       key={p.id}
                       href={`/community/post/${p.id}`}
-                      className="block p-2 rounded-lg hover:bg-muted/60 transition-colors"
+                      className="block p-2 rounded-md hover:bg-muted/60 transition-colors min-h-[44px]"
                     >
-                      <p className="text-xs font-medium line-clamp-2">{p.title}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="text-caption font-medium line-clamp-2">{p.title}</p>
+                      <p className="text-label text-muted-foreground mt-0.5">
                         {p.vote_score ?? 0} votes · {new Date(p.created_at).toLocaleDateString()}
                       </p>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <EmptyState title="No posts yet" description="Be the first to start a discussion." />
+                <EmptyState
+                  title="No posts yet"
+                  description="Be the first to start a discussion."
+                  illustrated={false}
+                />
               )}
             </DashboardCard>
 
-            <DashboardCard title="Latest from the Blog" icon={Newspaper} href="/free-content">
+            <DashboardCard title="Latest from the Blog" icon={Newspaper} accent="default" href="/free-content">
               <div className="space-y-2">
                 {blogPosts.map((b) => (
                   <Link
                     key={b.slug}
-                    href={`/free-content/${b.slug}`}
-                    className="block p-2 rounded-lg hover:bg-muted/60 transition-colors"
+                    href={buildBlogPostPath(b)}
+                    className="block p-2 rounded-md hover:bg-muted/60 transition-colors min-h-[44px]"
                   >
-                    <p className="text-xs font-medium line-clamp-2">{b.title}</p>
+                    <p className="text-caption font-medium line-clamp-2">{b.title}</p>
                   </Link>
                 ))}
               </div>
             </DashboardCard>
 
-            <DashboardCard title="Time Studied" icon={Clock} href="/progress?tab=statistics">
+            <DashboardCard title="Time Studied" icon={Clock} accent="navy" href="/progress?tab=statistics">
               <p className="text-2xl font-bold">
                 {Math.floor((stats?.total_time_seconds ?? 0) / 3600)}h{' '}
                 {Math.floor(((stats?.total_time_seconds ?? 0) % 3600) / 60)}m
               </p>
-              <p className="text-xs text-muted-foreground">total on platform</p>
+              <p className="text-caption text-muted-foreground">total on platform</p>
             </DashboardCard>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { buildBlogPostPath } from '@/lib/blog/paths';
 import { SITE_URL, absoluteUrl } from '@/lib/seo/site';
 
 const supabase = createClient(
@@ -36,13 +37,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const [{ data: posts }, { data: articles }] = await Promise.all([
-    supabase.from('blog_posts').select('slug, date').eq('hidden', false),
+    supabase.from('blog_posts').select('slug, category, category_slug, date, updated_at').eq('hidden', false),
     supabase.from('sea_survival').select('slug, updated_at').eq('hidden', false),
   ]);
 
   const blogEntries: MetadataRoute.Sitemap = (posts ?? []).map((post) => ({
-    url: absoluteUrl(`/free-content/${post.slug}`),
-    lastModified: post.date ? new Date(post.date) : now,
+    url: absoluteUrl(buildBlogPostPath(post)),
+    lastModified: post.updated_at
+      ? new Date(post.updated_at)
+      : post.date
+        ? new Date(post.date)
+        : now,
     changeFrequency: 'monthly',
     priority: 0.7,
   }));

@@ -7,9 +7,9 @@ export const metadata: Metadata = buildNoIndexMetadata('Sign In');
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen bg-background">
+    <div className="relative min-h-screen">
       <PageBackground />
-      <PageContainer className="min-h-screen flex items-center justify-center py-8">
+      <PageContainer className="relative z-[1] min-h-screen flex items-center justify-center py-8">
         {children}
       </PageContainer>
     </div>

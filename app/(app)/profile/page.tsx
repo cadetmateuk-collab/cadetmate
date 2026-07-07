@@ -42,7 +42,7 @@ export default async function ProfilePage({
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
       <div className="flex items-start gap-4 mb-8">
-        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
+        <div className="h-16 w-16 rounded-lg bg-brass/15 flex items-center justify-center text-2xl font-bold text-brass">
           {(user.profile?.full_name ?? 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
         </div>
         <div className="flex-1">
@@ -87,7 +87,7 @@ export default async function ProfilePage({
 
       {(!tab || tab === 'account') && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border/60 p-6 space-y-4">
+          <div className="rounded-lg border border-border p-6 space-y-4">
             <h2 className="font-semibold">Account Details</h2>
             <div className="grid sm:grid-cols-2 gap-4 text-sm">
               <div>
@@ -109,7 +109,7 @@ export default async function ProfilePage({
       )}
 
       {tab === 'subscription' && (
-        <div className="rounded-2xl border border-border/60 p-6">
+        <div className="rounded-lg border border-border p-6">
           <h2 className="font-semibold mb-2">Subscription</h2>
           {isPremium ? (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
@@ -133,7 +133,7 @@ export default async function ProfilePage({
       )}
 
       {tab === 'billing' && (
-        <div className="rounded-2xl border border-border/60 p-6">
+        <div className="rounded-lg border border-border p-6">
           <h2 className="font-semibold mb-2">Billing</h2>
           <p className="text-sm text-muted-foreground">
             Manage your subscription and payment methods through the store.
@@ -145,7 +145,7 @@ export default async function ProfilePage({
       )}
 
       {tab === 'notifications' && (
-        <div className="rounded-2xl border border-border/60 p-6">
+        <div className="rounded-lg border border-border p-6">
           <h2 className="font-semibold mb-2">Notification Preferences</h2>
           <p className="text-sm text-muted-foreground">
             Use the bell icon in the header to view notifications. Email preferences coming soon.

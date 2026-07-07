@@ -21,10 +21,6 @@ const PAGE_SHELL_CSS = `
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image: radial-gradient(circle, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
 }
 
 .cm-glow {
@@ -114,7 +110,7 @@ export function PageShell({ children, wide = false, className }: PageShellProps)
     <>
       <style>{PAGE_SHELL_CSS}</style>
       <div className="cm-page-shell">
-        <div className="cm-dot-grid" aria-hidden="true" />
+        <div className="cm-dot-grid bg-chart-dots" aria-hidden="true" />
         <div className="cm-glow" aria-hidden="true" />
         <div className="cm-noise" aria-hidden="true" />
         <div className={cn('cm-content', wide && 'cm-content-wide', className)}>

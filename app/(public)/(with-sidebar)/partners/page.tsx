@@ -249,7 +249,7 @@ export default function PartnersPage() {
           font-size: 0.8125rem;
           font-weight: 600;
           border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
+          background: hsl(var(--card));
           color: hsl(var(--muted-foreground));
           cursor: pointer;
           transition: all 0.18s ease;
@@ -278,7 +278,7 @@ export default function PartnersPage() {
           position: relative;
           border-radius: 0.875rem;
           border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
+          background: hsl(var(--card));
           overflow: hidden;
           cursor: pointer;
           text-decoration: none;
@@ -342,7 +342,7 @@ export default function PartnersPage() {
           letter-spacing: 0.03em;
           transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
           border: 1px solid hsl(var(--border));
-          background: hsl(var(--background));
+          background: hsl(var(--card));
           color: hsl(var(--foreground));
         }
         .pp-card:hover .pp-logo-badge {

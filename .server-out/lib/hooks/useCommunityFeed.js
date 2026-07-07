@@ -6,7 +6,7 @@ exports.useCategories = useCategories;
 exports.useInfiniteScroll = useInfiniteScroll;
 const react_1 = require("react");
 const client_1 = require("@/lib/supabase/client");
-function useCommunityFeed({ sort, period, category }) {
+function useCommunityFeed({ sort, period, category, filter }) {
     const [posts, setPosts] = (0, react_1.useState)([]);
     const [loading, setLoading] = (0, react_1.useState)(true);
     const [loadingMore, setLoadingMore] = (0, react_1.useState)(false);
@@ -23,6 +23,8 @@ function useCommunityFeed({ sort, period, category }) {
             const params = new URLSearchParams({ sort, period: period !== null && period !== void 0 ? period : 'all', limit: '20' });
             if (category)
                 params.set('category', category);
+            if (filter)
+                params.set('filter', filter);
             if (append && nextCursor)
                 params.set('cursor', nextCursor);
             const res = await fetch(`/api/community/posts?${params}`);
@@ -43,7 +45,7 @@ function useCommunityFeed({ sort, period, category }) {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [sort, period, category]);
+    }, [sort, period, category, filter]);
     (0, react_1.useEffect)(() => {
         fetchPosts(false);
     }, [fetchPosts]);

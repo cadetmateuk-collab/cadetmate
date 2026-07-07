@@ -41,7 +41,7 @@ import type { MobileNavItem, NavGroupConfig, NavItemConfig } from './types';
 /** Public marketing site navigation */
 export const PUBLIC_NAV: NavItemConfig[] = [
   { id: 'home', label: 'Home', href: '/home', icon: Home },
-  { id: 'blog', label: 'Blog', href: '/free-content', icon: Newspaper },
+  { id: 'blog', label: 'Free Content', href: '/free-content', icon: Newspaper },
   { id: 'resources', label: 'Free Resources', href: '/resources', icon: BookOpen },
   { id: 'community', label: 'Community', href: '/community-preview', icon: MessageSquare },
   { id: 'pricing', label: 'Pricing', href: '/pricing', icon: DollarSign },
@@ -54,6 +54,16 @@ export const PUBLIC_AUTH_NAV: NavItemConfig[] = [
   { id: 'signup', label: 'Sign Up', href: '/auth?mode=signup', icon: Sparkles },
 ];
 
+/** Free content nav group — visible to all account types */
+export const APP_FREE_CONTENT_GROUP: NavGroupConfig = {
+  id: 'free-content',
+  label: 'Free Content',
+  items: [
+    { id: 'articles', label: 'Articles & Guides', href: '/free-content', icon: Newspaper },
+    { id: 'resources', label: 'Free Resources', href: '/resources', icon: BookOpen },
+  ],
+};
+
 /** Logged-in application sidebar */
 export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
@@ -64,6 +74,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
       { id: 'dashboard', label: 'Home', href: '/dashboard', icon: Home, exact: true },
     ],
   },
+  APP_FREE_CONTENT_GROUP,
   {
     id: 'learn',
     label: 'Learn',

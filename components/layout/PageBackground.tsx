@@ -1,8 +1,8 @@
-/** Subtle dotted page backdrop — used in app + public shells */
+/** Subtle dotted page backdrop — fixed so pattern stays coherent while scrolling */
 export function PageBackground() {
   return (
     <div
-      className="page-dot-grid pointer-events-none absolute inset-0 z-0"
+      className="bg-chart-dots pointer-events-none fixed inset-0 z-0"
       aria-hidden="true"
     />
   );

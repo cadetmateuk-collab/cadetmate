@@ -5,10 +5,17 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  typedRoutes: false,        // moved out of experimental
+  typedRoutes: false,
   transpilePackages: ['three'],
   serverExternalPackages: ['ws'],
   productionBrowserSourceMaps: false,
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'cadetmate.co.uk' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+    ],
+  },
 };
 
 export default nextConfig;

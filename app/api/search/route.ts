@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { buildBlogPostPath } from '@/lib/blog/paths';
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     supabase
       .from('blog_posts')
-      .select('id, title, slug, excerpt')
+      .select('id, title, slug, excerpt, category, category_slug')
       .eq('hidden', false)
       .ilike('title', pattern)
       .limit(limit),
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
       type: 'blog',
       title: b.title,
       subtitle: b.excerpt ?? undefined,
-      href: `/free-content/${b.slug}`,
+      href: buildBlogPostPath(b),
     });
   }
 

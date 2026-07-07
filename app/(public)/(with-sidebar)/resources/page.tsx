@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { buildBlogPostPath } from '@/lib/blog/paths';
 import { BookOpen, FileText, Anchor, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -17,7 +18,7 @@ export default async function ResourcesPage() {
   const [{ data: blogs }, { data: articles }] = await Promise.all([
     supabase
       .from('blog_posts')
-      .select('slug, title, excerpt, date')
+      .select('slug, title, excerpt, date, category, category_slug')
       .eq('hidden', false)
       .order('date', { ascending: false })
       .limit(6),
@@ -31,7 +32,7 @@ export default async function ResourcesPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
       <div className="mb-12">
-        <h1 className="text-4xl font-bold tracking-tight">Free Learning Resources</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">Free Learning Resources</h1>
         <p className="text-muted-foreground mt-3 max-w-2xl">
           Discover free maritime content — no account required. Create a free account to save progress and unlock more.
         </p>
@@ -53,10 +54,10 @@ export default async function ResourcesPage() {
           {(blogs ?? []).map((b) => (
             <Link
               key={b.slug}
-              href={`/free-content/${b.slug}`}
-              className="p-5 rounded-2xl border border-border/60 hover:shadow-md hover:border-primary/20 transition-all"
+              href={buildBlogPostPath(b)}
+              className="card card-hover p-5 block"
             >
-              <p className="font-medium text-sm line-clamp-2">{b.title}</p>
+              <p className="font-medium text-sm text-foreground line-clamp-2">{b.title}</p>
               {b.excerpt && <p className="text-xs text-muted-foreground mt-2 line-clamp-3">{b.excerpt}</p>}
             </Link>
           ))}
@@ -72,11 +73,11 @@ export default async function ResourcesPage() {
             <Link
               key={a.slug}
               href={`/sea-survival/${a.slug}`}
-              className="p-4 rounded-2xl border border-border/60 hover:shadow-md transition-all flex items-center gap-3"
+              className="card card-hover p-4 flex items-center gap-3"
             >
               <FileText className="h-5 w-5 text-primary shrink-0" />
               <div>
-                <p className="font-medium text-sm">{a.title}</p>
+                <p className="font-medium text-sm text-foreground">{a.title}</p>
                 {a.category && <p className="text-xs text-muted-foreground">{a.category}</p>}
               </div>
             </Link>

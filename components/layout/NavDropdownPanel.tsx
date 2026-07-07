@@ -3,9 +3,9 @@
 import { cn } from '@/lib/utils';
 
 export const DROPDOWN_PANEL_CLASS =
-  'absolute top-full left-0 mt-2 w-56 rounded-xl py-1.5 z-[100] ' +
-  'bg-zinc-950/92 backdrop-blur-xl border border-white/[0.08] ' +
-  'shadow-[0_8px_32px_rgba(0,0,0,0.32)] ' +
+  'absolute top-full left-0 mt-2 w-56 rounded-lg py-1.5 z-[100] ' +
+  'bg-card border border-border ' +
+  'shadow-nav ' +
   'animate-in fade-in slide-in-from-top-1 duration-200';
 
 export function NavDropdownPanel({
@@ -33,7 +33,6 @@ export function NavDropdownPanel({
 export function NavDropdownItem({
   children,
   onClick,
-  active,
   className,
 }: {
   children: React.ReactNode;
@@ -45,9 +44,8 @@ export function NavDropdownItem({
     <button
       onClick={onClick}
       className={cn(
-        'w-full flex items-center gap-2.5 px-3 py-2 mx-1 rounded-lg text-[13px] text-left transition-all duration-150',
-        'text-zinc-300 hover:text-white hover:bg-white/[0.08]',
-        active && 'bg-white/[0.1] text-white font-medium',
+        'w-full flex items-center gap-2.5 px-3 py-2.5 mx-1 rounded-md text-[13px] text-left transition-all duration-150 min-h-[44px]',
+        'text-foreground hover:bg-muted/60',
         className,
       )}
       style={{ width: 'calc(100% - 8px)' }}
@@ -58,27 +56,34 @@ export function NavDropdownItem({
 }
 
 export const NAV_LINK_CLASS =
-  'px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 whitespace-nowrap';
+  'px-3 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 whitespace-nowrap min-h-[44px] flex items-center';
 
 export const NAV_LINK_IDLE =
   'text-muted-foreground hover:text-foreground hover:bg-muted/70';
 
 export const NAV_LINK_ACTIVE =
-  'text-white bg-primary shadow-sm';
+  'text-primary-foreground bg-primary shadow-sm py-2';
 
-/** Frosted floating capsule — Apple-style tab bar shell */
 export const CAPSULE_NAV_SHELL =
-  'inline-flex items-center gap-0.5 px-1.5 py-1 rounded-full ' +
-  'bg-background/80 backdrop-blur-2xl ' +
-  'border border-border/50 ' +
-  'shadow-[0_4px_24px_rgba(0,0,0,0.06)] ' +
-  'ring-1 ring-inset ring-white/50 dark:ring-white/10';
+  'inline-flex items-center gap-0.5 px-1.5 py-1 rounded-lg ' +
+  'bg-background ' +
+  'border border-border ' +
+  'shadow-nav';
 
 export const CAPSULE_TAB =
-  'px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 whitespace-nowrap';
+  'px-3.5 py-1.5 rounded-md text-[13px] font-medium transition-all duration-200 whitespace-nowrap min-h-[44px] flex items-center';
 
 export const CAPSULE_TAB_IDLE =
   'text-muted-foreground hover:text-foreground hover:bg-muted/60';
 
 export const CAPSULE_TAB_ACTIVE =
-  'bg-primary text-white shadow-sm font-semibold';
+  'bg-primary text-primary-foreground shadow-sm font-semibold py-2';
+
+export const CAPSULE_TAB_HIGHLIGHT =
+  'text-primary hover:bg-primary/10 font-medium';
+
+export const HEADER_BAR_CLASS =
+  'relative flex items-center gap-2 overflow-visible rounded-lg border border-border bg-card px-2 py-1.5 shadow-nav';
+
+/** Extra room so nav shadow is not clipped by transparent header wrappers */
+export const HEADER_BAR_WRAP = 'overflow-visible p-1 -m-1';

@@ -72,14 +72,6 @@ export default function StorePage() {
           overflow-x: hidden;
         }
 
-        .store-dot-grid {
-          pointer-events: none;
-          position: fixed; inset: 0; z-index: 0;
-          background-image: radial-gradient(circle, hsl(var(--foreground) / 0.07) 1px, transparent 1px);
-          background-size: 28px 28px;
-          mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-        }
         .store-glow {
           pointer-events: none;
           position: fixed; top: -200px; left: 50%; transform: translateX(-50%); z-index: 0;
@@ -224,7 +216,6 @@ export default function StorePage() {
       `}</style>
 
       <div className="store-page">
-        <div className="store-dot-grid" aria-hidden="true" />
         <div className="store-glow"     aria-hidden="true" />
         <div className="store-noise"    aria-hidden="true" />
 

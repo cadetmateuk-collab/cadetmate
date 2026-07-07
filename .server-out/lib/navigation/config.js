@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MOBILE_BOTTOM_NAV = exports.APP_NAV_GROUPS = exports.PUBLIC_AUTH_NAV = exports.PUBLIC_NAV = void 0;
+exports.MOBILE_BOTTOM_NAV = exports.APP_NAV_GROUPS = exports.APP_FREE_CONTENT_GROUP = exports.PUBLIC_AUTH_NAV = exports.PUBLIC_NAV = void 0;
 exports.isNavItemActive = isNavItemActive;
 exports.isGroupActive = isGroupActive;
 exports.filterNavForUser = filterNavForUser;
@@ -8,7 +8,7 @@ const lucide_react_1 = require("lucide-react");
 /** Public marketing site navigation */
 exports.PUBLIC_NAV = [
     { id: 'home', label: 'Home', href: '/home', icon: lucide_react_1.Home },
-    { id: 'blog', label: 'Blog', href: '/free-content', icon: lucide_react_1.Newspaper },
+    { id: 'blog', label: 'Free Content', href: '/free-content', icon: lucide_react_1.Newspaper },
     { id: 'resources', label: 'Free Resources', href: '/resources', icon: lucide_react_1.BookOpen },
     { id: 'community', label: 'Community', href: '/community-preview', icon: lucide_react_1.MessageSquare },
     { id: 'pricing', label: 'Pricing', href: '/pricing', icon: lucide_react_1.DollarSign },
@@ -19,6 +19,15 @@ exports.PUBLIC_AUTH_NAV = [
     { id: 'login', label: 'Log In', href: '/auth', icon: lucide_react_1.LogIn },
     { id: 'signup', label: 'Sign Up', href: '/auth?mode=signup', icon: lucide_react_1.Sparkles },
 ];
+/** Free content nav group — visible to all account types */
+exports.APP_FREE_CONTENT_GROUP = {
+    id: 'free-content',
+    label: 'Free Content',
+    items: [
+        { id: 'articles', label: 'Articles & Guides', href: '/free-content', icon: lucide_react_1.Newspaper },
+        { id: 'resources', label: 'Free Resources', href: '/resources', icon: lucide_react_1.BookOpen },
+    ],
+};
 /** Logged-in application sidebar */
 exports.APP_NAV_GROUPS = [
     {
@@ -26,9 +35,10 @@ exports.APP_NAV_GROUPS = [
         label: 'Main',
         defaultOpen: true,
         items: [
-            { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: lucide_react_1.LayoutDashboard, exact: true },
+            { id: 'dashboard', label: 'Home', href: '/dashboard', icon: lucide_react_1.Home, exact: true },
         ],
     },
+    exports.APP_FREE_CONTENT_GROUP,
     {
         id: 'learn',
         label: 'Learn',
@@ -52,7 +62,7 @@ exports.APP_NAV_GROUPS = [
             { id: 'mock-oral', label: 'Mock Oral Exams', href: '/practice?tab=mock-oral', icon: lucide_react_1.Mic, premiumOnly: true },
             { id: 'oral-questions', label: 'Oral Questions', href: '/practice?tab=oral-questions', icon: lucide_react_1.HelpCircle, premiumOnly: true },
             { id: 'simulators', label: 'Emergency Simulators', href: '/simulator', icon: lucide_react_1.Zap, premiumOnly: true },
-            { id: 'quick-quiz', label: 'Quick Quiz', href: '/practice?tab=quick-quiz', icon: lucide_react_1.Target },
+            { id: 'quick-quiz', label: 'Quick Quiz', href: '/practice#daily-quiz', icon: lucide_react_1.Target },
             { id: 'scenarios', label: 'Scenario Challenges', href: '/practice?tab=scenarios', icon: lucide_react_1.GraduationCap, premiumOnly: true },
             { id: 'practice-hub', label: 'All Practice', href: '/practice', icon: lucide_react_1.PenLine },
         ],
@@ -114,7 +124,7 @@ exports.APP_NAV_GROUPS = [
 ];
 /** Mobile bottom navigation for logged-in app */
 exports.MOBILE_BOTTOM_NAV = [
-    { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: lucide_react_1.LayoutDashboard },
+    { id: 'dashboard', label: 'Home', href: '/dashboard', icon: lucide_react_1.Home },
     { id: 'learn', label: 'Learn', href: '/learn', icon: lucide_react_1.BookOpen },
     { id: 'practice', label: 'Practice', href: '/practice', icon: lucide_react_1.Target },
     { id: 'community', label: 'Community', href: '/community', icon: lucide_react_1.Users },

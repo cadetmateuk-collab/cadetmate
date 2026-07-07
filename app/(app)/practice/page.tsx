@@ -87,7 +87,7 @@ export default async function PracticePage() {
             <Link
               key={item.href}
               href={locked ? '/store' : item.href}
-              className="relative p-6 rounded-2xl border border-border/60 bg-card hover:shadow-md transition-all group"
+              className="card card-hover relative group"
             >
               {locked && (
                 <span className="absolute top-4 right-4 flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">
@@ -121,7 +121,7 @@ export default async function PracticePage() {
         </div>
       )}
 
-      <section id="daily-quiz" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card p-6">
+      <section id="daily-quiz" className="scroll-mt-24 card">
         <h2 className="text-lg font-semibold mb-1">Daily Challenge</h2>
         <p className="text-sm text-muted-foreground mb-4">Question of the day — answer to keep your streak going.</p>
         <QuestionOfDay />

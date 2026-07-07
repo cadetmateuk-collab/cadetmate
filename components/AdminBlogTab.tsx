@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import AdminModal from '@/components/AdminModal'
+import { slugifySegment, buildBlogPostPath } from '@/lib/blog/paths';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,6 +23,7 @@ interface BlogPost {
   author_avatar: string;
   date: string;
   category: string;
+  category_slug: string;
   image: string;
   read_time: string;
   featured: boolean;
@@ -31,7 +33,7 @@ interface BlogPost {
 const EMPTY_POST: BlogPost = {
   title: '', excerpt: '', content: '', slug: '', author: '',
   author_avatar: '', date: new Date().toISOString().split('T')[0],
-  category: '', image: '', read_time: '', featured: false, hidden: false,
+  category: '', category_slug: '', image: '', read_time: '', featured: false, hidden: false,
 };
 
 // ── Lifted outside the parent so React never recreates the component type ──────
@@ -47,13 +49,20 @@ interface PostModalProps {
 
 function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: PostModalProps) {
   const generateSlug = (title: string) =>
-    title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    slugifySegment(title);
 
   const set = (field: keyof BlogPost, value: any) =>
     onChange({ ...post, [field]: value });
 
   const handleTitleChange = (title: string) =>
     onChange({ ...post, title, slug: isCreating ? generateSlug(title) : post.slug });
+
+  const handleCategoryChange = (category: string) =>
+    onChange({ ...post, category, category_slug: slugifySegment(category) || 'general' });
+
+  const publicPath = post.slug
+    ? buildBlogPostPath({ category_slug: post.category_slug, category: post.category, slug: post.slug })
+    : null;
 
   return (
     <AdminModal onClose={onClose}>
@@ -91,6 +100,9 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
               className="w-full border border-gray-200 rounded-lg px-3 py-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="url-friendly-slug"
             />
+            {publicPath && (
+              <p className="mt-1 text-xs text-gray-500 font-mono">/free-content/{post.category_slug || 'category'}/{post.slug}</p>
+            )}
           </div>
 
           {/* Excerpt */}
@@ -103,6 +115,7 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
               className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Short summary of the post..."
             />
+            <p className="mt-1 text-xs text-gray-500">Used as the meta description in Google search results (aim for 140–160 characters).</p>
           </div>
 
           {/* Content */}
@@ -115,6 +128,9 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
               className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
               placeholder="Full post content (Markdown supported)..."
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Supports headings, links, lists, tables, and images. Add a <code>## FAQ</code> section with <code>### Question</code> + answer paragraphs for SEO rich results.
+            </p>
           </div>
 
           {/* Author + Avatar */}
@@ -148,9 +164,9 @@ function PostModal({ post, isCreating, saving, onClose, onSave, onChange }: Post
               <input
                 type="text"
                 value={post.category}
-                onChange={e => set('category', e.target.value)}
+                onChange={e => handleCategoryChange(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Navigation"
+                placeholder="Cadetship"
               />
             </div>
             <div>
@@ -306,13 +322,17 @@ export default function AdminBlogTab() {
     if (!editingPost) return;
     setSaving(true);
     const { id, ...payload } = editingPost;
+    const savePayload = {
+      ...payload,
+      category_slug: payload.category_slug || slugifySegment(payload.category) || 'general',
+    };
 
     if (id) {
-      const { error } = await supabase.from('blog_posts').update(payload).eq('id', id);
+      const { error } = await supabase.from('blog_posts').update(savePayload).eq('id', id);
       if (error) { showToast(`Failed to update: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Post updated!', 'success');
     } else {
-      const { error } = await supabase.from('blog_posts').insert([payload]);
+      const { error } = await supabase.from('blog_posts').insert([savePayload]);
       if (error) { showToast(`Failed to create: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Post created!', 'success');
     }

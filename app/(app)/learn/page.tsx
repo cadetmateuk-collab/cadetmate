@@ -56,7 +56,7 @@ export default async function LearnPage() {
               <Link
                 key={i}
                 href={`/modules/${m.modules?.category}/${m.modules?.subcategory}`}
-                className="flex items-center gap-3 p-4 rounded-2xl border border-border/60 bg-card hover:shadow-md transition-all group"
+                className="card card-hover flex items-center gap-3 group"
               >
                 <BookOpen className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -80,7 +80,7 @@ export default async function LearnPage() {
               <Link
                 key={section.href}
                 href={locked ? '/store' : section.href}
-                className="relative p-5 rounded-2xl border border-border/60 bg-card hover:shadow-md hover:border-primary/30 transition-all group"
+                className="card card-hover relative group"
               >
                 {locked && (
                   <span className="absolute top-3 right-3 text-primary">
@@ -106,12 +106,12 @@ export default async function LearnPage() {
         </section>
       )}
 
-      <div className="rounded-2xl border border-dashed border-border p-6 flex items-center justify-between gap-4">
+      <div className="card flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Search className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="font-medium text-sm">Search all learning content</p>
-            <p className="text-xs text-muted-foreground">Press ⌘K anywhere in the app</p>
+            <p className="text-xs text-muted-foreground">Use search in the header to jump anywhere quickly</p>
           </div>
         </div>
         <Button variant="outline" size="sm" asChild>

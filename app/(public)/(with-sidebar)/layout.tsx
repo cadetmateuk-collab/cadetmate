@@ -1,5 +1,5 @@
-import { PublicShell } from '@/components/layout/PublicShell'
+import { AdaptiveShell } from '@/components/layout/AdaptiveShell';
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <PublicShell>{children}</PublicShell>
+  return <AdaptiveShell>{children}</AdaptiveShell>;
 }

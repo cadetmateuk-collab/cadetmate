@@ -1,0 +1,158 @@
+/**
+ * CadetMate Design Tokens — Maritime chart identity
+ * Single source of truth for colours, typography, spacing, radii, shadows, textures.
+ */
+
+:root {
+  /* ── Brand palette ───────────────────────────────────────────── */
+  --brand-blue: 222 95% 57%;          /* #2A61FA — primary actions & links */
+  --brand-blue-light: 222 90% 65%;
+  --brand-blue-dark: 222 60% 32%;     /* blue-tinted text — not black */
+  --brand-blue-deep: 222 65% 22%;     /* deep blue surfaces (nav dropdowns) */
+  --ink-navy: 222 55% 18%;            /* blue-navy, not warm black */
+  --ink-navy-mid: 222 55% 24%;
+  --brass: 40 54% 51%;
+  --brass-light: 42 68% 62%;
+  --parchment: 40 20% 98%;            /* warm off-white page background */
+  --parchment-dark: 40 15% 95%;
+  --surface-white: 0 0% 100%;
+  --text-grey: 220 10% 18%;            /* neutral black-grey for body text */
+
+  /* ── Functional (maritime) ───────────────────────────────────── */
+  --starboard: 152 55% 38%;
+  --starboard-light: 152 45% 94%;
+  --port: 4 75% 52%;
+  --port-light: 4 60% 96%;
+  --signal-amber: 36 75% 47%;
+  --signal-amber-light: 36 70% 94%;
+
+  /* ── shadcn semantic mapping ─────────────────────────────────── */
+  --background: var(--parchment);
+  --foreground: var(--text-grey);
+  --card: var(--surface-white);
+  --card-foreground: var(--text-grey);
+  --popover: var(--surface-white);
+  --popover-foreground: var(--text-grey);
+  --primary: var(--brand-blue);
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 18% 97%;
+  --secondary-foreground: var(--text-grey);
+  --muted: 40 15% 96%;
+  --muted-foreground: 220 6% 44%;
+  --accent: 222 60% 96%;
+  --accent-foreground: var(--text-grey);
+  --destructive: var(--port);
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 12% 90%;
+  --input: 40 12% 90%;
+  --ring: var(--brand-blue);
+
+  /* ── Dot grid ──────────────────────────────────────────────────── */
+  --dot-color: 222 95% 57%;
+  --dot-opacity: 0.16;
+
+  /* ── Sidebar ─────────────────────────────────────────────────── */
+  --sidebar-background: var(--brand-blue-deep);
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-primary: var(--brand-blue);
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 222 55% 28%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 222 45% 30%;
+  --sidebar-ring: var(--brand-blue);
+  --sidebar-hover: 222 50% 26%;
+
+  /* ── Typography scale (Manrope) ──────────────────────────────── */
+  --font-display-weight: 800;
+  --font-heading-weight: 700;
+  --font-body-weight: 400;
+  --font-label-weight: 600;
+
+  --text-h1: clamp(1.75rem, 3.5vw, 2.5rem);
+  --text-h2: clamp(1.375rem, 2.5vw, 1.875rem);
+  --text-h3: clamp(1.125rem, 2vw, 1.5rem);
+  --text-h4: clamp(1rem, 1.5vw, 1.25rem);
+  --text-h5: 0.9375rem;
+  --text-h6: 0.875rem;
+  --text-body: clamp(1rem, 1.1vw, 1.0625rem);
+  --text-caption: 0.8125rem;
+  --text-label: 0.6875rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.1em;
+
+  /* ── Spacing scale ───────────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --space-card-mobile: var(--space-4);
+  --space-card-desktop: var(--space-6);
+  --space-section-mobile: var(--space-6);
+  --space-section-desktop: var(--space-8);
+
+  /* ── Radius scale ────────────────────────────────────────────── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius: var(--radius-lg);
+
+  /* ── Shadow scale (blue-tinted, not black) ───────────────────── */
+  --shadow-xs: 0 1px 2px hsl(var(--brand-blue) / 0.06);
+  --shadow-sm: 0 2px 6px hsl(var(--brand-blue) / 0.08);
+  --shadow-card: 0 2px 8px hsl(var(--brand-blue) / 0.09), 0 1px 2px hsl(var(--brand-blue) / 0.05);
+  --shadow-card-hover: 0 6px 20px hsl(var(--brand-blue) / 0.14), 0 2px 6px hsl(var(--brand-blue) / 0.07);
+  --shadow-nav: 0 4px 16px hsl(var(--brand-blue) / 0.1), 0 1px 0 hsl(var(--border));
+  --shadow-inset: inset 0 1px 2px hsl(var(--brand-blue) / 0.1);
+
+  /* ── Transitions ─────────────────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 350ms ease;
+}
+
+.dark {
+  --background: var(--ink-navy);
+  --foreground: 222 40% 92%;
+  --card: var(--ink-navy-mid);
+  --card-foreground: 222 40% 92%;
+  --popover: var(--ink-navy-mid);
+  --popover-foreground: 222 40% 92%;
+  --primary: var(--brand-blue-light);
+  --primary-foreground: 0 0% 100%;
+  --secondary: 222 45% 18%;
+  --secondary-foreground: 222 40% 92%;
+  --muted: 222 40% 16%;
+  --muted-foreground: 222 15% 62%;
+  --accent: 222 45% 20%;
+  --accent-foreground: 222 40% 92%;
+  --destructive: 4 70% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 222 35% 24%;
+  --input: 222 35% 24%;
+  --ring: var(--brand-blue-light);
+
+  --dot-color: 222 90% 65%;
+  --dot-opacity: 0.12;
+
+  --sidebar-background: 222 60% 10%;
+  --sidebar-foreground: 222 40% 92%;
+  --sidebar-accent: 222 50% 14%;
+  --sidebar-border: 222 40% 18%;
+  --sidebar-hover: 222 50% 12%;
+
+  --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.25);
+  --shadow-card-hover: 0 6px 20px hsl(0 0% 0% / 0.35);
+  --shadow-nav: 0 4px 16px hsl(0 0% 0% / 0.3), 0 1px 0 hsl(var(--border));
+}

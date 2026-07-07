@@ -57,7 +57,6 @@ export default function SeaSurvivalPage() {
   if (loading) {
     return (
       <div className="ss-page ss-loading">
-        <div className="ss-dot-grid" />
         <div className="ss-glow" />
         <div className="ss-noise" />
         <div className="ss-spinner" />
@@ -87,13 +86,6 @@ export default function SeaSurvivalPage() {
         }
 
         /* ── Backgrounds ── */
-        .ss-dot-grid {
-          pointer-events:none; position:fixed; inset:0; z-index:0;
-          background-image:radial-gradient(circle, hsl(var(--foreground)/0.07) 1px, transparent 1px);
-          background-size:28px 28px;
-          mask-image:radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-          -webkit-mask-image:radial-gradient(ellipse 85% 85% at 50% 30%, black 40%, transparent 100%);
-        }
         .ss-glow {
           pointer-events:none; position:fixed; z-index:0;
           top:-200px; left:50%; transform:translateX(-50%);
@@ -267,7 +259,6 @@ export default function SeaSurvivalPage() {
       `}</style>
 
       <div className="ss-page">
-        <div className="ss-dot-grid" aria-hidden="true" />
         <div className="ss-glow" aria-hidden="true" />
         <div className="ss-noise" aria-hidden="true" />
 
