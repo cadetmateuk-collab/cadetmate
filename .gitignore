@@ -43,6 +43,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local sql dumps / schema exports (use supabase/migrations for tracked schema)
+schemas.sql
+schema.sql
+
 node_modules/
 .env
 .env.local

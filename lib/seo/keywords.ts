@@ -12,7 +12,7 @@ export const FREE_CONTENT_KEYWORDS = [
 ] as const;
 
 export function buildArticleKeywords(category: string, title: string): string[] {
-  const base = [...FREE_CONTENT_KEYWORDS];
+  const base: string[] = [...FREE_CONTENT_KEYWORDS];
   if (category) base.unshift(category.toLowerCase());
   const titleWords = title
     .toLowerCase()

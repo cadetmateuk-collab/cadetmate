@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateSession = updateSession;
 const ssr_1 = require("@supabase/ssr");
 const server_1 = require("next/server");
+const paths_1 = require("@/lib/blog/paths");
 function nextWithHeaders(request, requestHeaders) {
     return server_1.NextResponse.next({
         request: { headers: requestHeaders },
@@ -46,6 +47,24 @@ async function updateSession(request) {
         const contentUrl = request.nextUrl.clone();
         contentUrl.pathname = pathname.replace(/^\/blog/, '/free-content');
         return server_1.NextResponse.redirect(contentUrl);
+    }
+    // Legacy article URL: /free-content/{slug} → /free-content/{category}/{slug}
+    // Handled here (not a route file) to avoid Next.js dynamic segment conflicts.
+    if (pathname.startsWith('/free-content/')) {
+        const subpath = pathname.slice('/free-content/'.length);
+        if (subpath && !subpath.includes('/')) {
+            const { data: post } = await supabase
+                .from('blog_posts')
+                .select('slug, category, category_slug')
+                .eq('slug', decodeURIComponent(subpath))
+                .eq('hidden', false)
+                .maybeSingle();
+            if (post) {
+                const canonicalUrl = request.nextUrl.clone();
+                canonicalUrl.pathname = (0, paths_1.buildBlogPostPath)(post);
+                return server_1.NextResponse.redirect(canonicalUrl, 308);
+            }
+        }
     }
     // Protect /admin routes — require authentication and admin role
     if (pathname.startsWith('/admin')) {

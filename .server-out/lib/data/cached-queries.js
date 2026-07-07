@@ -42,7 +42,7 @@ exports.getRecentBlogPosts = (0, cache_1.unstable_cache)(async () => {
     const supabase = (0, public_1.createPublicSupabase)();
     const { data } = await supabase
         .from('blog_posts')
-        .select('slug, title, excerpt, date')
+        .select('slug, title, excerpt, date, category, category_slug')
         .eq('hidden', false)
         .order('date', { ascending: false })
         .limit(3);

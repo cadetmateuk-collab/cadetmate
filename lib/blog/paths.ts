@@ -9,16 +9,16 @@ export function slugifySegment(value: string): string {
 
 export function resolveCategorySlug(post: {
   category_slug?: string | null;
-  category: string;
+  category?: string | null;
 }): string {
   const fromDb = post.category_slug?.trim();
   if (fromDb) return fromDb;
-  const fromLabel = slugifySegment(post.category);
+  const fromLabel = slugifySegment(post.category ?? '');
   return fromLabel || 'general';
 }
 
 export function buildBlogPostPath(
-  post: { category_slug?: string | null; category: string; slug: string },
+  post: { category_slug?: string | null; category?: string | null; slug: string },
 ): string {
   const categorySlug = resolveCategorySlug(post);
   return `/free-content/${categorySlug}/${post.slug}`;

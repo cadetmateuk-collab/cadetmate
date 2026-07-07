@@ -64,7 +64,13 @@ async function openaiModeration(text: string): Promise<ModerationResult | null> 
 
     if (!res.ok) return null;
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      results?: Array<{
+        flagged?: boolean;
+        categories?: Record<string, boolean>;
+        category_scores?: Record<string, number>;
+      }>;
+    };
     const result = data.results?.[0];
     if (!result) return null;
 

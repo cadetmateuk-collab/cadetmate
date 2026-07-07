@@ -20,6 +20,8 @@
     "lib/useSessionReporter.tsx",
     "lib/hooks/useActivityTracker.ts",
     "lib/hooks/useIsMobile.ts",
-    "lib/formatCardText.tsx"
+    "lib/hooks/useCommunityFeed.ts",
+    "lib/formatCardText.tsx",
+    "lib/blog/markdown.tsx"
   ]
 }

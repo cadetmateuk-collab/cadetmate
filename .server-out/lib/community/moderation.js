@@ -60,7 +60,7 @@ async function openaiModeration(text) {
         });
         if (!res.ok)
             return null;
-        const data = await res.json();
+        const data = (await res.json());
         const result = (_a = data.results) === null || _a === void 0 ? void 0 : _a[0];
         if (!result)
             return null;
