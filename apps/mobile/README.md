@@ -28,6 +28,5 @@ npm run android --workspace=@cadet-mate/mobile
 | SRS, roles, URL helpers | `packages/shared` |
 | Native UI | `apps/mobile/app` |
 | Web (Next.js) | repo root |
-| Capacitor shell (full web in stores) | `apps/mobile-shell` |
 
 Heavy 3D routes (`/bridge`, `/buoyage`, `/simulator`, `/instructor`, `/admin`) stay on web — see Simulators tab.

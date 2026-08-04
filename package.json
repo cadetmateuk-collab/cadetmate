@@ -18,14 +18,10 @@
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=\"Desktop Chrome\"",
     "test:e2e:ui": "playwright test --ui",
-    "mobile-shell:sync": "npm run sync --workspace=@cadet-mate/mobile-shell",
-    "mobile-shell:open": "npm run open --workspace=@cadet-mate/mobile-shell",
     "mobile:print-redirects": "node packages/shared/scripts/print-redirects.cjs"
   },
   "dependencies": {
     "@cadet-mate/shared": "*",
-    "@capacitor/app": "^7.0.1",
-    "@capacitor/core": "^7.4.2",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",

@@ -8,11 +8,6 @@ const SupportWidget = dynamic(() => import('@/components/SupportWidget'), {
   ssr: false,
 });
 
-const CapacitorBridge = dynamic(
-  () => import('@/components/mobile/CapacitorBridge').then((m) => m.CapacitorBridge),
-  { ssr: false },
-);
-
 const HIDE_WIDGET_PREFIXES = [
   '/home',
   '/pricing',
@@ -52,10 +47,7 @@ export function DeferredAppChrome() {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 
-  return (
-    <>
-      <CapacitorBridge />
-      {!hideSupport && <SupportWidget />}
-    </>
-  );
+  if (hideSupport) return null;
+
+  return <SupportWidget />;
 }

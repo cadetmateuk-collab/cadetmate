@@ -3,12 +3,12 @@ export const SITE_URL = 'https://cadetmate.co.uk' as const;
 
 export const SITE_NAME = 'CadetMate';
 
-/** Android / Capacitor / Expo deep link scheme. */
+/** Android / Expo deep link scheme. */
 export const MOBILE_APP_SCHEME = 'cadetmate' as const;
 
 export const MOBILE_APP_ID = 'uk.co.cadetmate.app' as const;
 
-/** Paths that stay on web (heavy 3D / admin) — open via in-app browser or Capacitor WebView. */
+/** Paths that stay on web (heavy 3D / admin) — open via system browser from the native app. */
 export const WEB_ONLY_PATHS = [
   '/bridge',
   '/buoyage',
