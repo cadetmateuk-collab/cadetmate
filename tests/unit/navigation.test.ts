@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import {
+  isNavItemActive,
+  isGroupActive,
+  filterNavForUser,
+  APP_NAV_GROUPS,
+} from '@/lib/navigation/config';
+import type { NavGroupConfig } from '@/lib/navigation/types';
+
+describe('isNavItemActive', () => {
+  it('matches exact paths when exact=true', () => {
+    expect(isNavItemActive('/dashboard', '/dashboard', true)).toBe(true);
+    expect(isNavItemActive('/dashboard/settings', '/dashboard', true)).toBe(
+      false,
+    );
+  });
+
+  it('matches prefixes when exact is false', () => {
+    expect(isNavItemActive('/flashcards/colregs', '/flashcards')).toBe(true);
+    expect(isNavItemActive('/learn', '/flashcards')).toBe(false);
+  });
+});
+
+describe('isGroupActive', () => {
+  it('is true when any item path matches', () => {
+    const items = [
+      { id: 'a', label: 'A', href: '/learn' },
+      { id: 'b', label: 'B', href: '/practice' },
+    ];
+    expect(isGroupActive('/practice/orals', items)).toBe(true);
+    expect(isGroupActive('/store', items)).toBe(false);
+  });
+});
+
+describe('filterNavForUser', () => {
+  const groups: NavGroupConfig[] = [
+    {
+      id: 'main',
+      label: 'Main',
+      items: [{ id: 'dash', label: 'Home', href: '/dashboard' }],
+    },
+    {
+      id: 'admin',
+      label: 'Admin',
+      adminOnly: true,
+      items: [{ id: 'admin-home', label: 'Admin', href: '/admin', adminOnly: true }],
+    },
+  ];
+
+  it('hides admin groups for free users', () => {
+    const filtered = filterNavForUser(groups, 'free');
+    expect(filtered.map((g) => g.id)).toEqual(['main']);
+  });
+
+  it('keeps admin groups for admins', () => {
+    const filtered = filterNavForUser(groups, 'admin');
+    expect(filtered.map((g) => g.id)).toContain('admin');
+  });
+
+  it('APP_NAV_GROUPS always has a main dashboard entry', () => {
+    const main = APP_NAV_GROUPS.find((g) => g.id === 'main');
+    expect(main?.items.some((i) => i.href === '/dashboard')).toBe(true);
+  });
+});

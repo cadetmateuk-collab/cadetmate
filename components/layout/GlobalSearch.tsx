@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, BookOpen, MessageSquare, FileText, Users, Zap, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFocusTrap } from '@/lib/a11y/useFocusTrap';
 
 type SearchResult = {
   id: string;
@@ -41,8 +42,11 @@ export function GlobalSearch({ className }: { className?: string }) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const router = useRouter();
+
+  useFocusTrap(open, dialogRef, inputRef);
 
   const search = useCallback(async (q: string) => {
     abortRef.current?.abort();
@@ -120,22 +124,22 @@ export function GlobalSearch({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Search"
+        aria-label="Search CadetMate"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         className={cn(
-          'flex items-center justify-center gap-2 h-8 min-w-8 px-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-150',
+          'flex items-center justify-center gap-2 h-11 min-h-11 min-w-11 px-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           className,
         )}
       >
-        <Search className="h-4 w-4 shrink-0" />
+        <Search className="h-4 w-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline text-[13px] font-medium">Search</span>
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Search"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6"
+          role="presentation"
         >
           <button
             type="button"
@@ -144,16 +148,26 @@ export function GlobalSearch({ className }: { className?: string }) {
             aria-label="Close search"
           />
 
-          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search CadetMate"
+            className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[min(90dvh,40rem)] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+          >
             <div className="p-5 sm:p-6 pb-4">
-              <div className="flex items-center gap-3 rounded-full border border-border bg-muted/30 px-4 py-2.5">
-                <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 min-h-12 py-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <Search className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+                <label htmlFor="global-search-input" className="sr-only">
+                  Search modules, flashcards, and articles
+                </label>
                 <input
+                  id="global-search-input"
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search modules, flashcards, articles…"
-                  className="flex-1 min-w-0 border-0 bg-transparent text-base text-foreground shadow-none outline-none placeholder:text-muted-foreground focus:!border-transparent focus:!shadow-none focus:outline-none focus:ring-0"
+                  className="flex-1 min-w-0 border-0 bg-transparent text-base text-foreground shadow-none outline-none placeholder:text-muted-foreground focus:outline-none"
                   autoComplete="off"
                   autoCorrect="off"
                   spellCheck={false}
@@ -164,7 +178,7 @@ export function GlobalSearch({ className }: { className?: string }) {
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0 touch-manipulation"
                     aria-label="Close"
                   >
                     <X className="h-4 w-4" />
@@ -195,7 +209,7 @@ export function GlobalSearch({ className }: { className?: string }) {
                         <button
                           type="button"
                           onClick={() => handleSelect(r.href)}
-                          className="w-full flex items-center gap-3 px-5 sm:px-6 py-3 text-left hover:bg-muted/50 transition-colors"
+                          className="w-full flex items-center gap-3 px-5 sm:px-6 py-3 min-h-12 text-left hover:bg-muted/50 transition-colors touch-manipulation"
                         >
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                             <Icon className="h-4 w-4 text-primary" />

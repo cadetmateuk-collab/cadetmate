@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Menu, X, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { sanitizeHtml } from "@/lib/security/sanitize-html";
+import { useAuthUserId } from "@/lib/hooks/useAuthUserId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,6 +134,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 export default function ModuleViewer({ moduleId, moduleData: initialData, userEmail, userId }: ModuleViewerProps) {
   const supabase = createClient();
   const isMobile = useIsMobile();
+  const { userId: authUserId } = useAuthUserId();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const contentDivRef = useRef<HTMLDivElement>(null);
@@ -173,8 +176,8 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   const [resolvedUserId, setResolvedUserId]     = useState<string | null>(userId || null);
 
   useEffect(() => {
-    if (!userId) supabase.auth.getSession().then(({ data: { session } }) => setResolvedUserId(session?.user?.id ?? null));
-  }, [userId]);
+    setResolvedUserId(userId || authUserId);
+  }, [userId, authUserId]);
 
   useEffect(() => {
     if (!initialData && moduleId) {
@@ -512,20 +515,35 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       case "text":
         return (
           <div key={block.id} style={{ fontSize: 15, lineHeight: 1.8, color: "hsl(var(--foreground))", marginBottom: 4 }}
-            dangerouslySetInnerHTML={{ __html: block.content?.text || "" }} />
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content?.text || "") }} />
         );
       case "image":
         return (
           <figure key={block.id} style={{ marginBottom: 24, borderRadius: "var(--radius)", overflow: "hidden" }}>
-            <img src={block.content?.url} alt={block.content?.caption || ""} style={{ width: "100%", display: "block" }} onError={e => (e.currentTarget.style.display = "none")} />
-            {block.content?.caption && <figcaption style={{ fontSize: 12, color: "hsl(var(--muted-foreground))", textAlign: "center", padding: "8px 12px" }}>{block.content.caption}</figcaption>}
+            <img
+              src={block.content?.url}
+              alt={block.content?.caption ? "" : "Module illustration"}
+              style={{ width: "100%", display: "block" }}
+              onError={e => (e.currentTarget.style.display = "none")}
+            />
+            {block.content?.caption && (
+              <figcaption style={{ fontSize: 12, color: "hsl(var(--muted-foreground))", textAlign: "center", padding: "8px 12px" }}>
+                {block.content.caption}
+              </figcaption>
+            )}
           </figure>
         );
       case "video":
         return (
           <div key={block.id} style={{ marginBottom: 24, borderRadius: "var(--radius)", overflow: "hidden" }}>
             <div style={{ aspectRatio: "16/9", background: "hsl(var(--muted))" }}>
-              <iframe src={block.content?.url} style={{ width: "100%", height: "100%", border: "none" }} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              <iframe
+                src={block.content?.url}
+                title={block.content?.caption || 'Embedded training video'}
+                style={{ width: "100%", height: "100%", border: "none" }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             </div>
             {block.content?.caption && <div style={{ fontSize: 12, color: "hsl(var(--muted-foreground))", textAlign: "center", padding: "8px 12px" }}>{block.content.caption}</div>}
           </div>

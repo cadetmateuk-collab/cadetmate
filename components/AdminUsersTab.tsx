@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Users, RefreshCw, ChevronDown } from 'lucide-react';
+import { adminColors } from '@/components/admin/ui';
 
 type UserRole = 'free' | 'basic' | 'premium';
 
@@ -172,7 +173,8 @@ export default function AdminUsersTab() {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, email, full_name, role, created_at, last_seen_at')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) setError(error.message);
     else setUsers((data as Profile[]) ?? []);
     setLoading(false);
@@ -201,14 +203,14 @@ export default function AdminUsersTab() {
   };
 
   const C = {
-    bg: 'hsl(var(--background))',
-    border: 'hsl(var(--border))',
+    bg: adminColors.bg,
+    border: adminColors.border,
     muted: 'hsl(var(--muted))',
-    mutedFg: 'hsl(var(--muted-foreground))',
-    fg: 'hsl(var(--foreground))',
-    primary: 'hsl(var(--primary))',
-    red: 'hsl(0 72% 55%)',
-    green: 'hsl(142 60% 40%)',
+    mutedFg: adminColors.muted,
+    fg: adminColors.fg,
+    primary: adminColors.primary,
+    red: adminColors.danger,
+    green: adminColors.success,
   };
 
   return (
@@ -331,8 +333,8 @@ export default function AdminUsersTab() {
           <p style={{ fontSize: '13px' }}>No users found.</p>
         </div>
       ) : (
-        <div style={{ borderRadius: '12px', border: `1px solid ${C.border}`, overflow: 'hidden' }}>
-          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+        <div style={{ borderRadius: '12px', border: `1px solid ${C.border}`, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 640, fontSize: '12px', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}`, background: `hsl(var(--muted) / 0.5)` }}>
                 {['User', 'Email', 'Joined', 'Last Seen', 'Role'].map(h => (

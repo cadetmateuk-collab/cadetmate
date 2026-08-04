@@ -1,52 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-// Create admin client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireAdminApi } from '@/lib/auth/require-admin-api';
 
 export async function POST(request: Request) {
+  const auth = await requireAdminApi();
+  if (auth.error) return auth.error;
+
   try {
-    const { name, hidden } = await request.json();
+    const body = await request.json();
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const hidden = typeof body.hidden === 'boolean' ? body.hidden : null;
 
-    console.log('API: Toggling category', name, 'to hidden:', hidden);
+    if (!name || hidden === null) {
+      return NextResponse.json(
+        { error: 'name (string) and hidden (boolean) are required' },
+        { status: 400 },
+      );
+    }
 
-    // Update the category
     const { data, error } = await supabaseAdmin
       .from('categories')
       .update({ hidden })
       .eq('name', name)
       .select();
 
-    console.log('API: Supabase response:', { data, error });
-
     if (error) {
-      console.error('API: Supabase error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     if (!data || data.length === 0) {
       return NextResponse.json(
         { error: 'Category not found or not updated' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      data: data[0] 
-    });
-
-  } catch (error: any) {
-    console.error('API: Error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, data: data[0] });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

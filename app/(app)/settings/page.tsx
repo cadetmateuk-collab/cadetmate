@@ -1,5 +1,6 @@
 import { requireAuth } from '@/lib/auth/get-user'
 import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -49,8 +50,12 @@ export default async function DashboardPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user?.email) return
+    const headerStore = await headers()
+    const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host')
+    const proto = headerStore.get('x-forwarded-proto') ?? 'http'
+    const origin = host ? `${proto.split(',')[0].trim()}://${host.split(',')[0].trim()}` : undefined
     await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: 'https://cadetmate.com/reset-password',
+      redirectTo: origin ? `${origin}/reset-password` : undefined,
     })
   }
 

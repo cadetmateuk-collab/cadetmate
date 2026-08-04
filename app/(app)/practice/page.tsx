@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { Mic, HelpCircle, Zap, Target, GraduationCap, Lock, ArrowRight } from 'lucide-react';
+import { Mic, HelpCircle, Zap, Target, GraduationCap, Lock, ArrowRight, LifeBuoy } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
 import QuestionOfDay from '@/components/QuestionOfDay';
@@ -39,6 +39,14 @@ const PRACTICE_ITEMS = [
     premium: true,
     description: 'Real-world emergency scenario training',
     stats: '12 scenarios',
+  },
+  {
+    href: '/buoyage',
+    label: 'Buoyage Simulator',
+    icon: LifeBuoy,
+    premium: true,
+    description: 'IALA marks, night mode & animated lights',
+    stats: 'Region A & B',
   },
   {
     href: '/practice#daily-quiz',

@@ -1,15 +1,6 @@
-export type UserRole = 'free' | 'basic' | 'premium' | 'admin';
-
-export function isPremiumRole(role: string | null | undefined): boolean {
-  return role === 'premium' || role === 'admin';
-}
-
-export function isAdminRole(role: string | null | undefined): boolean {
-  return role === 'admin';
-}
-
-export function getAccessLevel(role: string | null | undefined): 'free' | 'premium' | 'admin' {
-  if (role === 'admin') return 'admin';
-  if (isPremiumRole(role)) return 'premium';
-  return 'free';
-}
+export {
+  type UserRole,
+  isPremiumRole,
+  isAdminRole,
+  getAccessLevel,
+} from '@cadet-mate/shared';

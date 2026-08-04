@@ -10,7 +10,6 @@ export const LANDING_STYLES = `
 
 .lp-root {
   position: relative;
-  overflow-x: clip;
   background: transparent;
 }
 

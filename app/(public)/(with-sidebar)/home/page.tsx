@@ -1,20 +1,43 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
+import { preload } from 'react-dom';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import {
+  buildOrganizationSchema,
+  buildWebSiteSchema,
+  buildSoftwareApplicationSchema,
+  buildFAQSchema,
+} from '@/lib/seo/schema';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { absoluteUrl } from '@/lib/seo/site';
 import { LandingPage } from '@/components/home/landing/LandingPage';
 import { getLandingPageStats, getTopCommunityPosts } from '@/lib/data/cached-queries';
+import { LANDING_FAQS } from '@/lib/seo/faqs';
 
-export const metadata: Metadata = buildPageMetadata({
-  title: 'Your Complete Cadetship Companion',
-  description:
-    'One platform to support every stage of your cadetship. College modules, assignments, TRB, sea phases, flashcards, scenarios, and MCA oral prep — free to start.',
-  path: '/home',
-});
+export const metadata: Metadata = {
+  ...buildPageMetadata({
+    title: 'CadetMate — UK Deck Cadet Training for COLREGS, TRB & MCA Orals',
+    description:
+      'CadetMate helps UK merchant navy deck cadets train for college, sea phases, COLREGS, TRB tasks, STCW topics, and MCA oral exams. Free guides and free account to start.',
+    path: '/home',
+    keywords: [
+      'UK deck cadet training',
+      'COLREGS training',
+      'MCA oral exam prep',
+      'TRB deck cadet',
+      'STCW revision',
+      'merchant navy cadet',
+      'OOW training',
+      'deck cadet flashcards',
+    ],
+  }),
+};
 
 export default async function HomePage() {
+  // Preload LCP hero image before hydration
+  preload('/images/captain-320.webp', { as: 'image', type: 'image/webp', fetchPriority: 'high' });
+  preload('/images/logo.webp', { as: 'image', type: 'image/webp' });
+
   const headerStore = await headers();
   if (headerStore.get('x-user-id')) {
     redirect('/dashboard');
@@ -25,20 +48,14 @@ export default async function HomePage() {
     getTopCommunityPosts(),
   ]);
 
+  const faqSchema = buildFAQSchema([...LANDING_FAQS]);
+
   return (
     <>
-      <JsonLd data={{
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: 'CadetMate',
-        url: absoluteUrl('/home'),
-        description: 'All-in-one maritime learning platform for UK deck cadets — from college through sea phases to qualification.',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: absoluteUrl('/unit-modules'),
-          'query-input': 'required name=search_term',
-        },
-      }} />
+      <JsonLd data={buildOrganizationSchema()} />
+      <JsonLd data={buildWebSiteSchema()} />
+      <JsonLd data={buildSoftwareApplicationSchema()} />
+      {faqSchema && <JsonLd data={faqSchema} />}
 
       <LandingPage
         data={{

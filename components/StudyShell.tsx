@@ -60,8 +60,10 @@ const css = `
 .fc-scene {
   width:100%; min-height:300px; margin-bottom:1.25rem;
   perspective:1100px; perspective-origin:50% 50%;
+  appearance:none; background:transparent; border:0; padding:0; text-align:inherit; font:inherit; color:inherit;
 }
 .fc-scene.clickable { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.fc-scene:focus-visible { outline:2px solid hsl(var(--ring)); outline-offset:4px; border-radius:20px; }
 .fc-card {
   position:relative; width:100%; height:100%; min-height:300px;
   transform-style:preserve-3d;

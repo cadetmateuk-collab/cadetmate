@@ -25,6 +25,7 @@ export function BlogHeroImage({
           alt={alt}
           fill
           priority={priority}
+          loading={priority ? 'eager' : 'lazy'}
           sizes="(max-width: 768px) 100vw, 896px"
           className="object-cover"
         />
@@ -39,6 +40,8 @@ export function BlogHeroImage({
       alt={alt}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
+      width={896}
+      height={392}
       className={`w-full rounded-lg object-cover ${className}`}
       style={{ aspectRatio: '16 / 7' }}
     />
@@ -59,7 +62,14 @@ export function BlogCardImage({
   if (isOptimizable(src)) {
     return (
       <div className={`relative w-full overflow-hidden ${className}`} style={{ height: 180 }}>
-        <Image src={src} alt={alt} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          loading="lazy"
+          sizes="(max-width: 768px) 100vw, 33vw"
+          className="object-cover"
+        />
       </div>
     );
   }
@@ -71,6 +81,8 @@ export function BlogCardImage({
       alt={alt}
       loading="lazy"
       decoding="async"
+      width={400}
+      height={180}
       className={`w-full object-cover ${className}`}
       style={{ height: 180 }}
     />

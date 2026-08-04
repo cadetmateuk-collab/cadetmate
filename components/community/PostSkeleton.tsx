@@ -1,5 +1,3 @@
-'use client';
-
 export function PostSkeleton() {
   return (
     <div className="flex gap-3 p-4 bg-card border border-border rounded-xl animate-pulse">

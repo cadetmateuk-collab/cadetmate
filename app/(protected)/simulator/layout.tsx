@@ -3,7 +3,7 @@ import { buildNoIndexMetadata } from '@/lib/seo/metadata';
 import { requirePremium } from '@/lib/auth/get-user';
 import { ProtectedToolBar } from '@/components/layout/ProtectedToolBar';
 
-export const metadata: Metadata = buildNoIndexMetadata('Emergency Simulator');
+export const metadata: Metadata = buildNoIndexMetadata('Emergency Simulator', '/simulator');
 
 export default async function SimulatorLayout({ children }: { children: React.ReactNode }) {
   await requirePremium();

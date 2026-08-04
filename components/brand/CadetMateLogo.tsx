@@ -6,6 +6,8 @@ type CadetMateLogoProps = {
   showWordmark?: boolean;
   className?: string;
   variant?: 'default' | 'onDark';
+  /** Only set on the primary header logo to avoid competing LCP candidates */
+  priority?: boolean;
 };
 
 const markHeights = { sm: 28, md: 32, lg: 38 } as const;
@@ -16,6 +18,7 @@ export function CadetMateLogo({
   showWordmark = true,
   className,
   variant = 'default',
+  priority = false,
 }: CadetMateLogoProps) {
   const markH = markHeights[size];
   const onDark = variant === 'onDark';
@@ -23,13 +26,15 @@ export function CadetMateLogo({
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
       <Image
-        src={onDark ? '/images/c2.png' : '/images/logo.png'}
-        alt="CadetMate"
+        src={onDark ? '/images/c2.webp' : '/images/logo.webp'}
+        alt="CadetMate — maritime training for UK deck cadets"
         width={markH}
         height={markH}
         className="h-auto w-auto object-contain shrink-0"
         style={{ height: markH, width: 'auto' }}
-        priority
+        sizes={`${markH}px`}
+        priority={priority}
+        loading={priority ? 'eager' : 'lazy'}
       />
       {showWordmark && (
         <div className="hidden sm:block leading-none">

@@ -7,6 +7,7 @@ import { buildPageMetadata } from '@/lib/seo/metadata';
 import { Flame, Trophy, BookOpen, Target, History, TrendingUp } from 'lucide-react';
 import { StatPill, ProgressBar, DashboardCard } from '@/components/dashboard/DashboardWidgets';
 import { rankForXP } from '@/lib/algorithms';
+import { unifiedTotalXp } from '@/lib/gamification';
 import { ProgressTabNav } from '@/components/progress/ProgressTabNav';
 import { ProgressTabSync } from '@/components/progress/ProgressTabSync';
 
@@ -46,7 +47,7 @@ export default async function ProgressPage() {
   const completed = completedResult.data ?? [];
   const achievements = achievementsResult.data ?? [];
 
-  const totalXp = (xp?.xp ?? 0) + (gamification?.total_xp ?? 0);
+  const totalXp = unifiedTotalXp(gamification?.total_xp, xp?.xp);
   const rank = rankForXP(totalXp);
   const streak = stats?.daily_streak ?? xp?.current_streak ?? 0;
   const examReadiness = Number(gamification?.exam_readiness_score ?? 0);

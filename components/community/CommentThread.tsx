@@ -126,13 +126,17 @@ export function CommentThread({ postId, currentUserId, onError }: CommentThreadP
               </button>
             </p>
           )}
+          <label htmlFor="comment-body" className="sr-only">
+            {editing ? 'Edit comment' : replyTo ? 'Reply to comment' : 'Add a comment'}
+          </label>
           <textarea
+            id="comment-body"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder={currentUserId ? 'Add a comment...' : 'Sign in to comment'}
             rows={3}
             maxLength={10000}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
           <div className="flex justify-end mt-2">
             <Button type="submit" disabled={submitting || !body.trim()}>

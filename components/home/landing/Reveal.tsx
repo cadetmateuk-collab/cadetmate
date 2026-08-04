@@ -1,21 +1,28 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
+import { prefersReducedMotion } from '@/lib/motion/constants';
 import { cn } from '@/lib/utils';
 
-export function Reveal({
+export const Reveal = memo(function Reveal({
   children,
   className,
   delay = 0,
+  eager = false,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  eager?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(eager);
 
   useEffect(() => {
+    if (eager || prefersReducedMotion()) {
+      setVisible(true);
+      return;
+    }
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -25,28 +32,28 @@ export function Reveal({
           observer.disconnect();
         }
       },
-      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' },
+      { threshold: 0.06, rootMargin: '0px 0px -16px 0px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [eager]);
+
+  if (eager) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <div
       ref={ref}
-      className={cn(
-        'transition-all duration-700 ease-out',
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-7',
-        className,
-      )}
-      style={{ transitionDelay: `${delay}ms` }}
+      className={cn('lp-reveal', visible && 'is-visible', className)}
+      style={visible || prefersReducedMotion() ? undefined : { transitionDelay: `${delay}ms` }}
     >
       {children}
     </div>
   );
-}
+});
 
-export function CountUp({
+export const CountUp = memo(function CountUp({
   value,
   suffix = '',
 }: {
@@ -54,7 +61,9 @@ export function CountUp({
   suffix?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [display, setDisplay] = useState<string | number>(typeof value === 'number' ? 0 : value);
+  const [display, setDisplay] = useState<string | number>(
+    typeof value === 'number' ? 0 : value,
+  );
   const started = useRef(false);
 
   useEffect(() => {
@@ -62,35 +71,44 @@ export function CountUp({
       setDisplay(value);
       return;
     }
+    if (prefersReducedMotion()) {
+      setDisplay(value);
+      return;
+    }
     const el = ref.current;
     if (!el) return;
 
+    let rafId = 0;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting || started.current) return;
         started.current = true;
         const target = value;
-        const duration = 1200;
+        const duration = 700;
         const start = performance.now();
 
         const tick = (now: number) => {
           const progress = Math.min((now - start) / duration, 1);
           const eased = 1 - Math.pow(1 - progress, 3);
           setDisplay(Math.round(target * eased));
-          if (progress < 1) requestAnimationFrame(tick);
+          if (progress < 1) rafId = requestAnimationFrame(tick);
         };
-        requestAnimationFrame(tick);
+        rafId = requestAnimationFrame(tick);
         observer.disconnect();
       },
-      { threshold: 0.5 },
+      { threshold: 0.35 },
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+    };
   }, [value]);
 
   return (
     <span ref={ref} className="tabular-nums">
-      {display}{suffix}
+      {display}
+      {suffix}
     </span>
   );
-}
+});

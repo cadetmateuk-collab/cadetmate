@@ -349,8 +349,8 @@ export default function AdminSeaSurvivalTab() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>No articles found.</div>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid hsl(var(--border))' }}>
-          <table className="w-full text-sm">
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid hsl(var(--border))' }}>
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'hsl(var(--muted) / 0.5)' }}>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'hsl(var(--muted-foreground))' }}>Article</th>
@@ -369,7 +369,7 @@ export default function AdminSeaSurvivalTab() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {article.image && (
-                        <img src={article.image} alt="" className="w-12 h-9 object-cover rounded-md flex-shrink-0 hidden sm:block"
+                        <img src={article.image} alt={article.title || 'Article thumbnail'} className="w-12 h-9 object-cover rounded-md flex-shrink-0 hidden sm:block"
                           style={{ border: '1px solid hsl(var(--border))' }} />
                       )}
                       <div>

@@ -8,7 +8,7 @@ import { useBridgeAudio } from './useBridgeAudio';
 import { RadioArm } from './RadioArm';
 import { PhoneArm, PhoneArmHandle } from './PhoneArm';
 import { useArmSway } from './useArmSway';
-import { useSessionReporter } from '@/lib/useSessionReporter';
+import { useSessionReporter } from '@/lib/hooks/useSessionReporter';
 import { useLogbook, LogbookEditOverlay } from './LogbookPlane';
 
 const DEBUG_OVERLAYS = false;

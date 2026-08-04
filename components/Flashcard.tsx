@@ -1,5 +1,5 @@
 'use client';
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, useCallback } from 'react';
 import type { Flashcard } from '../lib/types';
 import { FormattedCardText } from '../lib/formatCardText';
 
@@ -19,11 +19,27 @@ export const FlashcardView = memo(function FlashcardView({
     return () => clearTimeout(t);
   }, [card.id]);
 
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onFlip();
+      }
+    },
+    [onFlip],
+  );
+
+  const imageAlt =
+    card.front?.trim()
+      ? `Illustration for: ${card.front.replace(/[#*_`]/g, '').slice(0, 120)}`
+      : 'Flashcard illustration';
+
   return (
-    <div
+    <button
+      type="button"
       className={`fc-scene clickable${flipped ? ' is-showing-back' : ''}`}
       onClick={onFlip}
-      role="button"
+      onKeyDown={onKeyDown}
       aria-label={flipped ? 'Flip to question' : 'Flip to answer'}
       aria-pressed={flipped}
     >
@@ -34,7 +50,7 @@ export const FlashcardView = memo(function FlashcardView({
             {category && <span className="fc-cat">{category}</span>}
             <div className="fc-body">
               {card.image_url && (
-                <img src={card.image_url} alt="" className="fc-img" />
+                <img src={card.image_url} alt={imageAlt} className="fc-img" />
               )}
               <FormattedCardText text={card.front} variant="question" className="fc-q" />
               {card.hint && <div className="fc-hint">Hint: {card.hint}</div>}
@@ -54,6 +70,6 @@ export const FlashcardView = memo(function FlashcardView({
         </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 });

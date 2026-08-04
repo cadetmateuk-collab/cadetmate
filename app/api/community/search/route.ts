@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { POST_SELECT, attachPostTags, asPost } from '@/lib/community/queries';
 import type { Post } from '@/lib/community/types';
+import { escapeIlike } from '@/lib/security/env';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -13,23 +14,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Search query must be at least 2 characters' }, { status: 400 });
   }
 
+  const pattern = `%${escapeIlike(q)}%`;
+
   const results: {
     posts: Post[];
-    users: { id: string; full_name: string | null; email: string | null; karma_score: number }[];
+    users: { id: string; full_name: string | null; karma_score: number }[];
     categories: { id: string; name: string; slug: string; color: string | null }[];
   } = { posts: [], users: [], categories: [] };
 
   if (type === 'all' || type === 'posts') {
-    const { data } = await supabase
+    const { data: byTitle } = await supabase
       .from('posts')
       .select(POST_SELECT)
       .eq('is_deleted', false)
       .eq('status', 'published')
-      .or(`title.ilike.%${q}%,body.ilike.%${q}%`)
+      .ilike('title', pattern)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    let posts = (data ?? []).map((p) => asPost(p));
+    const { data: byBody } = await supabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('is_deleted', false)
+      .eq('status', 'published')
+      .ilike('body', pattern)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    const merged = new Map<string, Post>();
+    for (const row of [...(byTitle ?? []), ...(byBody ?? [])]) {
+      const post = asPost(row);
+      merged.set(post.id, post);
+    }
+    let posts = Array.from(merged.values()).slice(0, limit);
     posts = await attachPostTags(supabase, posts);
     results.posts = posts;
   }
@@ -37,8 +54,8 @@ export async function GET(request: NextRequest) {
   if (type === 'all' || type === 'users') {
     const { data: users } = await supabase
       .from('profiles')
-      .select('id, full_name, email, community_user_profiles(karma_score)')
-      .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+      .select('id, full_name, community_user_profiles(karma_score)')
+      .ilike('full_name', pattern)
       .limit(limit);
 
     results.users = (users ?? []).map((u) => {
@@ -47,20 +64,19 @@ export async function GET(request: NextRequest) {
       return {
         id: u.id,
         full_name: u.full_name,
-        email: u.email,
         karma_score: karma ?? 0,
       };
     });
   }
 
   if (type === 'all' || type === 'categories') {
-    const { data: categories } = await supabase
+    const { data: byName } = await supabase
       .from('post_categories')
       .select('id, name, slug, color')
-      .or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+      .ilike('name', pattern)
       .limit(limit);
 
-    results.categories = categories ?? [];
+    results.categories = byName ?? [];
   }
 
   return NextResponse.json(results);

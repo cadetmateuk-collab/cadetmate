@@ -7,6 +7,7 @@ import { User, Sparkles, CreditCard, Bell, Settings, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
+import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Profile',
@@ -146,10 +147,8 @@ export default async function ProfilePage({
 
       {tab === 'notifications' && (
         <div className="rounded-lg border border-border p-6">
-          <h2 className="font-semibold mb-2">Notification Preferences</h2>
-          <p className="text-sm text-muted-foreground">
-            Use the bell icon in the header to view notifications. Email preferences coming soon.
-          </p>
+          <h2 className="font-semibold mb-4">Notification Preferences</h2>
+          <NotificationPreferencesForm userId={user.id} />
         </div>
       )}
     </div>

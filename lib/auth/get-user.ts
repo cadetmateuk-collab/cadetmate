@@ -2,38 +2,23 @@ import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { safeRedirectPath } from '@/lib/security/env';
 
 const PROFILE_COLUMNS = 'full_name, email, role';
 
 async function authRedirectPath(): Promise<string> {
   const headerStore = await headers();
   const pathname = headerStore.get('x-pathname');
-  if (pathname && pathname.startsWith('/') && !pathname.startsWith('//')) {
-    return `/auth?redirectTo=${encodeURIComponent(pathname)}`;
+  const safe = safeRedirectPath(pathname, '');
+  if (safe) {
+    return `/auth?redirectTo=${encodeURIComponent(safe)}`;
   }
   return '/auth';
 }
 
-/** Per-request deduped user lookup. Uses middleware-validated session when available. */
+/** Per-request deduped user lookup. Always validates with getUser() (JWT). */
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient();
-  const headerStore = await headers();
-  const middlewareUserId = headerStore.get('x-user-id');
-
-  // Middleware already called getUser() — read session locally, then fetch profile only.
-  if (middlewareUserId) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.id === middlewareUserId) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select(PROFILE_COLUMNS)
-        .eq('id', middlewareUserId)
-        .single();
-
-      return { ...session.user, profile };
-    }
-  }
-
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (error || !user) {

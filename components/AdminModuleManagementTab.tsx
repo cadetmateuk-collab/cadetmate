@@ -708,7 +708,7 @@ const AdminModuleManagementTab: React.FC = () => {
                           <div className="px-6 py-4 flex items-center gap-4">
                             {module.image_url && (
                               <div className="h-12 w-16 rounded-lg overflow-hidden flex-shrink-0">
-                                <img src={module.image_url} alt="" className="w-full h-full object-cover" />
+                                <img src={module.image_url} alt={module.title || 'Module thumbnail'} className="w-full h-full object-cover" />
                               </div>
                             )}
 

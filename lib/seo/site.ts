@@ -1,23 +1,35 @@
 /** Canonical site configuration — single source of truth for SEO URLs. */
-export const SITE_URL = 'https://cadetmate.co.uk' as const;
-
-export const SITE_NAME = 'CadetMate';
+export {
+  SITE_URL,
+  SITE_NAME,
+  absoluteWebUrl as absoluteUrl,
+} from '@cadet-mate/shared/config';
 
 export const DEFAULT_DESCRIPTION =
-  'The training platform built for UK deck cadets. Interactive modules, COLREGS, watchkeeping, STCW revision and more.';
+  'CadetMate helps UK merchant navy deck cadets train for college, sea phases, COLREGS, TRB tasks, STCW topics, and MCA oral exams — with free guides and a free account to start.';
 
 export const DEFAULT_KEYWORDS = [
+  'UK deck cadet training',
   'deck cadet training UK',
-  'maritime cadet app',
-  'STCW revision',
   'COLREGS training',
+  'MCA oral exam prep',
+  'TRB deck cadet',
+  'STCW revision',
   'OOW cadet',
-  'nautical science',
+  'merchant navy cadet',
+  'Officer of the Watch training',
+  'maritime cadet app',
 ] as const;
 
-export const DEFAULT_OG_IMAGE = '/images/CadetMateLogoBlueBGQWhiteFG.svg';
+/** Social-friendly OG image (1200×630 PNG). Avoid SVG — poorly supported by Facebook/LinkedIn/X. */
+export const DEFAULT_OG_IMAGE = '/images/og-default.png';
+export const DEFAULT_OG_IMAGE_WIDTH = 1200;
+export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 
-export function absoluteUrl(path: string): string {
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${SITE_URL}${normalized}`;
-}
+/** Brand logo for schema.org Organization.logo */
+export const SITE_LOGO = '/images/logo.png';
+
+/** Public social profiles for Organization sameAs (add when accounts exist). */
+export const SOCIAL_PROFILES: string[] = [];
+
+export const SUPPORT_EMAIL = 'support@cadetmate.com';

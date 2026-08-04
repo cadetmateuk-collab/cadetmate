@@ -9,9 +9,14 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+**/node_modules/
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -33,6 +38,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!apps/mobile/.env.example
 
 # Cursor MCP (contains Supabase personal access token)
 .cursor/mcp.json
@@ -54,4 +61,22 @@ node_modules/
 .env.production
 dist/
 build/
+
+# Capacitor / Android / Expo — keep native projects; ignore build/output noise
+apps/mobile-shell/android/app/build/
+apps/mobile-shell/android/build/
+apps/mobile-shell/android/.gradle/
+apps/mobile-shell/ios/App/Pods/
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+*.jks
+*.keystore
+
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
 

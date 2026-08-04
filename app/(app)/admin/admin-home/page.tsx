@@ -1,25 +1,41 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback, type ComponentType } from 'react'
+import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import {
-  HelpCircle, Pin, ShipWheel, FileText, BookOpen,
-  User, BarChart2, Sparkles, Anchor, MessageCircle, Calendar,
+  HelpCircle, Pin, FileText, BookOpen,
+  User, BarChart2, Sparkles, Anchor, MessageCircle,
   WalletCards,
 } from 'lucide-react'
-import AdminQuestionsTab      from '@/components/AdminQuestionsTab'
-import AdminNoticeboardTab    from '@/components/AdminNoticeboardTab'
-import AdminBlogTab           from '@/components/AdminBlogTab'
-import AdminModuleManagementTab from '@/components/AdminModuleManagementTab'
-import AdminSeaSurvivalTab    from '@/components/AdminSeaSurvivalTab'
-import AdminUsersTab          from '@/components/AdminUsersTab'
-import AdminAnalyticsTab      from '@/components/AdminAnalyticsTab'
-import AdminSupportTab        from '@/components/AdminSupportTab'
-import AdminTRBTasksTab       from '@/components/AdminTRBTasksTab'
-import AdminFlashcardsTab     from '@/components/AdminFlashcardsTab'
 
-// ─── Tab groups ───────────────────────────────────────────────
-const TAB_GROUPS = [
+function TabLoading() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
+      Loading admin panel…
+    </div>
+  )
+}
+
+const AdminAnalyticsTab = dynamic(() => import('@/components/AdminAnalyticsTab'), { loading: TabLoading })
+const AdminUsersTab = dynamic(() => import('@/components/AdminUsersTab'), { loading: TabLoading })
+const AdminSupportTab = dynamic(() => import('@/components/AdminSupportTab'), { loading: TabLoading })
+const AdminNoticeboardTab = dynamic(() => import('@/components/AdminNoticeboardTab'), { loading: TabLoading })
+const AdminQuestionsTab = dynamic(() => import('@/components/AdminQuestionsTab'), { loading: TabLoading })
+const AdminBlogTab = dynamic(() => import('@/components/AdminBlogTab'), { loading: TabLoading })
+const AdminModuleManagementTab = dynamic(() => import('@/components/AdminModuleManagementTab'), { loading: TabLoading })
+const AdminTRBTasksTab = dynamic(() => import('@/components/AdminTRBTasksTab'), { loading: TabLoading })
+const AdminSeaSurvivalTab = dynamic(() => import('@/components/AdminSeaSurvivalTab'), { loading: TabLoading })
+const AdminFlashcardsTab = dynamic(() => import('@/components/AdminFlashcardsTab'), { loading: TabLoading })
+
+type TabDef = {
+  id: string
+  label: string
+  icon: React.ReactNode
+  component: ComponentType
+}
+
+const TAB_GROUPS: { label: string; tabs: TabDef[] }[] = [
   {
     label: 'Overview / Support',
     tabs: [
@@ -63,16 +79,15 @@ export default function AdminPage() {
 
   const [adminName, setAdminName] = useState<string | null>(null)
 
-  function handleTabChange(id: string) {
+  const handleTabChange = useCallback((id: string) => {
     setActiveTab(id)
     if (typeof window !== 'undefined') localStorage.setItem('admin_tab', id)
 
-    // sync group when tab changes
     const foundGroup = TAB_GROUPS.find(g => g.tabs.some(t => t.id === id))
     if (foundGroup) setActiveGroup(foundGroup.label)
-  }
+  }, [])
 
-  function handleGroupChange(label: string) {
+  const handleGroupChange = useCallback((label: string) => {
     setActiveGroup(label)
 
     const group = TAB_GROUPS.find(g => g.label === label)
@@ -81,7 +96,7 @@ export default function AdminPage() {
       setActiveTab(firstTab.id)
       if (typeof window !== 'undefined') localStorage.setItem('admin_tab', firstTab.id)
     }
-  }
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -97,11 +112,21 @@ export default function AdminPage() {
     })
   }, [])
 
-  const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-  })
+  const today = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+    [],
+  )
 
-  const ActiveComponent = ALL_TABS.find(t => t.id === activeTab)?.component ?? ALL_TABS[0].component
+  const ActiveComponent = useMemo(
+    () => ALL_TABS.find(t => t.id === activeTab)?.component ?? ALL_TABS[0].component,
+    [activeTab],
+  )
 
   return (
     <>

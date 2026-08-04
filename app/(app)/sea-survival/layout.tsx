@@ -5,6 +5,7 @@ export const metadata: Metadata = buildPageMetadata({
   title: 'Sea Survival',
   description: 'Sea survival training articles and guides for merchant navy cadets and officers.',
   path: '/sea-survival',
+  noIndex: true,
 });
 
 export default function SeaSurvivalLayout({ children }: { children: React.ReactNode }) {

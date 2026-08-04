@@ -7,27 +7,12 @@ import {
   BookOpen, AlertCircle, Image as ImageIcon, Lightbulb,
   GripVertical, List, Bold, Italic, LayoutList
 } from 'lucide-react'
+import { C } from '@/components/admin/ui'
 
 const supabase = createClient()
 
-// ─── Design tokens (matching AdminNoticeboardTab) ─────────────
-const C = {
-  bg:           '#ffffff',
-  fg:           '#000000',
-  primary:      '#2966f4',
-  primaryLight: '#eef2fe',
-  muted:        '#f5f5f5',
-  mutedFg:      '#737373',
-  border:       '#ededed',
-  green:        '#16a34a',
-  greenLight:   '#f0fdf4',
-  greenBorder:  '#bbf7d0',
-  red:          '#dc2626',
-  redLight:     '#fef2f2',
-  amber:        '#d97706',
-  amberLight:   '#fffbeb',
-  radius:       '8px',
-}
+// Design tokens: `@/components/admin/ui` (C)
+
 
 // ─── Types ───────────────────────────────────────────────────
 type TaskCategory =

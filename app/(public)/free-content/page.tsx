@@ -7,6 +7,7 @@ import {
   buildBreadcrumbSchema,
   buildCollectionPageSchema,
   buildOrganizationSchema,
+  buildWebSiteSchema,
   FREE_CONTENT_KEYWORDS,
   absoluteUrl,
 } from '@/lib/seo';
@@ -21,7 +22,12 @@ export const metadata = buildPageMetadata({
   keywords: [...FREE_CONTENT_KEYWORDS],
 });
 
-export default async function FreeContentPage() {
+export default async function FreeContentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const posts = await getAllBlogPosts();
 
   const breadcrumbSchema = buildBreadcrumbSchema([
@@ -43,9 +49,10 @@ export default async function FreeContentPage() {
   return (
     <>
       <JsonLd data={buildOrganizationSchema()} />
+      <JsonLd data={buildWebSiteSchema()} />
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={collectionSchema} />
-      <FreeContentListing posts={posts} />
+      <FreeContentListing posts={posts} initialQuery={q?.trim() ?? ''} />
     </>
   );
 }

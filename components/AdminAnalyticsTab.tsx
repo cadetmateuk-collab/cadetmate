@@ -3,24 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Users, Crown, Activity, Clock, RefreshCw, TrendingUp } from 'lucide-react'
+import { C } from '@/components/admin/ui'
 
 const supabase = createClient()
 
-const C = {
-  bg:           '#ffffff',
-  fg:           '#000000',
-  primary:      '#2966f4',
-  primaryLight: '#eef2fe',
-  muted:        '#f5f5f5',
-  mutedFg:      '#737373',
-  border:       '#ededed',
-  green:        '#16a34a',
-  greenLight:   '#f0fdf4',
-  amber:        '#d97706',
-  amberLight:   '#fffbeb',
-  purple:       '#7c3aed',
-  purpleLight:  '#f5f3ff',
-}
 
 interface Stats {
   totalUsers:    number

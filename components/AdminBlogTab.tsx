@@ -441,8 +441,8 @@ export default function AdminBlogTab() {
           <p className="text-lg">No posts found.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto shadow-sm">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Post</th>
@@ -458,7 +458,7 @@ export default function AdminBlogTab() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {post.image && (
-                        <img src={post.image} alt="" className="w-12 h-9 object-cover rounded-md flex-shrink-0 hidden sm:block" />
+                        <img src={post.image} alt={post.title || 'Post thumbnail'} className="w-12 h-9 object-cover rounded-md flex-shrink-0 hidden sm:block" />
                       )}
                       <div>
                         <p className="font-semibold text-gray-900 line-clamp-1">{post.title}</p>

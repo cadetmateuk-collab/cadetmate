@@ -108,20 +108,21 @@ export default function ResetPasswordPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={8}
                       className="pl-11 pr-11 h-12 bg-background border-2 border-input focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-all"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-primary transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1.5">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-                    Minimum 6 characters required
+                    Minimum 8 characters required
                   </p>
                 </div>
 
@@ -138,21 +139,25 @@ export default function ResetPasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      minLength={6}
+                      minLength={8}
                       className="pl-11 pr-11 h-12 bg-background border-2 border-input focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-all"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-primary transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                     >
-                      {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showConfirm ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
                     </button>
                   </div>
                 </div>
 
                 {message && (
-                  <div className={`p-4 rounded-lg border-2 transition-all ${
+                  <div
+                    role={message.type === 'error' ? 'alert' : 'status'}
+                    aria-live={message.type === 'error' ? 'assertive' : 'polite'}
+                    className={`p-4 rounded-lg border-2 transition-all ${
                     message.type === 'error'
                       ? 'bg-red-50 text-red-700 border-red-200'
                       : 'bg-blue-50 text-blue-700 border-blue-200'

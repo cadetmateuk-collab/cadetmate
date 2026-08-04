@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { useEscapeKey } from '@/lib/a11y/useEscapeKey';
+import { useBodyScrollLock } from '@/lib/a11y/useBodyScrollLock';
 
 export default function AdminModal({
   children,
@@ -11,29 +11,21 @@ export default function AdminModal({
   children: React.ReactNode;
   onClose: () => void;
 }) {
-  // ESC key close
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  useEscapeKey(true, onClose);
+  useBodyScrollLock(true);
 
   return createPortal(
     <div className="fixed inset-0 z-[99999] flex items-center justify-center">
-      {/* BACKDROP */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
         onClick={onClose}
+        aria-label="Close dialog"
       />
-
-      {/* MODAL */}
-      <div className="relative z-10 w-full max-w-2xl">
+      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto px-4">
         {children}
-
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

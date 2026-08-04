@@ -9,6 +9,23 @@ export const FREE_CONTENT_KEYWORDS = [
   'nautical science articles',
   'merchant navy cadet tips',
   'maritime career advice',
+  'MCA oral exam prep',
+  'TRB deck cadet',
+  'how to become a deck cadet UK',
+] as const;
+
+/** High-priority content topics still thin or missing in the article inventory. */
+export const CONTENT_GAP_KEYWORDS = [
+  'MCA oral exam questions',
+  'COLREGS for deck cadets',
+  'training record book how to',
+  'STCW basic safety training explained',
+  'chartwork revision cadet',
+  'deck cadet salary UK',
+  'IALA buoyage explained',
+  'ship stability for deck cadets',
+  'deck cadet interview questions',
+  'how to become a deck cadet UK',
 ] as const;
 
 export function buildArticleKeywords(category: string, title: string): string[] {

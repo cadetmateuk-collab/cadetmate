@@ -1,26 +1,57 @@
 import type { MetadataRoute } from 'next';
-import { absoluteUrl } from '@/lib/seo/site';
+import { absoluteUrl, SITE_URL } from '@/lib/seo/site';
 
+/**
+ * Google Search Console crawler rules.
+ * Keep Disallow paths aligned with noIndex app areas to protect crawl budget.
+ *
+ * Important: `/community` (no slash) would also block `/community-preview` —
+ * use `/community/` for the logged-in app only.
+ */
 export default function robots(): MetadataRoute.Robots {
+  const disallow = [
+    '/admin/',
+    '/api/',
+    '/auth',
+    '/logout',
+    '/reset-password',
+    '/unauthorized',
+    '/settings',
+    '/dashboard',
+    '/profile',
+    '/progress',
+    '/practice',
+    '/learn',
+    '/radar-plotting',
+    '/simulator',
+    '/bridge',
+    '/buoyage',
+    '/instructor',
+    '/community/',
+    '/flashcards',
+    '/modules',
+    '/unit-modules',
+    '/store',
+    '/trb',
+    '/sea-survival',
+    '/test',
+  ];
+
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: [
-          '/admin/',
-          '/settings',
-          '/auth',
-          '/logout',
-          '/reset-password',
-          '/unauthorized',
-          '/simulator',
-          '/bridge',
-          '/instructor',
-          '/test',
-        ],
+        disallow,
+      },
+      {
+        // Explicit Googlebot rule (same policy — helps GSC clarity)
+        userAgent: 'Googlebot',
+        allow: '/',
+        disallow,
       },
     ],
     sitemap: absoluteUrl('/sitemap.xml'),
+    host: SITE_URL.replace(/^https?:\/\//, ''),
   };
 }

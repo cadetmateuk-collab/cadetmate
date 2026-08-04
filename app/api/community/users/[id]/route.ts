@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select(`
-      id, full_name, email, created_at,
+      id, full_name, created_at,
       community_user_profiles(karma_score, post_count, comment_count)
     `)
     .eq('id', id)
@@ -55,7 +55,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
     profile: {
       id: profile.id,
       full_name: profile.full_name,
-      email: profile.email,
       created_at: profile.created_at,
       karma_score: communityStats?.karma_score ?? 0,
       post_count: communityStats?.post_count ?? 0,

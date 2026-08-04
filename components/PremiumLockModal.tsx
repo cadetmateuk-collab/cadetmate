@@ -1,5 +1,13 @@
 "use client";
+
+import React, { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { Lock, Sparkles, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getPremiumPricingTable } from "@/lib/stripe/store-tables";
+import { useFocusTrap } from "@/lib/a11y/useFocusTrap";
+import { useEscapeKey } from "@/lib/a11y/useEscapeKey";
+import { useBodyScrollLock } from "@/lib/a11y/useBodyScrollLock";
 
 interface PremiumLockModalProps {
   isOpen: boolean;
@@ -7,102 +15,112 @@ interface PremiumLockModalProps {
 }
 
 export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const table = getPremiumPricingTable();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useFocusTrap(isOpen, dialogRef, closeRef);
+  useEscapeKey(isOpen, onClose);
+  useBodyScrollLock(isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void import("@/lib/analytics").then(({ trackEvent }) => {
+      trackEvent("premium_lock_view", { location: "premium_lock_modal" });
+    });
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+
+    if (document.querySelector('script[src="https://js.stripe.com/v3/pricing-table.js"]')) return;
+    const script = document.createElement("script");
+    script.src = "https://js.stripe.com/v3/pricing-table.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
+  const attrs: Record<string, string> = {
+    "pricing-table-id": table.pricingTableId,
+    "publishable-key": table.publishableKey,
+  };
+  if (userId) attrs["client-reference-id"] = userId;
+
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-hide">
-        {/* Header */}
-        <div className="relative bg-blue-600 text-white p-8 rounded-t-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-sm p-0 sm:p-4"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl max-h-[min(92dvh,900px)] overflow-y-auto overscroll-contain"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="premium-lock-title"
+      >
+        <div className="relative bg-blue-600 text-white p-5 sm:p-8 rounded-t-2xl sm:rounded-t-xl">
           <button
+            ref={closeRef}
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex h-11 w-11 items-center justify-center hover:bg-white/20 rounded-lg transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            aria-label="Close"
           >
-            <X size={24} />
+            <X size={22} aria-hidden />
           </button>
-          <div className="flex items-center gap-3">
-            <Lock size={32} />
-            <h2 className="text-3xl font-bold text-white">Premium Content Locked</h2>
+          <div className="flex items-start sm:items-center gap-3 pr-12">
+            <Lock className="size-7 sm:size-8 shrink-0 mt-0.5 sm:mt-0" aria-hidden />
+            <h2 id="premium-lock-title" className="text-h2 sm:text-3xl font-bold text-white text-balance leading-tight">
+              Premium Content Locked
+            </h2>
           </div>
-          <p className="text-blue-100">Unlock full access to all training modules and features</p>
+          <p className="text-blue-50 mt-2 text-sm sm:text-base">
+            Unlock full access to training modules and simulators
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="p-8">
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              Upgrade to Premium to unlock:
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1">
+        <div className="p-5 sm:p-8">
+          <div className="mb-6 space-y-3">
+            {[
+              ["All Unit Modules", "Complete access to maritime training modules"],
+              ["Bridge & buoyage sims", "Premium simulator access"],
+              ["TRB & Sea Survival", "Training record book and safety content"],
+            ].map(([title, body]) => (
+              <div key={title} className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1" aria-hidden>
                   <Sparkles size={14} className="text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">All Unit Modules</p>
-                  <p className="text-sm text-gray-600">Complete access to all maritime training modules</p>
+                  <p className="font-medium text-gray-900">{title}</p>
+                  <p className="text-sm text-gray-600">{body}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1">
-                  <Sparkles size={14} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Work Based Learning</p>
-                  <p className="text-sm text-gray-600">Practical training resources and guidance</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1">
-                  <Sparkles size={14} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">TRB & Sea Survival</p>
-                  <p className="text-sm text-gray-600">Essential training record book and safety modules</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1">
-                  <Sparkles size={14} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">General Tips</p>
-                  <p className="text-sm text-gray-600">Expert advice and industry insights</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Stripe Pricing Table Container */}
-          <div id="stripe-pricing-table-container" className="mb-6">
-            <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-1 text-center">
-              <div className="mt-4 bg-white rounded p-4 text-left">
-                <code className="text-xs text-gray-700 block">
-                  <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
-<stripe-pricing-table pricing-table-id="prctbl_1SlcPrRwygITQzeHu2JCNiqy"
-publishable-key="pk_test_51S8R2vRwygITQzeHn6B8EW7O3AmdwJHQBknayUD9sO2o7byW50Cp3uuxFL4VW9HDykuCjtdV0D2xoWj3jk8wZFAo0025ArN1iY">
-</stripe-pricing-table>
-                </code>
-              </div>
-            </div>
+          <div className="mb-6 w-full overflow-x-auto [-webkit-overflow-scrolling:touch]">
+            {React.createElement("stripe-pricing-table", attrs)}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <button
+              type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              className="flex-1 min-h-11 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Maybe Later
             </button>
-            <button
-              onClick={() => {
-                // Navigate to subscribe page or trigger Stripe checkout
-                window.location.href = '/auth';
-              }}
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium shadow-lg"
+            <Link
+              href="/store"
+              className="flex-1 min-h-11 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg text-center inline-flex items-center justify-center touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onClick={onClose}
             >
-              Upgrade Now
-            </button>
+              Open Store
+            </Link>
           </div>
         </div>
       </div>

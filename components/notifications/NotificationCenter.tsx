@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, Check, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { useEscapeKey } from '@/lib/a11y/useEscapeKey';
 
 type Notification = {
   id: string;
@@ -20,6 +21,8 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const unreadCount = notifications.filter((n) => !n.read_at).length;
@@ -61,6 +64,11 @@ export function NotificationCenter() {
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
+  useEscapeKey(open, () => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  });
+
   const markAllRead = async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -92,13 +100,17 @@ export function NotificationCenter() {
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
+        type="button"
         onClick={() => setOpen((p) => !p)}
-        className="relative h-8 w-8 flex items-center justify-center rounded-full hover:bg-muted/70 transition-colors"
-        aria-label="Notifications"
+        className="relative h-11 w-11 min-h-11 min-w-11 flex items-center justify-center rounded-md hover:bg-muted/70 transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-4 w-4" aria-hidden />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center" aria-hidden>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -106,13 +118,27 @@ export function NotificationCenter() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default bg-transparent"
+            aria-label="Dismiss notifications"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-label="Notifications"
+            className="absolute right-0 top-full mt-2 w-[min(22rem,calc(100vw-1.5rem))] sm:w-96 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden max-h-[min(70dvh,28rem)] flex flex-col"
+          >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <p className="text-sm font-semibold">Notifications</p>
+              <p className="text-sm font-semibold" id="notifications-heading">Notifications</p>
               {unreadCount > 0 && (
-                <button onClick={markAllRead} className="text-xs text-primary flex items-center gap-1 hover:underline">
-                  <Check className="h-3 w-3" /> Mark all read
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="text-xs text-primary flex items-center gap-1 min-h-11 px-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                >
+                  <Check className="h-3 w-3" aria-hidden /> Mark all read
                 </button>
               )}
             </div>
@@ -122,22 +148,23 @@ export function NotificationCenter() {
               ) : (
                 notifications.map((n) => (
                   <button
+                    type="button"
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={cn(
-                      'w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/50 transition-colors',
+                      'w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/50 transition-colors min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                       !n.read_at && 'bg-primary/5',
                     )}
                   >
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{n.title}</p>
+                        <p className={cn('text-sm', !n.read_at && 'font-semibold')}>{n.title}</p>
                         {n.body && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.body}</p>}
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {new Date(n.created_at).toLocaleDateString()}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(n.created_at).toLocaleDateString('en-GB')}
                         </p>
                       </div>
-                      {n.href && <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-1" />}
+                      {n.href && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden />}
                     </div>
                   </button>
                 ))

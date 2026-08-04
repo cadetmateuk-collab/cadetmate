@@ -1,4 +1,3 @@
-'use client';
 /** Circular progress ring used on the library cards. */
 export function ProgressRing({
   value, size = 56, stroke = 5, label,

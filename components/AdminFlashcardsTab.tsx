@@ -5,16 +5,9 @@ import {
   Plus, Trash2, Pencil, Check, X, Upload, BookOpen,
   Sparkles, Copy, Eye, EyeOff, Crown, Layers,
 } from 'lucide-react';
+import { C } from '@/components/admin/ui';
 
 const supabase = createClient();
-
-const C = {
-  bg: '#ffffff', fg: '#0f0f0f', primary: '#2966f4', primaryLight: '#eef2fe',
-  muted: '#f7f7f8', mutedFg: '#737373', border: '#e8e8e8',
-  green: '#16a34a', greenLight: '#f0fdf4', red: '#dc2626', redLight: '#fef2f2',
-  amber: '#b45309', amberLight: '#fef3c7', gold: '#f59e0b',
-  radius: '10px', radiusSm: '6px',
-};
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 type Status = 'draft' | 'published' | 'archived';

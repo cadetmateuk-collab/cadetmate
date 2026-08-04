@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@cadet-mate/shared": [
+        "./packages/shared/src/index.ts"
+      ],
+      "@cadet-mate/shared/*": [
+        "./packages/shared/src/*"
       ]
     }
   },
@@ -37,6 +43,8 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "apps",
+    ".server-out"
   ]
 }

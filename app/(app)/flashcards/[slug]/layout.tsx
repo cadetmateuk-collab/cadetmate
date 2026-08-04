@@ -30,6 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: `/flashcards/${slug}`,
     image: pack.thumbnail_url ?? undefined,
     imageAlt: pack.title,
+    noIndex: true,
   });
 }
 

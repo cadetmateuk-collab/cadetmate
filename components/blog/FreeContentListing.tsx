@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, memo, useEffectEvent } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { Search, Calendar, Clock, TrendingUp, ArrowRight } from 'lucide-react';
 import type { BlogPostSummary } from '@/lib/blog/types';
 import { buildBlogPostPath } from '@/lib/blog/paths';
@@ -14,9 +15,34 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
-  const [searchTerm, setSearchTerm] = useState('');
+export const FreeContentListing = memo(function FreeContentListing({
+  posts,
+  initialQuery = '',
+}: {
+  posts: BlogPostSummary[];
+  initialQuery?: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setSearchTerm(initialQuery);
+  }, [initialQuery]);
+
+  // Keep `?q=` in the URL so WebSite SearchAction URLs remain shareable/crawlable.
+  const syncQueryToUrl = useEffectEvent((term: string) => {
+    const next = term.trim()
+      ? `${pathname}?q=${encodeURIComponent(term.trim())}`
+      : pathname;
+    router.replace(next, { scroll: false });
+  });
+
+  useEffect(() => {
+    const t = window.setTimeout(() => syncQueryToUrl(searchTerm), 300);
+    return () => window.clearTimeout(t);
+  }, [searchTerm]);
 
   const filteredPosts = useMemo(
     () =>
@@ -45,18 +71,19 @@ export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
         .fc-subtitle { font-size: 0.9375rem; color: hsl(var(--muted-foreground)); max-width: 640px; margin: 0 auto; line-height: 1.6; }
         .fc-search-wrap { max-width: 480px; margin: 0 auto 3rem; position: relative; }
         .fc-search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: hsl(var(--muted-foreground)); pointer-events: none; }
-        .fc-search { width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 0.625rem; font-size: 0.9375rem; color: hsl(var(--foreground)); outline: none; font-family: inherit; }
+        .fc-search { width: 100%; min-height: 2.75rem; padding: 0.75rem 1rem 0.75rem 2.75rem; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 0.625rem; font-size: 1rem; color: hsl(var(--foreground)); outline: none; font-family: inherit; }
         .fc-featured { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-radius: 0.75rem; overflow: hidden; border: 1px solid hsl(var(--border)); margin-bottom: 3rem; text-decoration: none; background: hsl(var(--card)); transition: border-color 0.2s, box-shadow 0.2s; }
         .fc-featured:hover { border-color: hsl(var(--primary) / 0.3); box-shadow: 0 8px 40px hsl(var(--primary) / 0.07); }
-        .fc-featured-body { padding: 2.25rem 2.5rem; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center; }
+        .fc-featured-media { max-height: min(280px, 40vw); min-height: 160px; object-fit: cover; width: 100%; height: 100%; }
+        .fc-featured-body { padding: clamp(1.25rem, 4vw, 2.5rem); display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center; }
         .fc-featured-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: hsl(var(--primary)); margin-bottom: 0.875rem; }
-        .fc-featured-title { font-size: 1.625rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: hsl(var(--foreground)); margin: 0 0 0.75rem; }
+        .fc-featured-title { font-size: clamp(1.25rem, 3vw, 1.625rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: hsl(var(--foreground)); margin: 0 0 0.75rem; }
         .fc-featured-excerpt { font-size: 0.9375rem; line-height: 1.65; color: hsl(var(--muted-foreground)); margin: 0 0 1.25rem; max-width: 36rem; }
         .fc-featured-meta { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
         .fc-featured-author { font-size: 0.8125rem; font-weight: 600; color: hsl(var(--foreground)); }
         .fc-featured-dot { color: hsl(var(--border)); }
         .fc-featured-date { font-size: 0.75rem; color: hsl(var(--muted-foreground)); display: inline-flex; align-items: center; gap: 0.2rem; }
-        .fc-read-btn { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; color: hsl(var(--primary)); text-transform: uppercase; }
+        .fc-read-btn { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; color: hsl(var(--primary)); text-transform: uppercase; min-height: 2.75rem; }
         .fc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
         .fc-card { display: flex; flex-direction: column; border: 1px solid hsl(var(--border)); border-radius: 0.75rem; overflow: hidden; text-decoration: none; background: hsl(var(--card)); transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s; }
         .fc-card:hover { border-color: hsl(var(--primary) / 0.28); transform: translateY(-3px); box-shadow: 0 8px 32px hsl(var(--primary) / 0.07); }
@@ -69,16 +96,17 @@ export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
         .fc-card-dot { color: hsl(var(--border)); font-size: 0.75rem; }
         .fc-card-meta { font-size: 0.6875rem; color: hsl(var(--muted-foreground)); display: inline-flex; align-items: center; gap: 0.2rem; }
         .fc-empty { text-align: center; padding: 5rem 0; color: hsl(var(--muted-foreground)); }
-        .fc-pagination { display: flex; justify-content: center; align-items: center; gap: 0.375rem; }
-        .fc-page-btn { padding: 0.4rem 0.875rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; font-family: inherit; }
+        .fc-pagination { display: flex; justify-content: center; align-items: center; gap: 0.375rem; flex-wrap: wrap; }
+        .fc-page-btn { min-height: 2.75rem; min-width: 2.75rem; padding: 0.5rem 0.875rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--foreground)); cursor: pointer; font-family: inherit; touch-action: manipulation; }
         .fc-page-btn.active { background: hsl(var(--primary)); color: white; border-color: hsl(var(--primary)); }
         .fc-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .fc-links { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid hsl(var(--border)); }
         .fc-links-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
-        .fc-link-pill { padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); font-size: 0.8125rem; font-weight: 500; color: hsl(var(--foreground)); text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+        .fc-link-pill { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); font-size: 0.8125rem; font-weight: 500; color: hsl(var(--foreground)); text-decoration: none; transition: border-color 0.15s, color 0.15s; touch-action: manipulation; }
         .fc-link-pill:hover { border-color: hsl(var(--primary) / 0.4); color: hsl(var(--primary)); }
-        @media (max-width: 900px) { .fc-grid { grid-template-columns: repeat(2, 1fr); } .fc-featured { grid-template-columns: 1fr; } }
-        @media (max-width: 580px) { .fc-content { padding: 2rem 0 4rem; } .fc-grid { grid-template-columns: 1fr; } .fc-title { font-size: 2rem; } }
+        @media (max-width: 1024px) { .fc-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 900px) { .fc-featured { grid-template-columns: 1fr; } .fc-featured-media { max-height: 200px; } }
+        @media (max-width: 580px) { .fc-content { padding: 2rem 0 4rem; } .fc-grid { grid-template-columns: 1fr; } .fc-title { font-size: clamp(1.75rem, 8vw, 2rem); } }
       `}</style>
 
       <div className="fc-page">
@@ -109,7 +137,7 @@ export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
           {featuredPost && !searchTerm && currentPage === 1 && (
             <Link href={buildBlogPostPath(featuredPost)} className="fc-featured">
               {featuredPost.image && (
-                <BlogCardImage src={featuredPost.image} alt={featuredPost.title} className="min-h-[280px] !h-auto" />
+                <BlogCardImage src={featuredPost.image} alt={featuredPost.title} className="fc-featured-media min-h-[160px] max-h-[200px] sm:max-h-[280px] !h-auto w-full object-cover" />
               )}
               <div className="fc-featured-body">
                 <span className="fc-featured-badge"><TrendingUp size={11} /> Featured</span>
@@ -172,9 +200,10 @@ export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
             </h2>
             <div className="fc-links-grid">
               <Link href="/resources" className="fc-link-pill">Free resources</Link>
-              <Link href="/unit-modules" className="fc-link-pill">Training modules</Link>
-              <Link href="/flashcards" className="fc-link-pill">Flashcards</Link>
+              <Link href="/about" className="fc-link-pill">About CadetMate</Link>
+              <Link href="/community-preview" className="fc-link-pill">Community preview</Link>
               <Link href="/pricing" className="fc-link-pill">Pricing</Link>
+              <Link href="/contact" className="fc-link-pill">Contact</Link>
               <Link href="/auth?mode=signup" className="fc-link-pill">Create free account</Link>
             </div>
           </section>
@@ -182,4 +211,4 @@ export function FreeContentListing({ posts }: { posts: BlogPostSummary[] }) {
       </div>
     </>
   );
-}
+});

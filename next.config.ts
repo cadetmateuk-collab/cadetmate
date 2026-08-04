@@ -1,20 +1,134 @@
 import type { NextConfig } from "next";
 
+/**
+ * Content-Security-Policy — report-friendly baseline.
+ * 'unsafe-inline' retained for Next.js / Stripe pricing tables; tighten with nonces later.
+ */
+const ContentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https:",
+  "style-src 'self' 'unsafe-inline' https:",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.stripe.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://*.googletagmanager.com https:",
+  "frame-src 'self' https://js.stripe.com https://*.stripe.com https://www.youtube.com https://youtube.com https://player.vimeo.com",
+  "media-src 'self' blob: https:",
+  "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join('; ');
+
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self), interest-cohort=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+  { key: 'Content-Security-Policy', value: ContentSecurityPolicy },
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
   },
   typedRoutes: false,
-  transpilePackages: ['three'],
+  compress: true,
+  poweredByHeader: false,
+  transpilePackages: ['three', '@cadet-mate/shared'],
   serverExternalPackages: ['ws'],
   productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: 'cadetmate.co.uk' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
+  async redirects() {
+    return [
+      // Apex host is canonical — fold www to non-www for Search Console.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.cadetmate.co.uk' }],
+        destination: 'https://cadetmate.co.uk/:path*',
+        permanent: true,
+      },
+      // Legacy marketing aliases
+      {
+        source: '/blog',
+        destination: '/free-content',
+        permanent: true,
+      },
+      {
+        source: '/blog/:path*',
+        destination: '/free-content/:path*',
+        permanent: true,
+      },
+    ];
+  },
+  async headers() {
+    const longCache = [
+      { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ];
+    const htmlCache = [
+      { key: 'Cache-Control', value: 'public, max-age=0, s-maxage=60, stale-while-revalidate=300' },
+    ];
+
+    return [
+      { source: '/(.*)', headers: securityHeaders },
+      {
+        source: '/home',
+        headers: [...securityHeaders, ...htmlCache],
+      },
+      {
+        source: '/_next/static/(.*)',
+        headers: longCache,
+      },
+      {
+        source: '/images/(.*)',
+        headers: longCache,
+      },
+      {
+        source: '/shipimages/(.*)',
+        headers: longCache,
+      },
+      {
+        source: '/buoyage/(.*)',
+        headers: longCache,
+      },
+      {
+        source: '/:path*.webm',
+        headers: longCache,
+      },
+      {
+        source: '/:path*.webp',
+        headers: longCache,
+      },
+      {
+        source: '/:path*.avif',
+        headers: longCache,
+      },
+      {
+        source: '/:path*.woff2',
+        headers: longCache,
+      },
+    ];
   },
 };
 

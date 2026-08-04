@@ -3,11 +3,13 @@ import { buildPageMetadata } from '@/lib/seo/metadata';
 import { requireAuth } from '@/lib/auth/get-user';
 import { toNavUser } from '@/lib/auth/nav-user';
 import { AppShell } from '@/components/layout/AppShell';
+import { AuthenticatedClientChrome } from '@/components/layout/AuthenticatedClientChrome';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Dashboard',
   description: 'Training platform for maritime cadets — modules, flashcards, TRB tasks, and more.',
-  path: '/',
+  path: '/dashboard',
+  noIndex: true,
 });
 
 export default async function AppLayout({
@@ -17,5 +19,10 @@ export default async function AppLayout({
 }) {
   const user = await requireAuth();
 
-  return <AppShell user={toNavUser(user)}>{children}</AppShell>;
+  return (
+    <>
+      <AuthenticatedClientChrome />
+      <AppShell user={toNavUser(user)}>{children}</AppShell>
+    </>
+  );
 }

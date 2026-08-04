@@ -3,27 +3,19 @@
 import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import {
+  C,
+  AdminBadge as Badge,
+  AdminBtn as Btn,
+  AdminIconBtn as IconBtn,
+  AdminInput as Input,
+  AdminTextarea as Textarea,
+  AdminSelect as Select,
+  AdminLabel as Label,
+} from '@/components/admin/ui'
 
 const supabase = createClient()
 
-// ─── Brand tokens ──────────────────────────────────────────────────────────────
-const C = {
-  bg:           '#ffffff',
-  fg:           '#000000',
-  primary:      '#2966f4',
-  primaryLight: '#eef2fe',
-  muted:        '#f5f5f5',
-  mutedFg:      '#737373',
-  border:       '#ededed',
-  green:        '#16a34a',
-  greenLight:   '#f0fdf4',
-  greenBorder:  '#bbf7d0',
-  red:          '#dc2626',
-  redLight:     '#fef2f2',
-  radius:       '8px',
-}
-
-// ─── Types ─────────────────────────────────────────────────────────────────────
 type Question = {
   id: string
   question_date: string | null
@@ -37,81 +29,12 @@ const emptyQ = (): Omit<Question, 'id'> => ({
   question_date: null, question: '', options: ['', '', '', ''], correct_answer: '', explanation: '',
 })
 
-// ─── Shared primitives ─────────────────────────────────────────────────────────
-function Badge({ children, variant = 'muted' }: { children: React.ReactNode; variant?: 'primary' | 'success' | 'muted' }) {
-  const styles: Record<string, React.CSSProperties> = {
-    primary: { background: C.primaryLight, color: C.primary,  border: `1px solid ${C.primary}33` },
-    success: { background: C.greenLight,   color: C.green,    border: `1px solid ${C.greenBorder}` },
-    muted:   { background: C.muted,        color: C.mutedFg,  border: `1px solid ${C.border}` },
-  }
-  return (
-    <span style={{ ...styles[variant], display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0 }}>
-      {children}
-    </span>
-  )
-}
-
-function Label({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: C.mutedFg, marginBottom: '6px' }}>{children}</p>
-}
-
 function InfoBanner({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: '10px', padding: '12px 16px', borderRadius: C.radius, background: C.primaryLight, border: `1px solid ${C.primary}22`, marginBottom: '16px' }}>
       <AlertCircle size={14} color={C.primary} style={{ flexShrink: 0, marginTop: '1px' }} />
-      <p style={{ fontSize: '12px', color: C.mutedFg, lineHeight: 1.6 }}>{children}</p>
+      <p style={{ fontSize: '12px', color: C.mutedFg, lineHeight: 1.6, margin: 0 }}>{children}</p>
     </div>
-  )
-}
-
-function Btn({ onClick, disabled, variant = 'primary', children, style }: {
-  onClick?: () => void; disabled?: boolean; variant?: 'primary' | 'ghost' | 'danger'; children: React.ReactNode; style?: React.CSSProperties
-}) {
-  const base: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: C.radius, fontSize: '12px', fontWeight: 600, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'opacity 0.15s', fontFamily: 'inherit' }
-  const variants: Record<string, React.CSSProperties> = {
-    primary: { background: C.primary, color: '#fff' },
-    ghost:   { background: 'transparent', color: C.mutedFg, border: `1px solid ${C.border}` },
-    danger:  { background: C.redLight, color: C.red, border: `1px solid ${C.red}33` },
-  }
-  return <button onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant], ...style }}>{children}</button>
-}
-
-function IconBtn({ onClick, title, children }: { onClick: () => void; title?: string; children: React.ReactNode }) {
-  return (
-    <button title={title} onClick={onClick} style={{ padding: '6px', borderRadius: '6px', border: 'none', background: 'transparent', cursor: 'pointer', color: C.mutedFg, display: 'flex', alignItems: 'center', fontFamily: 'inherit' }}
-      onMouseEnter={e => (e.currentTarget.style.background = C.muted)}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-    >{children}</button>
-  )
-}
-
-function Input({ value, onChange, disabled, type = 'text', placeholder, style }: { value: string; onChange?: (v: string) => void; disabled?: boolean; type?: string; placeholder?: string; style?: React.CSSProperties }) {
-  return (
-    <input type={type} value={value} placeholder={placeholder} disabled={disabled} onChange={e => onChange?.(e.target.value)}
-      style={{ width: '100%', padding: '8px 12px', borderRadius: C.radius, fontSize: '12px', border: `1px solid ${C.border}`, background: disabled ? C.muted : C.bg, color: C.fg, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', ...style }}
-      onFocus={e => !disabled && (e.currentTarget.style.borderColor = C.primary)}
-      onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-    />
-  )
-}
-
-function Textarea({ value, onChange, disabled, rows = 2, placeholder }: { value: string; onChange?: (v: string) => void; disabled?: boolean; rows?: number; placeholder?: string }) {
-  return (
-    <textarea value={value} rows={rows} placeholder={placeholder} disabled={disabled} onChange={e => onChange?.(e.target.value)}
-      style={{ width: '100%', padding: '8px 12px', borderRadius: C.radius, fontSize: '12px', border: `1px solid ${C.border}`, background: disabled ? C.muted : C.bg, color: C.fg, fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
-      onFocus={e => !disabled && (e.currentTarget.style.borderColor = C.primary)}
-      onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-    />
-  )
-}
-
-function Select({ value, onChange, disabled, options }: { value: string; onChange: (v: string) => void; disabled?: boolean; options: { label: string; value: string }[] }) {
-  return (
-    <select value={value} disabled={disabled} onChange={e => onChange(e.target.value)}
-      style={{ width: '100%', padding: '8px 12px', borderRadius: C.radius, fontSize: '12px', border: `1px solid ${C.border}`, background: disabled ? C.muted : C.bg, color: C.fg, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
-    >
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
   )
 }
 

@@ -12,7 +12,7 @@ import { Survival } from '@/components/Survival';
 import { XPBar } from '@/components/XPBar';
 import {
   usePack, useCurrentUser, loadProgress, saveProgress, bumpPackStats, addXP, useUserXP,
-} from '@/lib/useFlashcards';
+} from '@/lib/hooks/useFlashcards';
 import {
   sm2, pickNext, computeCardXP, computeSessionBonus, computeBulkSessionXP,
 } from '@/lib/algorithms';

@@ -1,5 +1,5 @@
 import {
-  Home,
+  House,
   BookOpen,
   WalletCards,
   FileText,
@@ -35,12 +35,13 @@ import {
   Mail,
   LogIn,
   Bookmark,
+  LifeBuoy,
 } from 'lucide-react';
 import type { MobileNavItem, NavGroupConfig, NavItemConfig } from './types';
 
 /** Public marketing site navigation */
 export const PUBLIC_NAV: NavItemConfig[] = [
-  { id: 'home', label: 'Home', href: '/home', icon: Home },
+  { id: 'home', label: 'Home', href: '/home', icon: House },
   { id: 'blog', label: 'Free Content', href: '/free-content', icon: Newspaper },
   { id: 'resources', label: 'Free Resources', href: '/resources', icon: BookOpen },
   { id: 'community', label: 'Community', href: '/community-preview', icon: MessageSquare },
@@ -71,7 +72,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
     label: 'Main',
     defaultOpen: true,
     items: [
-      { id: 'dashboard', label: 'Home', href: '/dashboard', icon: Home, exact: true },
+      { id: 'dashboard', label: 'Home', href: '/dashboard', icon: House, exact: true },
     ],
   },
   APP_FREE_CONTENT_GROUP,
@@ -98,6 +99,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
       { id: 'mock-oral', label: 'Mock Oral Exams', href: '/practice?tab=mock-oral', icon: Mic, premiumOnly: true },
       { id: 'oral-questions', label: 'Oral Questions', href: '/practice?tab=oral-questions', icon: HelpCircle, premiumOnly: true },
       { id: 'simulators', label: 'Emergency Simulators', href: '/simulator', icon: Zap, premiumOnly: true },
+      { id: 'buoyage', label: 'Buoyage Simulator', href: '/buoyage', icon: LifeBuoy, premiumOnly: true },
       { id: 'quick-quiz', label: 'Quick Quiz', href: '/practice#daily-quiz', icon: Target },
       { id: 'scenarios', label: 'Scenario Challenges', href: '/practice?tab=scenarios', icon: GraduationCap, premiumOnly: true },
       { id: 'practice-hub', label: 'All Practice', href: '/practice', icon: PenLine },
@@ -161,7 +163,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
 
 /** Mobile bottom navigation for logged-in app */
 export const MOBILE_BOTTOM_NAV: MobileNavItem[] = [
-  { id: 'dashboard', label: 'Home', href: '/dashboard', icon: Home },
+  { id: 'dashboard', label: 'Home', href: '/dashboard', icon: House },
   { id: 'learn', label: 'Learn', href: '/learn', icon: BookOpen },
   { id: 'practice', label: 'Practice', href: '/practice', icon: Target },
   { id: 'community', label: 'Community', href: '/community', icon: Users },

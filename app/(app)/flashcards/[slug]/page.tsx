@@ -1,14 +1,14 @@
 'use client';
 // Pack detail page with mode picker + Stripe premium gate.
 // Drop in at app/flashcards/[slug]/page.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, Sparkles, Lock, Zap, Brain, Flame, Heart, Target, Shuffle, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StudyShell } from '@/components/StudyShell';
 import { ProgressRing } from '@/components/ProgressRing';
-import { usePack, useCurrentUser, usePackStats, loadOwnership } from '@/lib/useFlashcards';
+import { usePack, useCurrentUser, usePackStats, loadOwnership } from '@/lib/hooks/useFlashcards';
 import type { StudyMode } from '@/lib/types';
 
 const supabase = createClient();
@@ -31,6 +31,7 @@ export default function PackDetailPage() {
   const [owned, setOwned] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
+  const purchaseTracked = useRef(false);
 
   useEffect(() => {
     if (userId && pack) loadOwnership(userId, pack.id).then(setOwned);
@@ -40,14 +41,26 @@ export default function PackDetailPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') {
-      setJustPurchased(true);
-      setOwned(true);
-      // Clean up the URL without a hard reload
-      const clean = window.location.pathname;
-      window.history.replaceState({}, '', clean);
-    }
+    if (params.get('success') !== '1') return;
+    setJustPurchased(true);
+    setOwned(true);
+    const clean = window.location.pathname;
+    window.history.replaceState({}, '', clean);
   }, []);
+
+  useEffect(() => {
+    if (!justPurchased || !pack || purchaseTracked.current) return;
+    purchaseTracked.current = true;
+    void import('@/lib/analytics').then(({ trackConversion }) => {
+      trackConversion('purchase', {
+        content_type: 'flashcard_pack',
+        item_id: pack.id,
+        item_name: pack.title,
+        value: pack.price_cents ? pack.price_cents / 100 : undefined,
+        currency: 'GBP',
+      });
+    });
+  }, [justPurchased, pack]);
 
   const locked = pack?.is_premium && !owned;
   const pct = stats && pack ? stats.cards_mastered / Math.max(1, pack.card_count) : 0;
@@ -60,11 +73,13 @@ export default function PackDetailPage() {
     }
     if (!pack) return;
 
-    // Free premium pack — unlock directly without Stripe
+    // Free pack — claim via SECURITY DEFINER RPC (RLS blocks direct paid inserts)
     if (!pack.price_cents || pack.price_cents === 0) {
-      await supabase
-        .from('flashcard_pack_ownership')
-        .insert({ user_id: userId, pack_id: pack.id, source: 'free_unlock' });
+      const { error } = await supabase.rpc('claim_free_flashcard_pack', { p_pack_id: pack.id });
+      if (error) {
+        alert(error.message ?? 'Could not unlock pack.');
+        return;
+      }
       setOwned(true);
       return;
     }
@@ -72,12 +87,21 @@ export default function PackDetailPage() {
     // Paid pack — create Stripe Checkout session
     setPurchasing(true);
     try {
+      void import('@/lib/analytics').then(({ trackConversion, trackClick }) => {
+        trackClick('unlock_flashcard_pack', { pack_id: pack.id, slug });
+        trackConversion('begin_checkout', {
+          content_type: 'flashcard_pack',
+          item_id: pack.id,
+          item_name: pack.title,
+          value: pack.price_cents / 100,
+          currency: 'GBP',
+        });
+      });
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           packId: pack.id,
-          priceId: pack.stripe_price_id,   // column you added to flashcard_packs
           slug,
         }),
       });

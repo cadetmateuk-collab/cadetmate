@@ -290,5 +290,6 @@ export async function generateMetadata({
     path: `/sea-survival/${slug}`,
     image: article.image ?? undefined,
     imageAlt: article.title,
+    noIndex: true,
   });
 }

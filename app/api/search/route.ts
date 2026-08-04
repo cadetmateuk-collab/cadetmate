@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { buildBlogPostPath } from '@/lib/blog/paths';
+import { escapeIlike } from '@/lib/security/env';
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const pattern = `%${q}%`;
+  const pattern = `%${escapeIlike(q)}%`;
   const results: Array<{
     id: string;
     type: string;
@@ -47,10 +48,11 @@ export async function GET(request: NextRequest) {
       .ilike('title', pattern)
       .limit(limit),
 
+    // Never search or return emails publicly
     supabase
       .from('profiles')
-      .select('id, full_name, email')
-      .or(`full_name.ilike.${pattern},email.ilike.${pattern}`)
+      .select('id, full_name')
+      .ilike('full_name', pattern)
       .limit(5),
   ]);
 
@@ -98,8 +100,7 @@ export async function GET(request: NextRequest) {
     results.push({
       id: u.id,
       type: 'user',
-      title: u.full_name || u.email || 'User',
-      subtitle: u.email ?? undefined,
+      title: u.full_name || 'Cadet',
       href: `/community/user/${u.id}`,
     });
   }

@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { StudyShell } from '@/components/StudyShell';
 import { ProgressRing } from '@/components/ProgressRing';
 import { XPBar } from '@/components/XPBar';
-import { usePacks, useCurrentUser, useUserXP } from '@/lib/useFlashcards';
+import { usePacks, useCurrentUser, useUserXP } from '@/lib/hooks/useFlashcards';
 
 const supabase = createClient();
 

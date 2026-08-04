@@ -13,18 +13,19 @@ export function useActivityTracker() {
     lastActivityUpdateRef.current = new Date();
 
     const updateLastActivity = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Update last_activity_at timestamp
       await supabase
         .from('user_statistics')
-        .update({ 
+        .update({
           last_activity_at: new Date().toISOString(),
-          last_activity_date: new Date().toISOString().split('T')[0]
+          last_activity_date: new Date().toISOString().split('T')[0],
         })
         .eq('user_id', user.id);
-      
+
       lastActivityUpdateRef.current = new Date();
     };
 
@@ -33,13 +34,14 @@ export function useActivityTracker() {
 
       const sessionEnd = new Date();
       const durationSeconds = Math.floor(
-        (sessionEnd.getTime() - sessionStartRef.current.getTime()) / 1000
+        (sessionEnd.getTime() - sessionStartRef.current.getTime()) / 1000,
       );
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Log session
       await supabase.from('user_activity_log').insert({
         user_id: user.id,
         session_start: sessionStartRef.current.toISOString(),
@@ -48,65 +50,70 @@ export function useActivityTracker() {
         page_path: window.location.pathname,
       });
 
-      // Update total time in statistics
       await supabase.rpc('increment_user_time', {
         p_user_id: user.id,
-        p_seconds: durationSeconds
+        p_seconds: durationSeconds,
       });
 
-      // Reset session start for next tracking period
       sessionStartRef.current = new Date();
     };
 
-    // Update activity on mount
-    updateLastActivity();
-
-    // Track activity every 5 minutes for long sessions
-    const trackInterval = setInterval(trackActivity, 5 * 60 * 1000);
-
-    // Update last_activity_at every 1 minute (for active user tracking)
-    const activityInterval = setInterval(() => {
-      const timeSinceLastUpdate = lastActivityUpdateRef.current 
-        ? (new Date().getTime() - lastActivityUpdateRef.current.getTime()) / 1000
-        : Infinity;
-      
-      // Only update if there's been at least 30 seconds since last update
-      // This prevents too many database calls
-      if (timeSinceLastUpdate >= 30) {
-        updateLastActivity();
-      }
-    }, 60 * 1000); // Check every minute
-
-    // Update on user interaction (throttled)
-    let interactionTimeout: NodeJS.Timeout | null = null;
-    const handleInteraction = () => {
-      if (interactionTimeout) return; // Already scheduled
-      
-      interactionTimeout = setTimeout(() => {
-        updateLastActivity();
-        interactionTimeout = null;
-      }, 30000); // Throttle to max once per 30 seconds
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
     };
 
-    window.addEventListener('click', handleInteraction);
-    window.addEventListener('keypress', handleInteraction);
-    window.addEventListener('scroll', handleInteraction);
+    let idleId: number | undefined;
+    let idleTimeout: ReturnType<typeof setTimeout> | undefined;
+    if (typeof w.requestIdleCallback === 'function') {
+      idleId = w.requestIdleCallback(() => {
+        void updateLastActivity();
+      }, { timeout: 5000 });
+    } else {
+      idleTimeout = setTimeout(() => {
+        void updateLastActivity();
+      }, 2000);
+    }
 
-    // Track on page unload
+    const trackInterval = setInterval(trackActivity, 5 * 60 * 1000);
+
+    const activityInterval = setInterval(() => {
+      const timeSinceLastUpdate = lastActivityUpdateRef.current
+        ? (Date.now() - lastActivityUpdateRef.current.getTime()) / 1000
+        : Infinity;
+
+      if (timeSinceLastUpdate >= 120) {
+        void updateLastActivity();
+      }
+    }, 3 * 60 * 1000);
+
+    let interactionTimeout: ReturnType<typeof setTimeout> | null = null;
+    const handleInteraction = () => {
+      if (interactionTimeout) return;
+      interactionTimeout = setTimeout(() => {
+        void updateLastActivity();
+        interactionTimeout = null;
+      }, 60_000);
+    };
+
+    window.addEventListener('click', handleInteraction, { passive: true });
+    window.addEventListener('keydown', handleInteraction, { passive: true });
+
     const handleUnload = () => {
-      trackActivity();
+      void trackActivity();
     };
     window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      trackActivity();
+      void trackActivity();
       window.removeEventListener('beforeunload', handleUnload);
       window.removeEventListener('click', handleInteraction);
-      window.removeEventListener('keypress', handleInteraction);
-      window.removeEventListener('scroll', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
       clearInterval(trackInterval);
       clearInterval(activityInterval);
       if (interactionTimeout) clearTimeout(interactionTimeout);
+      if (idleId !== undefined) w.cancelIdleCallback?.(idleId);
+      if (idleTimeout) clearTimeout(idleTimeout);
     };
   }, []);
 }

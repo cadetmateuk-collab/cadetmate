@@ -6,15 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Mail, Lock, User, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Image from 'next/image'
+import { mobileAuthCallbackUrl } from '@/lib/mobile/urls'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
-function safeRedirectPath(path: string | null): string {
-  if (!path || !path.startsWith('/') || path.startsWith('//')) return '/dashboard'
-  return path
+import { safeRedirectPath } from '@/lib/security/env'
+
+function passwordResetRedirectUrl(): string {
+  if (typeof window === 'undefined') return '/reset-password'
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('source') === 'mobile' || params.get('native') === '1') {
+    return mobileAuthCallbackUrl('/reset-password')
+  }
+  return `${window.location.origin}/reset-password`
 }
 
 function AuthFormInner() {
@@ -30,7 +37,6 @@ function AuthFormInner() {
   const [showPassword, setShowPassword] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
-  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
@@ -46,18 +52,33 @@ function AuthFormInner() {
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        try {
+          const { trackConversion, trackEvent } = await import('@/lib/analytics')
+          trackConversion('login', { method: 'email', user_id: data.user?.id })
+          trackEvent('form_submit', { form_name: 'auth_login', status: 'success' })
+        } catch { /* analytics optional */ }
         setMessage({ type: 'success', text: 'Login successful!' })
-        router.push(redirectTo)
-        router.refresh()
+        // Let the browser flush auth cookies before navigating (critical on ngrok / slow devices).
+        await new Promise((r) => setTimeout(r, 50))
+        const target = redirectTo.startsWith('/')
+          ? `${window.location.origin}${redirectTo}`
+          : `${window.location.origin}/dashboard`
+        window.location.assign(target)
+        return
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: fullName } },
         })
         if (error) throw error
+        try {
+          const { trackConversion, trackEvent } = await import('@/lib/analytics')
+          trackConversion('sign_up', { method: 'email', user_id: data.user?.id })
+          trackEvent('form_submit', { form_name: 'auth_signup', status: 'success' })
+        } catch { /* analytics optional */ }
         setMessage({ type: 'success', text: 'Check your email to confirm your account!' })
       }
     } catch (error: any) {
@@ -74,7 +95,7 @@ function AuthFormInner() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: passwordResetRedirectUrl(),
       })
       if (error) throw error
       setResetSent(true)
@@ -102,7 +123,7 @@ function AuthFormInner() {
       <div className="text-center space-y-4">
         <div className="flex justify-center">
           <div className="relative h-20 w-20">
-            <Image src="/images/logo.png" alt="Cadet Mate" fill className="object-contain" priority />
+            <Image src="/images/logo.webp" alt="Cadet Mate" fill className="object-contain" priority sizes="96px" />
           </div>
         </div>
         <div className="space-y-2">
@@ -126,7 +147,8 @@ function AuthFormInner() {
               <button
                 type="button"
                 onClick={() => switchMode('login')}
-                className="absolute left-4 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute left-2 inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors touch-manipulation"
+                aria-label="Back to sign in"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
@@ -180,7 +202,7 @@ function AuthFormInner() {
                   </div>
 
                   {message && (
-                    <div className="p-4 rounded-lg border-2 bg-red-50 text-red-700 border-red-200">
+                    <div role="alert" aria-live="assertive" className="p-4 rounded-lg border-2 bg-red-50 text-red-700 border-red-200">
                       <p className="text-sm font-medium">{message.text}</p>
                     </div>
                   )}
@@ -255,7 +277,7 @@ function AuthFormInner() {
                     <button
                       type="button"
                       onClick={() => switchMode('forgot')}
-                      className="text-xs font-medium text-primary hover:underline"
+                      className="inline-flex items-center min-h-11 text-xs font-medium text-primary hover:underline touch-manipulation px-1"
                     >
                       Forgot password?
                     </button>
@@ -270,13 +292,15 @@ function AuthFormInner() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={mode === 'signup' ? 8 : undefined}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     className="pl-11 pr-11 h-12 bg-background border-2 border-input focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-all"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:text-primary transition-all touch-manipulation"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -284,13 +308,16 @@ function AuthFormInner() {
                 {mode === 'signup' && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1.5">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-                    Minimum 6 characters required
+                    Minimum 8 characters required
                   </p>
                 )}
               </div>
 
               {message && (
-                <div className={`p-4 rounded-lg border-2 transition-all ${
+                <div
+                  role={message.type === 'error' ? 'alert' : 'status'}
+                  aria-live={message.type === 'error' ? 'assertive' : 'polite'}
+                  className={`p-4 rounded-lg border-2 transition-all ${
                   message.type === 'error'
                     ? 'bg-red-50 text-red-700 border-red-200'
                     : 'bg-blue-50 text-blue-700 border-blue-200'
