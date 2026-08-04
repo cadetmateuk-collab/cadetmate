@@ -15,13 +15,6 @@
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "include": ["server.ts", "lib/**/*"],
-  "exclude": [
-    "lib/useSessionReporter.tsx",
-    "lib/hooks/useActivityTracker.ts",
-    "lib/hooks/useIsMobile.ts",
-    "lib/hooks/useCommunityFeed.ts",
-    "lib/formatCardText.tsx",
-    "lib/blog/markdown.tsx"
-  ]
+  "include": ["server.ts"],
+  "exclude": ["node_modules", ".next", "apps", ".server-out"]
 }
