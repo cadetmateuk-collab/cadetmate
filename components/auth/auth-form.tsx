@@ -11,7 +11,6 @@ import { Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucid
 import Image from 'next/image'
 import { mobileAuthCallbackUrl } from '@/lib/mobile/urls'
 import { safeRedirectPath } from '@/lib/security/env'
-import { DeveloperGateModal } from '@/components/auth/onboarding/DeveloperGateModal'
 import { OnboardingWizard } from '@/components/auth/onboarding/OnboardingWizard'
 
 type Mode = 'login' | 'signup' | 'forgot'
@@ -38,17 +37,11 @@ function AuthFormInner() {
   const [showPassword, setShowPassword] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
-  const [showDevGate, setShowDevGate] = useState(false)
-  const [onboardingActive, setOnboardingActive] = useState(false)
-  const [isTestFlow, setIsTestFlow] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     if (searchParams.get('mode') === 'signup') {
       setMode('signup')
-      setShowDevGate(true)
-      setOnboardingActive(false)
-      setIsTestFlow(false)
     }
   }, [searchParams])
 
@@ -109,37 +102,14 @@ function AuthFormInner() {
     setPassword('')
     setResetEmail('')
     setResetSent(false)
-
-    if (newMode === 'signup') {
-      setMode('signup')
-      setShowDevGate(true)
-      setOnboardingActive(false)
-      setIsTestFlow(false)
-      return
-    }
-
     setMode(newMode)
-    setShowDevGate(false)
-    setOnboardingActive(false)
-    setIsTestFlow(false)
     if (newMode === 'login' && searchParams.get('mode') === 'signup') {
       router.replace('/auth')
     }
   }
 
-  const startOnboarding = (asDeveloper: boolean) => {
-    setIsTestFlow(asDeveloper)
-    setShowDevGate(false)
-    setOnboardingActive(true)
-  }
-
-  if (mode === 'signup' && onboardingActive) {
-    return (
-      <OnboardingWizard
-        onBackToLogin={() => switchMode('login')}
-        isTestFlow={isTestFlow}
-      />
-    )
+  if (mode === 'signup') {
+    return <OnboardingWizard onBackToLogin={() => switchMode('login')} />
   }
 
   return (
@@ -147,12 +117,6 @@ function AuthFormInner() {
       className="flex flex-col justify-center space-y-5"
       style={{ width: 'min(26rem, calc(100vw - 2rem))', height: '36rem' }}
     >
-      <DeveloperGateModal
-        isOpen={showDevGate}
-        onContinueAsUser={() => startOnboarding(false)}
-        onContinueAsDeveloper={() => startOnboarding(true)}
-      />
-
       <div className="text-center space-y-3">
         <div className="flex justify-center">
           <div className="relative h-16 w-16">
@@ -161,13 +125,11 @@ function AuthFormInner() {
         </div>
         <div className="space-y-1.5">
           <h1 className="text-2xl font-bold text-foreground">
-            {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Get Started' : 'Reset Password'}
+            {mode === 'login' ? 'Welcome Back' : 'Reset Password'}
           </h1>
           <p className="text-sm text-muted-foreground">
             {mode === 'login'
               ? 'Sign in to continue your maritime training'
-              : mode === 'signup'
-              ? 'Create your account to begin'
               : 'Enter your email to receive a reset link'}
           </p>
         </div>
@@ -187,7 +149,7 @@ function AuthFormInner() {
               </button>
             )}
             <p className="text-2xl font-semibold text-black tracking-wide">
-              {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Sign Up' : 'Forgot Password'}
+              {mode === 'login' ? 'Sign In' : 'Forgot Password'}
             </p>
           </div>
         </CardHeader>
@@ -345,15 +307,6 @@ function AuthFormInner() {
             </form>
           )}
 
-          {mode === 'signup' && !onboardingActive && (
-            <div className="py-8 text-center space-y-3 text-sm text-muted-foreground">
-              <p>Confirm whether you&apos;re signing up as a user or a developer to continue.</p>
-              <Button type="button" onClick={() => setShowDevGate(true)}>
-                Continue
-              </Button>
-            </div>
-          )}
-
           {mode !== 'forgot' && (
             <>
               <div className="relative my-6">
@@ -365,14 +318,11 @@ function AuthFormInner() {
               <button
                 type="button"
                 className="w-full text-center py-3 px-4 rounded-lg border-2 border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all group"
-                onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+                onClick={() => switchMode('signup')}
               >
                 <span className="text-sm font-medium text-foreground">
-                  {mode === 'login' ? (
-                    <>Don&apos;t have an account?{' '}<span className="text-primary font-semibold group-hover:underline">Sign up for free</span></>
-                  ) : (
-                    <>Already have an account?{' '}<span className="text-primary font-semibold group-hover:underline">Sign in</span></>
-                  )}
+                  Don&apos;t have an account?{' '}
+                  <span className="text-primary font-semibold group-hover:underline">Sign up for free</span>
                 </span>
               </button>
             </>
