@@ -10,7 +10,7 @@ function southCardinalSequence(): BuoyDefinition['flashSequence'] {
     seq.push({ on: true, duration: flashOn });
     seq.push({ on: false, duration: flashOff });
   }
-  seq.push({ on: true, duration: 2 }); // LFl
+  seq.push({ on: true, duration: 5 }); // LFl (IALA long flash 4–6s)
   const used = seq.reduce((s, x) => s + x.duration, 0);
   seq.push({ on: false, duration: Math.max(0.5, 15 - used) });
   return seq;

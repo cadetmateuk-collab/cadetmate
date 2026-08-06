@@ -1,11 +1,11 @@
-import type { LightSegment } from '@/types/buoyage';
+import type { LightColour, LightSegment } from '@/types/buoyage';
 import {
-  isLightOnAt,
+  lightStateAt,
   lightPhaseOffsetSec,
   sequencePeriod,
 } from '@/data/buoyage/light-patterns';
 
-export type LightSample = { on: boolean; intensity: number };
+export type LightSample = { on: boolean; intensity: number; colour?: LightColour };
 
 type LightNode = {
   el: Element & { style: CSSStyleDeclaration };
@@ -24,19 +24,37 @@ const COLOUR_GLOW: Record<string, string> = {
   none: 'transparent',
 };
 
+const COLOUR_FILL: Record<string, string> = {
+  red: '#FF4D4D',
+  green: '#3DFF8A',
+  white: '#FFFFFF',
+  yellow: '#FFE066',
+  blue: '#66B3FF',
+  none: 'transparent',
+};
+
 let nodes = new Map<string, LightNode>();
 let rafId: number | null = null;
 let started = false;
 
+function applyFill(el: Element, colour: string) {
+  const fill = COLOUR_FILL[colour] ?? COLOUR_FILL.white;
+  el.querySelectorAll('circle').forEach((c) => {
+    c.setAttribute('fill', fill);
+  });
+}
+
 function tick(now: number) {
   const tSec = now / 1000;
   for (const node of nodes.values()) {
-    const on = isLightOnAt(node.sequence, tSec + node.phaseSec);
-    const intensity = on ? 1 : 0;
+    const state = lightStateAt(node.sequence, tSec + node.phaseSec);
+    const intensity = state.on ? 1 : 0;
     node.el.style.opacity = String(intensity);
-    if (on) {
-      const glow = COLOUR_GLOW[node.colour] ?? COLOUR_GLOW.white;
+    if (state.on) {
+      const colour = state.colour ?? node.colour;
+      const glow = COLOUR_GLOW[colour] ?? COLOUR_GLOW.white;
       node.el.style.filter = `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 14px ${glow})`;
+      applyFill(node.el, colour);
     } else {
       node.el.style.filter = 'none';
     }
@@ -103,8 +121,8 @@ export function playLightPattern(opts: {
     opts.markId != null
       ? opts.timeSec + lightPhaseOffsetSec(opts.markId, sequencePeriod(opts.sequence))
       : opts.timeSec;
-  const on = isLightOnAt(opts.sequence, t);
-  return { on, intensity: on ? 1 : 0 };
+  const state = lightStateAt(opts.sequence, t);
+  return { on: state.on, intensity: state.on ? 1 : 0, colour: state.colour };
 }
 
 export function getPatternPeriod(sequence: LightSegment[]): number {

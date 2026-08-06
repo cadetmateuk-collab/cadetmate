@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Copy, Download, Eye, Radar, RotateCcw, Ship, SlidersHorizontal, Wrench } from 'lucide-react';
+import { Copy, Download, Eye, Binoculars, Radar, RotateCcw, Ship, SlidersHorizontal, Wrench, X } from 'lucide-react';
 import { getDefinition } from '@/data/buoyage';
-import { isMarkLightOnAt, parseCharacteristic } from '@/data/buoyage/light-patterns';
+import { markLightStateAt, parseCharacteristic } from '@/data/buoyage/light-patterns';
+import type { LightColour } from '@/types/buoyage';
 import {
   bearingDeg,
   distance,
@@ -39,8 +40,14 @@ import {
 import { useBuoyageStore } from '@/hooks/buoyage/useBuoyageStore';
 import { MarkVisual } from '@/components/buoyage/marks/MarkVisual';
 import { RadarScreen } from '@/components/buoyage/vessel/RadarScreen';
+import { RadarControls } from '@/components/buoyage/vessel/RadarControls';
+import {
+  DEFAULT_RADAR_SETTINGS,
+  type RadarDisplaySettings,
+} from '@/lib/buoyage/radar-settings';
 import { HelmWheel } from '@/components/buoyage/vessel/HelmWheel';
 import { InstrumentPanel } from '@/components/buoyage/vessel/InstrumentPanel';
+import { AnimatedSea } from '@/components/buoyage/vessel/AnimatedSea';
 import { HELM_ASSETS } from '@/lib/buoyage/assets';
 import {
   buildHelmExportPayload,
@@ -133,6 +140,12 @@ export function VesselView() {
   const [display, setDisplay] = useState<'bridge' | 'radar'>('bridge');
   const [hideHelmUi, setHideHelmUi] = useState(false);
   const [exportStatus, setExportStatus] = useState<'idle' | 'copied' | 'saved'>('idle');
+  const [binocularsArmed, setBinocularsArmed] = useState(false);
+  const [inspectMarkId, setInspectMarkId] = useState<string | null>(null);
+  const [radarSettings, setRadarSettings] = useState<RadarDisplaySettings>(DEFAULT_RADAR_SETTINGS);
+  const patchRadarSettings = (patch: Partial<RadarDisplaySettings>) => {
+    setRadarSettings((prev) => ({ ...prev, ...patch }));
+  };
   const stageOuterRef = useRef<HTMLDivElement>(null);
   const [stagePx, setStagePx] = useState({ width: 0, height: 0 });
 
@@ -245,6 +258,17 @@ export function VesselView() {
     };
   }, [cameraShip, updateShip]);
 
+  useEffect(() => {
+    if (!binocularsArmed && !inspectMarkId) return;
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setBinocularsArmed(false);
+      setInspectMarkId(null);
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [binocularsArmed, inspectMarkId]);
+
   const items = useMemo(() => {
     if (!cameraShip) return [] as HorizonItem[];
     const list: HorizonItem[] = [];
@@ -267,11 +291,14 @@ export function VesselView() {
       const night =
         m.nightMode === true || m.nightMode === false ? m.nightMode : nightMode;
       let lightOn = false;
+      let lightColour: LightColour | undefined = def.lightColour;
       if (night && def.lightColour !== 'none') {
         const seq = m.lightCharacteristicOverride
           ? parseCharacteristic(m.lightCharacteristicOverride, def.periodSec)
           : def.flashSequence;
-        lightOn = isMarkLightOnAt(seq, performance.now() / 1000, m.id);
+        const state = markLightStateAt(seq, performance.now() / 1000, m.id);
+        lightOn = state.on;
+        if (state.on && state.colour) lightColour = state.colour;
       }
 
       const xPct = bearingToScreenX(rel, halfFov, range, proj);
@@ -284,7 +311,7 @@ export function VesselView() {
         label: m.label || def.name,
         relativeBearing: rel,
         range,
-        lightColour: def.lightColour,
+        lightColour,
         lightOn,
         definitionId: m.definitionId,
         night,
@@ -350,9 +377,6 @@ export function VesselView() {
   const sky = nightMode
     ? 'linear-gradient(to bottom, #020617 0%, #0f172a 50%, #1e293b 100%)'
     : 'linear-gradient(to bottom, #6ec8f5 0%, #a8dffc 40%, #d4eefc 100%)';
-  const sea = nightMode
-    ? 'linear-gradient(to bottom, #0c1929 0%, #071018 55%, #020617 100%)'
-    : 'linear-gradient(to bottom, #0f7a96 0%, #0c5f78 45%, #0a4a5e 100%)';
 
   const copyJson = async () => {
     const payload = buildBridgeExportPayload(fov, proj);
@@ -456,14 +480,26 @@ export function VesselView() {
             </button>
           )}
         </div>
-        <div className="relative min-h-0 flex-1 p-3 pt-14 sm:p-6 sm:pt-16">
-          <RadarScreen
-            cameraShip={cameraShip}
-            layout={radar}
-            mode="full"
-            className="h-full w-full max-w-3xl mx-auto aspect-square sm:aspect-auto"
-          />
+
+        <div className="relative flex min-h-0 flex-1 flex-col gap-3 p-3 pt-14 sm:flex-row sm:p-5 sm:pt-16">
+          <div className="relative min-h-0 min-w-0 flex-1">
+            <RadarScreen
+              cameraShip={cameraShip}
+              layout={radar}
+              mode="full"
+              settings={radarSettings}
+              className="mx-auto h-full w-full max-w-3xl aspect-square sm:aspect-auto"
+            />
+          </div>
+          <div className="w-full shrink-0 sm:w-64 lg:w-72">
+            <RadarControls
+              settings={radarSettings}
+              onChange={patchRadarSettings}
+              className="max-h-[42vh] overflow-y-auto sm:max-h-[calc(100%-5.5rem)]"
+            />
+          </div>
         </div>
+
         <div className="absolute bottom-2 left-2 right-2 z-50 grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-black/55 p-3 backdrop-blur-sm sm:left-auto sm:right-2 sm:w-80">
           <label className="block text-[10px] font-semibold uppercase tracking-wide text-white/70">
             Throttle
@@ -525,16 +561,7 @@ export function VesselView() {
           >
         {/* Sea / sky — under buoys */}
         <div className="absolute inset-0 z-0" style={{ background: sky }} />
-        <div
-          className="absolute inset-x-0 bottom-0 z-0"
-          style={{
-            height: `${100 - proj.horizonY}%`,
-            background: sea,
-            backgroundImage: nightMode
-              ? `linear-gradient(to bottom, rgba(120,180,255,0.06) 0%, transparent 8%), ${sea}`
-              : `linear-gradient(to bottom, rgba(255,255,255,0.12) 0%, transparent 10%), ${sea}`,
-          }}
-        />
+        <AnimatedSea horizonY={proj.horizonY} night={nightMode} />
 
         {/* Guide lines while tuning */}
         {BRIDGE_DEV_TOOLS && devOpen && (
@@ -566,7 +593,7 @@ export function VesselView() {
           </>
         )}
 
-        {/* Buoys / ships — below helm overlay so frame hides them */}
+        {/* Buoys / ships */}
         {items.map((item) => {
           const def = item.definitionId ? getDefinition(item.definitionId) : undefined;
           // Keep z under overlay (overlay is z-30). Closer = slightly higher within 1–20.
@@ -580,7 +607,7 @@ export function VesselView() {
               style={{
                 left: `${item.xPct}%`,
                 top: `${item.yPct}%`,
-                transform: `translate(-50%, -${proj.anchorY}%)`,
+                transform: 'translate(-50%, -100%)',
                 zIndex: z,
                 opacity: item.opacity,
                 transition: 'opacity 80ms linear',
@@ -590,7 +617,10 @@ export function VesselView() {
               {item.kind === 'buoy' && def ? (
                 <div
                   className="relative"
-                  style={{ width: markSize, height: markSize * 1.05 }}
+                  style={{
+                    width: markSize,
+                    height: markSize * 1.05,
+                  }}
                 >
                   <MarkVisual
                     def={def}
@@ -598,7 +628,6 @@ export function VesselView() {
                     showSvgLight={false}
                     className="h-full w-full"
                   />
-                  {/* Light overlays the mark — never shifts layout */}
                   {item.night &&
                     item.lightOn &&
                     item.lightColour &&
@@ -636,11 +665,40 @@ export function VesselView() {
           className="pointer-events-none absolute inset-0 z-30 h-full w-full object-fill"
         />
 
+        {/* Binocular hit targets — above helm glass so marks can be inspected */}
+        {binocularsArmed &&
+          items
+            .filter((item) => item.kind === 'buoy')
+            .map((item) => {
+              const hit = Math.max(28, item.size * (uiScale || 1) * 1.15);
+              return (
+                <button
+                  key={`binoc-${item.id}`}
+                  type="button"
+                  className="absolute z-40 rounded-full border-2 border-sky-300/70 bg-sky-400/15 shadow-[0_0_0_1px_rgba(14,165,233,0.35)] transition hover:bg-sky-400/30 touch-manipulation"
+                  style={{
+                    left: `${item.xPct}%`,
+                    top: `${item.yPct}%`,
+                    width: hit,
+                    height: hit,
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                  title={`Inspect ${item.label}`}
+                  aria-label={`Inspect ${item.label}`}
+                  onClick={() => {
+                    setInspectMarkId(item.id);
+                    setBinocularsArmed(false);
+                  }}
+                />
+              );
+            })}
+
         {/* Radar plane — display only (not clickable); use Radar button for full view */}
         <RadarScreen
           cameraShip={cameraShip}
           layout={radarFit}
           mode="inset"
+          settings={radarSettings}
           className="absolute z-[35]"
           style={{
             left: `${radar.leftPct}%`,
@@ -745,6 +803,22 @@ export function VesselView() {
             <div className="flex flex-wrap items-center justify-end gap-1">
               <button
                 type="button"
+                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold touch-manipulation ${
+                  binocularsArmed
+                    ? 'bg-sky-500/40 text-sky-50 ring-1 ring-sky-300/60'
+                    : 'bg-sky-500/20 text-sky-100 hover:bg-sky-500/35'
+                }`}
+                onClick={() => {
+                  setBinocularsArmed((v) => !v);
+                  setInspectMarkId(null);
+                }}
+                title="Binoculars — tap a buoy to inspect"
+              >
+                <Binoculars className="h-3 w-3" />
+                Binoculars
+              </button>
+              <button
+                type="button"
                 className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/25 px-2 py-1 text-[10px] font-semibold text-emerald-100 hover:bg-emerald-500/40 touch-manipulation"
                 onClick={() => setDisplay('radar')}
                 title="Radar (top-down)"
@@ -829,6 +903,77 @@ export function VesselView() {
             </button>
           </div>
         )}
+
+        {binocularsArmed && (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-[55] -translate-x-1/2 rounded-full border border-sky-300/40 bg-sky-950/80 px-3 py-1.5 text-[11px] font-medium text-sky-100 shadow-lg">
+            Binoculars armed — tap a buoy to inspect (Esc to cancel)
+          </div>
+        )}
+
+        {inspectMarkId && (() => {
+          const mark = marks.find((m) => m.id === inspectMarkId);
+          const def = mark ? getDefinition(mark.definitionId) : undefined;
+          const horizon = items.find((i) => i.id === inspectMarkId);
+          if (!mark || !def) return null;
+          return (
+            <div className="absolute inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
+              <div
+                role="dialog"
+                aria-label={`Binocular view of ${def.name}`}
+                className="relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+              >
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <div className="flex items-center gap-2 text-sky-100">
+                    <Binoculars className="h-4 w-4" />
+                    <span className="text-sm font-semibold">Binocular view</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white touch-manipulation"
+                    onClick={() => setInspectMarkId(null)}
+                    aria-label="Close binocular view"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-center bg-black px-4 py-6">
+                  <div className="h-48 w-40 sm:h-56 sm:w-48">
+                    <MarkVisual
+                      def={def}
+                      night={horizon?.night ?? nightMode}
+                      showSvgLight={false}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 px-4 py-4 text-sm text-slate-100">
+                  <p className="text-base font-semibold tracking-tight">{def.name}</p>
+                  {def.topmark && (
+                    <p className="text-xs text-slate-300">
+                      <span className="font-semibold text-slate-200">Topmark:</span> {def.topmark}
+                    </p>
+                  )}
+                  <p className="text-xs text-slate-300">
+                    <span className="font-semibold text-slate-200">Colours:</span>{' '}
+                    {def.bodyColours.join(' / ')}
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    <span className="font-semibold text-slate-200">Light:</span>{' '}
+                    {def.lightCharacteristic}
+                    {def.lightColour !== 'none' ? ` · ${def.lightColour}` : ''}
+                  </p>
+                  {horizon && (
+                    <p className="text-xs text-slate-400">
+                      Rel bearing {horizon.relativeBearing.toFixed(0)}° · range{' '}
+                      {Math.round(horizon.range)}
+                    </p>
+                  )}
+                  <p className="text-[11px] leading-relaxed text-slate-400">{def.description}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {HELM_DEV_TOOLS && helmDevOpen && (
           <HelmTunePanel

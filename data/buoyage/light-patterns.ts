@@ -1,4 +1,4 @@
-import type { LightSegment } from '@/types/buoyage';
+import type { LightColour, LightSegment } from '@/types/buoyage';
 
 /** Morse unit durations (seconds) for Mo patterns */
 const MORSE_DOT = 0.3;
@@ -80,12 +80,34 @@ export function flashing(periodSec: number, flashSec = 0.3): LightSegment[] {
   ];
 }
 
-/** Long flash */
-export function longFlash(periodSec: number, flashSec = 2): LightSegment[] {
+/** Long flash — IALA LFl is a flash of not less than 2s; training uses 4–6s */
+export function longFlash(periodSec: number, flashSec = 5): LightSegment[] {
+  const on = Math.min(flashSec, Math.max(0.5, periodSec - 0.5));
   return [
-    { on: true, duration: flashSec },
-    { on: false, duration: Math.max(0.05, periodSec - flashSec) },
+    { on: true, duration: on },
+    { on: false, duration: Math.max(0.05, periodSec - on) },
   ];
+}
+
+/**
+ * Alternating occulting colours (e.g. emergency wreck Al Oc BuY 3s).
+ * Each colour is mostly on within its half-cycle, with a short eclipse.
+ */
+export function alternatingOcculting(
+  colours: LightColour[],
+  periodSec: number,
+  darkRatio = 0.2,
+): LightSegment[] {
+  const usable = colours.filter((c) => c !== 'none');
+  if (usable.length === 0) return occulting(periodSec, darkRatio);
+  const slice = periodSec / usable.length;
+  const dark = slice * darkRatio;
+  const sequence: LightSegment[] = [];
+  for (const colour of usable) {
+    sequence.push({ on: true, duration: Math.max(0.1, slice - dark), colour });
+    sequence.push({ on: false, duration: Math.max(0.05, dark) });
+  }
+  return sequence;
 }
 
 /**
@@ -180,7 +202,7 @@ export function morse(letters: string, periodSec?: number): LightSegment[] {
 
 /**
  * Parse common IALA characteristic strings into sequences.
- * Examples: "F", "Fl 5s", "Fl(2) 5s", "Fl(2+1) 10s", "Q", "VQ(3) 5s", "Iso 2s", "Oc 4s", "LFl 10s", "Mo(A) 8s"
+ * Examples: "F", "Fl 5s", "Fl(2) 5s", "Fl(2+1) 10s", "Q", "VQ(3) 5s", "Iso 2s", "Oc 4s", "LFl 10s", "Mo(A) 8s", "Al Oc BuY 3s"
  */
 export function parseCharacteristic(
   characteristic: string,
@@ -189,6 +211,20 @@ export function parseCharacteristic(
   const raw = characteristic.trim();
   const periodMatch = raw.match(/(\d+(?:\.\d+)?)\s*s/i);
   const period = periodSec ?? (periodMatch ? parseFloat(periodMatch[1]) : 5);
+
+  // Alternating occulting: Al Oc BuY 3s, Al Oc Bu Y 3s
+  const alOc = raw.match(/^Al\s*Oc\s+([A-Za-z]+)\s*([A-Za-z]+)?/i);
+  if (alOc) {
+    const token = `${alOc[1]}${alOc[2] ?? ''}`.toLowerCase();
+    const colours: LightColour[] = [];
+    if (token.includes('bu') || token.includes('blue')) colours.push('blue');
+    if (token.includes('y') || token.includes('ye')) colours.push('yellow');
+    if (token.includes('r') && !token.includes('bu')) colours.push('red');
+    if (token.includes('g') && !token.includes('ye')) colours.push('green');
+    if (token.includes('w')) colours.push('white');
+    if (colours.length >= 2) return alternatingOcculting(colours.slice(0, 2), period);
+    if (colours.length === 1) return occulting(period);
+  }
 
   if (/^F\b/i.test(raw) && !/^Fl/i.test(raw)) return fixed();
   if (/^Iso/i.test(raw)) return isophase(period);
@@ -224,14 +260,23 @@ export function parseCharacteristic(
 }
 
 export function isLightOnAt(sequence: LightSegment[], timeSec: number): boolean {
+  return lightStateAt(sequence, timeSec).on;
+}
+
+export function lightStateAt(
+  sequence: LightSegment[],
+  timeSec: number,
+): { on: boolean; colour?: LightColour } {
   const period = sequencePeriod(sequence);
-  if (period <= 0) return false;
+  if (period <= 0) return { on: false };
   let t = ((timeSec % period) + period) % period;
   for (const seg of sequence) {
-    if (t < seg.duration) return seg.on;
+    if (t < seg.duration) {
+      return { on: seg.on, colour: seg.on ? seg.colour : undefined };
+    }
     t -= seg.duration;
   }
-  return false;
+  return { on: false };
 }
 
 /**
@@ -258,6 +303,14 @@ export function isMarkLightOnAt(
   timeSec: number,
   markId: string,
 ): boolean {
+  return markLightStateAt(sequence, timeSec, markId).on;
+}
+
+export function markLightStateAt(
+  sequence: LightSegment[],
+  timeSec: number,
+  markId: string,
+): { on: boolean; colour?: LightColour } {
   const period = sequencePeriod(sequence);
-  return isLightOnAt(sequence, timeSec + lightPhaseOffsetSec(markId, period));
+  return lightStateAt(sequence, timeSec + lightPhaseOffsetSec(markId, period));
 }

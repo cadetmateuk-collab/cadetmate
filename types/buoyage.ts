@@ -37,6 +37,8 @@ export type ShipType = 'own' | 'target' | 'tanker' | 'ferry';
 export interface LightSegment {
   on: boolean;
   duration: number;
+  /** When lit, optional colour for alternating characteristics (e.g. Al Oc BuY) */
+  colour?: LightColour;
 }
 
 export interface BuoyDefinition {

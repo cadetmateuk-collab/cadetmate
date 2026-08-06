@@ -1,5 +1,5 @@
 import type { BuoyDefinition } from '@/types/buoyage';
-import { flashing, groupFlash, longFlash } from '@/data/buoyage/light-patterns';
+import { alternatingOcculting, flashing, groupFlash, longFlash } from '@/data/buoyage/light-patterns';
 
 export const isolatedDanger: BuoyDefinition = {
   id: 'isolated-danger',
@@ -28,9 +28,9 @@ export const safeWater: BuoyDefinition = {
   lightColour: 'white',
   lightCharacteristic: 'LFl 10s',
   periodSec: 10,
-  flashSequence: longFlash(10, 2),
+  flashSequence: longFlash(10, 5),
   description:
-    'Safe water mark. Red and white vertical stripes. Indicates navigable water all around (e.g. mid-channel, landfall). Light: long flash white (also Iso or Oc variants).',
+    'Safe water mark. Red and white vertical stripes. Indicates navigable water all around (e.g. mid-channel, landfall). Light: long flash white (4–6s flash).',
   svgDay: 'safe-water',
   svgNight: 'safe-water',
 };
@@ -62,12 +62,7 @@ export const emergencyWreck: BuoyDefinition = {
   lightColour: 'blue',
   lightCharacteristic: 'Al Oc BuY 3s',
   periodSec: 3,
-  flashSequence: [
-    { on: true, duration: 1 },
-    { on: false, duration: 0.5 },
-    { on: true, duration: 1 },
-    { on: false, duration: 0.5 },
-  ],
+  flashSequence: alternatingOcculting(['blue', 'yellow'], 3),
   description:
     'Emergency wreck marking buoy. Blue and yellow vertical stripes. Deployed for new dangerous wrecks. Light: alternating occulting blue and yellow.',
   svgDay: 'emergency-wreck',

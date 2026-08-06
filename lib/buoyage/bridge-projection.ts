@@ -45,7 +45,8 @@ export type BridgeProjection = {
 
 export const DEFAULT_BRIDGE_PROJECTION: BridgeProjection = {
   horizonY: 47.5,
-  buoyLineY: 45.5,
+  // Must sit on/below the painted horizon or distant marks float in the sky
+  buoyLineY: 49.2,
   seaBottom: 58,
   nearRange: 14,
   farRange: 1350,

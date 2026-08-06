@@ -1,0 +1,45 @@
+@keyframes cm-horizon-drift {
+  0% {
+    transform: translate3d(0, -50%, 0);
+  }
+  100% {
+    transform: translate3d(-8.33%, -50%, 0);
+  }
+}
+
+.cm-sea {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.cm-sea__base {
+  position: absolute;
+  inset: 0;
+}
+
+.cm-sea__horizon-wave {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 200%;
+  height: 12px;
+  transform: translate3d(0, -50%, 0);
+  animation: cm-horizon-drift 9s linear infinite;
+  will-change: transform;
+}
+
+.cm-sea__horizon-wave-path {
+  vector-effect: non-scaling-stroke;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-sea__horizon-wave {
+    animation: none !important;
+    will-change: auto;
+    width: 100%;
+  }
+}
