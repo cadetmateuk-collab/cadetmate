@@ -1,0 +1,9 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Lighthouse avatar">
+  <circle cx="128" cy="128" r="128" fill="#2456C9"/>
+  <path d="M108 70 H148 L158 190 H98 Z" fill="#fff"/>
+  <rect x="108" y="100" width="40" height="16" fill="#2966F2"/>
+  <rect x="108" y="140" width="40" height="16" fill="#2966F2"/>
+  <rect x="104" y="58" width="48" height="18" rx="3" fill="#F4C95F"/>
+  <path d="M128 40 L148 58 H108 Z" fill="#fff"/>
+  <ellipse cx="128" cy="200" rx="56" ry="10" fill="#1B3F8A" opacity=".5"/>
+</svg>

@@ -52,7 +52,7 @@ export default function StorePage() {
         .store-anim-1 { animation: fadeUp 0.4s ease both 0.05s; }
         .store-anim-2 { animation: fadeUp 0.4s ease both 0.13s; }
         .store-anim-3 { animation: fadeUp 0.4s ease both 0.21s; }
-        .store-page { min-height: 100dvh; background: hsl(var(--background)); position: relative; overflow-x: hidden; }
+        .store-page { min-height: 0; background: hsl(var(--background)); position: relative; overflow-x: hidden; }
         .store-glow {
           pointer-events: none; position: fixed; top: -200px; left: 50%; transform: translateX(-50%); z-index: 0;
           width: 900px; height: 900px; border-radius: 50%;

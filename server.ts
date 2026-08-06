@@ -10,10 +10,15 @@ import { getOrCreateSession, getSession, removeSession, sessions } from './lib/s
 import { describeEvent } from './lib/wsEvents';
 import type { StudentRecord } from './lib/sessionStore';
 import type { StudentEvent, InstructorEvent, ServerToStudentEvent, ServerToInstructorEvent } from './lib/wsEvents';
+import { ENABLE_HMR } from './lib/dev-cache';
 
 const dev  = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT ?? '3000', 10);
-const app  = next({ dev });
+
+const app  = next({
+  dev,
+  turbopack: true,
+});
 const handle = app.getRequestHandler();
 
 function send<T>(ws: WebSocket, data: T) {
@@ -22,6 +27,16 @@ function send<T>(ws: WebSocket, data: T) {
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
+    const pathname = parse(req.url ?? '', true).pathname ?? '';
+    if (
+      pathname === '/manifest.webmanifest' ||
+      pathname === '/manifest.json' ||
+      pathname === '/site.webmanifest'
+    ) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
     handle(req, res, parse(req.url!, true));
   });
 
@@ -30,12 +45,17 @@ app.prepare().then(() => {
   server.on('upgrade', (req, socket, head) => {
     const { pathname } = parse(req.url ?? '');
     if (pathname === '/api/ws') {
-      wss.handleUpgrade(req, socket as import('net').Socket, head, ws => {
+      wss.handleUpgrade(req, socket as import('net').Socket, head, (ws) => {
         wss.emit('connection', ws, req);
       });
+      return;
     }
-    // Do NOT destroy other upgrades — Next.js HMR uses /_next/webpack-hmr
-    // and destroying it causes constant page refreshes in dev
+
+    // HMR off: ignore Fast Refresh upgrades. Do NOT destroy the socket —
+    // destroying caused reconnect storms that trashed the page.
+    if (ENABLE_HMR) {
+      void app.getUpgradeHandler()(req, socket, head);
+    }
   });
 
   wss.on('connection', (ws: WebSocket, req: import('http').IncomingMessage) => {

@@ -15,9 +15,5 @@ export default async function AuthPage({
     redirect(target)
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <AuthForm />
-    </div>
-  )
+  return <AuthForm />
 }

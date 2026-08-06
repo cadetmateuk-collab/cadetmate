@@ -51,6 +51,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow,
       },
     ],
+    // Dynamic sitemap (urlset, or sitemapindex when >50k URLs) — see app/sitemap.xml/route.ts
     sitemap: absoluteUrl('/sitemap.xml'),
     host: SITE_URL.replace(/^https?:\/\//, ''),
   };

@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo, useState, useEffect, memo, useEffectEvent } from 'react';
+import { useMemo, useState, memo } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
 import { Search, Calendar, Clock, TrendingUp, ArrowRight } from 'lucide-react';
 import type { BlogPostSummary } from '@/lib/blog/types';
 import { buildBlogPostPath } from '@/lib/blog/paths';
@@ -22,27 +21,9 @@ export const FreeContentListing = memo(function FreeContentListing({
   posts: BlogPostSummary[];
   initialQuery?: string;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
+  // Local-only search — never sync to the router (that soft-nav looped forever with force-dynamic).
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [currentPage, setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    setSearchTerm(initialQuery);
-  }, [initialQuery]);
-
-  // Keep `?q=` in the URL so WebSite SearchAction URLs remain shareable/crawlable.
-  const syncQueryToUrl = useEffectEvent((term: string) => {
-    const next = term.trim()
-      ? `${pathname}?q=${encodeURIComponent(term.trim())}`
-      : pathname;
-    router.replace(next, { scroll: false });
-  });
-
-  useEffect(() => {
-    const t = window.setTimeout(() => syncQueryToUrl(searchTerm), 300);
-    return () => window.clearTimeout(t);
-  }, [searchTerm]);
 
   const filteredPosts = useMemo(
     () =>
@@ -64,7 +45,7 @@ export const FreeContentListing = memo(function FreeContentListing({
   return (
     <>
       <style>{`
-        .fc-page { min-height: 100dvh; background: transparent; position: relative; overflow-x: hidden; }
+        .fc-page { min-height: 0; background: transparent; position: relative; overflow-x: hidden; }
         .fc-content { position: relative; z-index: 1; width: 100%; margin: 0 auto; padding: 3rem 0 6rem; }
         .fc-header { text-align: center; margin-bottom: 2.75rem; }
         .fc-title { font-size: clamp(2.25rem, 5vw, 3.75rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 0.75rem; color: hsl(var(--foreground)); }
@@ -135,7 +116,7 @@ export const FreeContentListing = memo(function FreeContentListing({
           </div>
 
           {featuredPost && !searchTerm && currentPage === 1 && (
-            <Link href={buildBlogPostPath(featuredPost)} className="fc-featured">
+            <Link href={buildBlogPostPath(featuredPost)} prefetch={false} className="fc-featured">
               {featuredPost.image && (
                 <BlogCardImage src={featuredPost.image} alt={featuredPost.title} className="fc-featured-media min-h-[160px] max-h-[200px] sm:max-h-[280px] !h-auto w-full object-cover" />
               )}
@@ -166,7 +147,7 @@ export const FreeContentListing = memo(function FreeContentListing({
             <section aria-label="Article listing">
               <div className="fc-grid">
                 {currentPosts.map((post) => (
-                  <Link key={post.id} href={buildBlogPostPath(post)} className="fc-card">
+                  <Link key={post.id} href={buildBlogPostPath(post)} prefetch={false} className="fc-card">
                     {post.image && <BlogCardImage src={post.image} alt={post.title} />}
                     <div className="fc-card-body">
                       <p className="fc-card-category">{post.category}</p>

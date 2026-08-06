@@ -29,7 +29,7 @@ const css = `
 .bp-anim-3 { animation: fadeUp .4s ease both .20s; }
 .bp-anim-4 { animation: fadeUp .4s ease both .28s; }
 
-.bp-page { min-height:100dvh; background:transparent; position:relative; overflow-x:hidden; font-family:inherit; color:hsl(var(--foreground)); }
+.bp-page { min-height:0; background:transparent; position:relative; overflow-x:hidden; font-family:inherit; color:hsl(var(--foreground)); }
 .bp-content { position:relative; z-index:1; width:100%; max-width:none; margin:0; padding:0 0 4rem; }
 
 /* Back link */

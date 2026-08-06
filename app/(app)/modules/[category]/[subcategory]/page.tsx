@@ -7,7 +7,7 @@ import { buildPageMetadata } from '@/lib/seo/metadata';
 
 const ModuleViewer = dynamic(() => import('@/components/ModuleViewer'), {
   loading: () => (
-    <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+    <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
       Loading module…
     </div>
   ),
@@ -83,11 +83,13 @@ export default async function ModulePage({ params }: PageProps) {
   };
 
   return (
-    <ModuleViewer
-      moduleId={transformedModule.id}
-      moduleData={transformedModule}
-      userEmail={user?.email}
-    />
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <ModuleViewer
+        moduleId={transformedModule.id}
+        moduleData={transformedModule}
+        userEmail={user?.email}
+      />
+    </div>
   );
 }
 

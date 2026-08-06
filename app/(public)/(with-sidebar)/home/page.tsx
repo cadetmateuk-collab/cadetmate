@@ -10,7 +10,7 @@ import {
   buildFAQSchema,
 } from '@/lib/seo/schema';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { LandingPage } from '@/components/home/landing/LandingPage';
+import { PublicHome } from '@/components/home/PublicHome';
 import { getLandingPageStats, getTopCommunityPosts } from '@/lib/data/cached-queries';
 import { LANDING_FAQS } from '@/lib/seo/faqs';
 
@@ -34,9 +34,8 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // Preload LCP hero image before hydration
-  preload('/images/captain-320.webp', { as: 'image', type: 'image/webp', fetchPriority: 'high' });
   preload('/images/logo.webp', { as: 'image', type: 'image/webp' });
+  preload('/images/c2.webp', { as: 'image', type: 'image/webp' });
 
   const headerStore = await headers();
   if (headerStore.get('x-user-id')) {
@@ -57,7 +56,7 @@ export default async function HomePage() {
       <JsonLd data={buildSoftwareApplicationSchema()} />
       {faqSchema && <JsonLd data={faqSchema} />}
 
-      <LandingPage
+      <PublicHome
         data={{
           stats: {
             users: stats.users,

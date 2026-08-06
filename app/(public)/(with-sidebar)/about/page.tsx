@@ -54,7 +54,7 @@ export default function AboutPage() {
   const faqSchema = buildFAQSchema(ABOUT_FAQS);
 
   return (
-    <div className="mx-auto max-w-4xl py-12 sm:py-16">
+    <div className="mx-auto w-full py-12 sm:py-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd
         data={buildBreadcrumbSchema([

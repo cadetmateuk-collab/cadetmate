@@ -7,7 +7,7 @@ const PAGE_SHELL_CSS = `
 }
 
 .cm-page-shell {
-  min-height: 100dvh;
+  min-height: 0;
   background-color: hsl(var(--background));
   position: relative;
   overflow-x: hidden;
@@ -49,13 +49,14 @@ const PAGE_SHELL_CSS = `
 .cm-content {
   position: relative;
   z-index: 1;
-  max-width: 48rem;
-  margin: 0 auto;
-  padding: 2rem 1.25rem 5rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 0 5rem;
 }
 
 .cm-content-wide {
-  max-width: 68rem;
+  max-width: none;
 }
 
 .cm-anim-1 { animation: cm-fadeUp 0.4s ease both 0.05s; }

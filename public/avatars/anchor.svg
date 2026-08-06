@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Anchor avatar">
+  <circle cx="128" cy="128" r="128" fill="#0E3A7A"/>
+  <circle cx="128" cy="70" r="18" fill="none" stroke="#F4C95F" stroke-width="8"/>
+  <path d="M128 88 V190" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M88 120 H168" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+  <path d="M70 160 Q70 200 128 210 Q186 200 186 160" fill="none" stroke="#F4C95F" stroke-width="12" stroke-linecap="round"/>
+</svg>

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
 import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
+import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
+import { labelForPhase, labelsForInterests, labelForReferral } from '@/lib/onboarding/constants';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Profile',
@@ -41,11 +43,15 @@ export default async function ProfilePage({
     .maybeSingle();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
+    <div className="w-full py-2">
       <div className="flex items-start gap-4 mb-8">
-        <div className="h-16 w-16 rounded-lg bg-brass/15 flex items-center justify-center text-2xl font-bold text-brass">
-          {(user.profile?.full_name ?? 'U').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-        </div>
+        <UserAvatar
+          fullName={user.profile?.full_name ?? 'Cadet'}
+          avatarKind={user.profile?.avatar_kind === 'preset' ? 'preset' : 'initials'}
+          avatarPreset={user.profile?.avatar_preset ?? null}
+          size={64}
+          className="rounded-2xl"
+        />
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold">{user.profile?.full_name ?? 'Cadet'}</h1>
@@ -103,6 +109,30 @@ export default async function ProfilePage({
                 <p className="text-muted-foreground text-xs mb-1">Role</p>
                 <p className="font-medium capitalize">{user.profile?.role ?? 'free'}</p>
               </div>
+              {user.profile?.training_phase && (
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Training phase</p>
+                  <p className="font-medium">{labelForPhase(user.profile.training_phase)}</p>
+                </div>
+              )}
+              {user.profile?.nautical_college && (
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Nautical college</p>
+                  <p className="font-medium">{user.profile.nautical_college}</p>
+                </div>
+              )}
+              {user.profile?.referral_source && (
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Heard about us</p>
+                  <p className="font-medium">{labelForReferral(user.profile.referral_source)}</p>
+                </div>
+              )}
+              {Array.isArray(user.profile?.learning_interests) && user.profile.learning_interests.length > 0 && (
+                <div className="sm:col-span-2">
+                  <p className="text-muted-foreground text-xs mb-1">Learning interests</p>
+                  <p className="font-medium">{labelsForInterests(user.profile.learning_interests).join(', ')}</p>
+                </div>
+              )}
             </div>
             <PasswordResetButton />
           </div>

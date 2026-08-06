@@ -5,7 +5,7 @@ import {
   FileText,
   Anchor,
   Compass,
-  Navigation,
+  Navigation as NavigationIcon,
   Cloud,
   Package,
   Search,
@@ -59,6 +59,8 @@ export const PUBLIC_AUTH_NAV: NavItemConfig[] = [
 export const APP_FREE_CONTENT_GROUP: NavGroupConfig = {
   id: 'free-content',
   label: 'Free Content',
+  icon: Newspaper,
+  defaultOpen: true,
   items: [
     { id: 'articles', label: 'Articles & Guides', href: '/free-content', icon: Newspaper },
     { id: 'resources', label: 'Free Resources', href: '/resources', icon: BookOpen },
@@ -69,7 +71,8 @@ export const APP_FREE_CONTENT_GROUP: NavGroupConfig = {
 export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'main',
-    label: 'Main',
+    label: 'Home',
+    icon: House,
     defaultOpen: true,
     items: [
       { id: 'dashboard', label: 'Home', href: '/dashboard', icon: House, exact: true },
@@ -79,6 +82,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'learn',
     label: 'Learn',
+    icon: BookOpen,
     defaultOpen: true,
     items: [
       { id: 'flashcards', label: 'Flashcards', href: '/flashcards', icon: WalletCards, premiumOnly: true },
@@ -86,7 +90,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
       { id: 'trb', label: 'TRB', href: '/trb', icon: FileText, premiumOnly: true },
       { id: 'sea-survival', label: 'Sea Survival', href: '/sea-survival', icon: Anchor, premiumOnly: true },
       { id: 'colregs', label: 'COLREGs', href: '/unit-modules?category=colregs', icon: Compass },
-      { id: 'navigation', label: 'Navigation', href: '/unit-modules?category=navigation', icon: Navigation },
+      { id: 'navigation', label: 'Navigation', href: '/unit-modules?category=navigation', icon: NavigationIcon },
       { id: 'meteorology', label: 'Meteorology', href: '/unit-modules?category=meteorology', icon: Cloud },
       { id: 'cargo', label: 'Cargo', href: '/unit-modules?category=cargo', icon: Package },
       { id: 'learn-hub', label: 'Search All Learning', href: '/learn', icon: Search },
@@ -95,6 +99,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'practice',
     label: 'Practice',
+    icon: PenLine,
     items: [
       { id: 'mock-oral', label: 'Mock Oral Exams', href: '/practice?tab=mock-oral', icon: Mic, premiumOnly: true },
       { id: 'oral-questions', label: 'Oral Questions', href: '/practice?tab=oral-questions', icon: HelpCircle, premiumOnly: true },
@@ -108,6 +113,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'community',
     label: 'Community',
+    icon: MessageSquare,
     items: [
       { id: 'feed', label: 'Feed', href: '/community', icon: MessageSquare, exact: true },
       { id: 'latest', label: 'Latest', href: '/community?sort=new', icon: Sparkles },
@@ -120,6 +126,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'progress',
     label: 'Progress',
+    icon: BarChart3,
     items: [
       { id: 'progress-dashboard', label: 'Dashboard', href: '/progress', icon: BarChart3, exact: true },
       { id: 'statistics', label: 'Statistics', href: '/progress?tab=statistics', icon: TrendingUp },
@@ -133,6 +140,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'store',
     label: 'Store',
+    icon: ShoppingBag,
     items: [
       { id: 'store', label: 'Store', href: '/store', icon: ShoppingBag },
     ],
@@ -140,6 +148,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'profile',
     label: 'Profile',
+    icon: User,
     items: [
       { id: 'account', label: 'Account', href: '/profile', icon: User, exact: true },
       { id: 'subscription', label: 'Subscription', href: '/profile?tab=subscription', icon: Sparkles },
@@ -151,6 +160,7 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
   {
     id: 'admin',
     label: 'Admin',
+    icon: Shield,
     adminOnly: true,
     items: [
       { id: 'admin-home', label: 'Admin Home', href: '/admin/admin-home', icon: Shield },
@@ -171,19 +181,22 @@ export const MOBILE_BOTTOM_NAV: MobileNavItem[] = [
 ];
 
 export function isNavItemActive(pathname: string, href: string, exact?: boolean): boolean {
-  const [path, query] = href.split('?');
-  if (exact) return pathname === path;
-  if (!pathname.startsWith(path)) return false;
-  if (!query) return true;
-  // Query-aware matching is handled client-side in the sidebar; on server, path match is enough
+  const cleanPath = (pathname.replace(/\/$/, '') || '/').split('#')[0];
+  const [rawPath] = href.split('?');
+  const path = (rawPath.split('#')[0].replace(/\/$/, '') || '/');
+
+  if (path === '/home' || path === '/dashboard') {
+    return cleanPath === '/home' || cleanPath === '/dashboard' || cleanPath === '/';
+  }
+
+  if (exact) return cleanPath === path;
+  if (cleanPath === path) return true;
+  if (!cleanPath.startsWith(path + '/')) return false;
   return true;
 }
 
 export function isGroupActive(pathname: string, items: NavItemConfig[]): boolean {
-  return items.some((item) => {
-    const path = item.href.split('?')[0];
-    return pathname === path || pathname.startsWith(path + '/');
-  });
+  return items.some((item) => isNavItemActive(pathname, item.href, item.exact));
 }
 
 export function filterNavForUser(

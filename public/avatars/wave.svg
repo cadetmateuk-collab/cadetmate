@@ -1,0 +1,6 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Wave avatar">
+  <circle cx="128" cy="128" r="128" fill="#2A7DE1"/>
+  <path d="M40 120 Q70 90 100 120 T160 120 T220 120" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+  <path d="M40 156 Q70 126 100 156 T160 156 T220 156" fill="none" stroke="#F4C95F" stroke-width="12" stroke-linecap="round"/>
+  <path d="M40 190 Q70 160 100 190 T160 190 T220 190" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" opacity=".7"/>
+</svg>

@@ -56,7 +56,7 @@ const Index = () => {
         .trb-anim-3 { animation: fadeUp 0.45s ease both 0.22s; }
 
         .trb-page {
-          min-height: 100dvh;
+          min-height: 0;
           background-color: hsl(var(--background));
           font-family: inherit;
           position: relative;

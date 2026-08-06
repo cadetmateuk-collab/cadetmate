@@ -604,11 +604,11 @@ function ModulesPageInner({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] pb-16 lg:pb-0 font-sans">
+    <div className="w-full bg-[hsl(var(--background))] text-[hsl(var(--foreground))] pb-16 lg:pb-0 font-sans">
       <style>{`.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 
       {/* ── Header ── */}
-      <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] sticky top-0 z-20">
+      <div className="border-b border-[hsl(var(--border))] bg-[hsl(var(--background))] sticky top-16 z-20">
         <div className="py-4 sm:py-6">
           <div className="flex items-center justify-between gap-4">
             <div>

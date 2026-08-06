@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { PremiumLockModal } from "../PremiumLockModal";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { UserAvatar } from "@/components/auth/onboarding/UserAvatar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ interface UserProfile {
   email: string;
   initials: string;
   role?: "free" | "premium" | "admin";
+  avatarKind: "initials" | "preset";
+  avatarPreset: string | null;
 }
 
 interface CadetMateSidebarProps {
@@ -353,13 +356,14 @@ function SidebarContent({
               <button
                 onClick={() => router.push("/settings")}
                 title={userProfile.name}
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
-                style={{
-                  background: "rgba(255,255,255,0.2)",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.2)",
-                }}
+                className="h-8 w-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 overflow-hidden"
               >
-                <span className="text-[11px] font-bold text-white">{userProfile.initials}</span>
+                <UserAvatar
+                  fullName={userProfile.name}
+                  avatarKind={userProfile.avatarKind}
+                  avatarPreset={userProfile.avatarPreset}
+                  size={32}
+                />
               </button>
             ) : (
               <div className="flex items-center gap-1">
@@ -367,14 +371,13 @@ function SidebarContent({
                   onClick={() => router.push("/settings")}
                   className="flex items-center gap-2.5 flex-1 min-w-0 px-2 py-2 rounded-lg transition-colors hover:bg-white/8"
                 >
-                  <div
-                    className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{
-                      background: "rgba(255,255,255,0.2)",
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 3px rgba(0,0,0,0.2)",
-                    }}
-                  >
-                    <span className="text-[10px] font-bold text-white">{userProfile.initials}</span>
+                  <div className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <UserAvatar
+                      fullName={userProfile.name}
+                      avatarKind={userProfile.avatarKind}
+                      avatarPreset={userProfile.avatarPreset}
+                      size={28}
+                    />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-[12.5px] font-medium text-white truncate leading-tight">
@@ -544,17 +547,44 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: p } = await supabase
+        let profile: {
+          full_name?: string | null;
+          email?: string | null;
+          role?: string | null;
+          avatar_kind?: string | null;
+          avatar_preset?: string | null;
+        } | null = null;
+
+        const withAvatar = await supabase
           .from("profiles")
-          .select("full_name, email, role")
+          .select("full_name, email, role, avatar_kind, avatar_preset")
           .eq("id", user.id)
           .single();
-        const name = p?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+
+        if (withAvatar.error) {
+          const fallback = await supabase
+            .from("profiles")
+            .select("full_name, email, role")
+            .eq("id", user.id)
+            .single();
+          profile = fallback.data;
+        } else {
+          profile = withAvatar.data;
+        }
+
+        const name = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+        const avatarKind = profile?.avatar_kind === "preset" || user.user_metadata?.avatar_kind === "preset"
+          ? "preset" as const
+          : "initials" as const;
         setUserProfile({
           name,
-          email:    p?.email || user.email || "",
+          email:    profile?.email || user.email || "",
           initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
-          role:     p?.role || "free",
+          role:     (profile?.role as UserProfile["role"]) || "free",
+          avatarKind,
+          avatarPreset: avatarKind === "preset"
+            ? (profile?.avatar_preset ?? user.user_metadata?.avatar_preset ?? null)
+            : null,
         });
       } catch (e) {
         console.error("Sidebar user fetch error:", e);
@@ -722,11 +752,13 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
                 className="flex items-center gap-3 flex-1 min-w-0 px-2 py-2.5 rounded-xl transition-colors"
                 style={{ background: "rgba(255,255,255,0.08)" }}
               >
-                <div
-                  className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)" }}
-                >
-                  <span className="text-[12px] font-bold text-white">{userProfile.initials}</span>
+                <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <UserAvatar
+                    fullName={userProfile.name}
+                    avatarKind={userProfile.avatarKind}
+                    avatarPreset={userProfile.avatarPreset}
+                    size={36}
+                  />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-[13px] font-semibold text-white truncate">{userProfile.name}</p>

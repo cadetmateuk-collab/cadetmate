@@ -921,7 +921,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   const donePages = completed.size;
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 0, background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 32, marginBottom: 16 }}>⚓</div>
         <div style={{ fontSize: 16, color: "hsl(var(--muted-foreground))" }}>Loading module…</div>
@@ -930,7 +930,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   );
 
   if (!moduleData) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 0, background: "hsl(var(--background))", color: "hsl(var(--foreground))" }}>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 32, marginBottom: 16 }}>⚠️</div>
         <div style={{ fontSize: 16 }}>Module not found</div>
@@ -943,11 +943,13 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   return (
     <div style={{
       display: "flex",
-      minHeight: "100vh",
+      height: "100%",
+      minHeight: 0,
+      flex: 1,
+      overflow: "hidden",
+      position: "relative",
       background: "hsl(var(--background))",
       color: "hsl(var(--foreground))",
-      // On mobile: break out of any parent flex/grid column and fill the true viewport
-      ...(isMobile ? { position: "fixed", inset: 0, width: "100vw", height: "100dvh", overflow: "hidden" } : {}),
     }}>
 
       {/* ── MOBILE NAV OVERLAY ── */}
@@ -955,7 +957,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
         <div
           onClick={() => setMobileNavOpen(false)}
           style={{
-            position: "fixed", inset: 0, zIndex: 50,
+            position: "absolute", inset: 0, zIndex: 50,
             background: "rgba(0,0,0,0.45)",
             backdropFilter: "blur(2px)",
           }}
@@ -965,7 +967,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       {/* ── MOBILE NAV DRAWER ── */}
       {isMobile && (
         <div style={{
-          position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 60,
+          position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 60,
           width: 300, maxWidth: "85vw",
           background: "#fff",
           display: "flex", flexDirection: "column",
@@ -1039,13 +1041,15 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
         </div>
       )}
 
-      {/* ── LEFT NAV (desktop only) ── */}
+      {/* ── LEFT NAV (desktop only) — fills module area height ── */}
       {!isMobile && <aside style={{
-        width: 280, minHeight: "100vh",
+        width: 280,
+        height: "100%",
         background: "#fff",
         display: "flex", flexDirection: "column",
-        position: "sticky", top: 0, height: "100vh",
-        overflowY: "auto", flexShrink: 0,
+        overflow: "hidden",
+        flexShrink: 0,
+        alignSelf: "stretch",
       }}>
 
         {/* Module header — fixed height to match top bar */}
@@ -1059,7 +1063,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
         </div>
 
         {/* Page nav */}
-        <nav style={{ padding: "10px 8px", flex: 1, borderRight: "1px solid #e8eaed" }}>
+        <nav style={{ padding: "10px 8px", flex: 1, minHeight: 0, overflowY: "auto", borderRight: "1px solid #e8eaed" }}>
           {pages.map((page, i) => {
             const isActive = i === activePage;
             const isCompleted = completed.has(i);
@@ -1135,18 +1139,19 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       {/* ── MAIN CONTENT ── */}
       <main ref={contentRef} style={{
         flex: 1,
+        minWidth: 0,
+        minHeight: 0,
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         background: "hsl(var(--background))",
         position: "relative",
         overflow: "hidden",
-        // On mobile: fill remaining space and allow inner scroll
-        ...(isMobile ? { minWidth: 0, width: "100%", overflow: "auto" } : {}),
       }}>
 
         {/* Paper noise background */}
         <div aria-hidden style={{
-          position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+          position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0,
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
           backgroundRepeat: "repeat",
           backgroundSize: "256px 256px",
@@ -1154,7 +1159,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           mixBlendMode: "multiply",
         }} />
 
-        {/* Top bar */}
+        {/* Top bar — sticky within module main column */}
         <div style={{
           padding: isMobile ? "0 16px" : "0 24px 0 32px",
           height: 60, flexShrink: 0,
@@ -1352,7 +1357,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           </div>}
         </div>
 
-        {/* Bottom navigation */}
+        {/* Bottom navigation — sticky within module main column */}
         <div style={{
           padding: isMobile ? "0 16px" : "0 64px",
           height: isMobile ? 72 : 68, flexShrink: 0,
@@ -1361,8 +1366,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           background: "hsl(var(--card))",
           boxShadow: "0 -2px 12px hsl(var(--foreground) / 0.05)",
           position: "sticky", bottom: 0, zIndex: 1,
-          // On mobile: sit above the 64px bottom tab bar
-          ...(isMobile ? { marginBottom: 64, paddingBottom: "env(safe-area-inset-bottom)" } : {}),
+          ...(isMobile ? { paddingBottom: "env(safe-area-inset-bottom)" } : {}),
         }}>
           <button onClick={goPrev} disabled={activePage === 0}
             style={{

@@ -94,7 +94,7 @@ export default async function ResourcesPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl py-12 sm:py-16">
+    <div className="mx-auto w-full py-12 sm:py-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd
         data={buildBreadcrumbSchema([

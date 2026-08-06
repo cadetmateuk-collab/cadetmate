@@ -27,3 +27,14 @@ export {
   buildOfferCatalogSchema,
 } from './schema';
 export type { BreadcrumbItem } from './schema';
+export {
+  SITEMAP_URL_LIMIT,
+  STATIC_PUBLIC_ROUTES,
+  buildAllSitemapEntries,
+  fetchPublishedSlugBlogPosts,
+  renderUrlsetXml,
+  renderSitemapIndexXml,
+  dedupeSitemapEntries,
+  toSitemapLoc,
+} from './sitemap';
+export type { SitemapEntry, SitemapChangeFreq } from './sitemap';

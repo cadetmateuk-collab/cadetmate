@@ -95,20 +95,19 @@ export function NotificationCenter() {
     }
   };
 
-  if (!userId) return null;
-
   return (
     <div className="relative">
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className="relative h-11 w-11 min-h-11 min-w-11 flex items-center justify-center rounded-md hover:bg-muted/70 transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        disabled={!userId}
+        className="relative h-11 w-11 min-h-11 min-w-11 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <Bell className="h-4 w-4" aria-hidden />
+        <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center" aria-hidden>
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -116,7 +115,7 @@ export function NotificationCenter() {
         )}
       </button>
 
-      {open && (
+      {open && userId && (
         <>
           <button
             type="button"

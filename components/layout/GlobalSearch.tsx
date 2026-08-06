@@ -36,7 +36,14 @@ const TYPE_LABELS: Record<SearchResult['type'], string> = {
   user: 'Profile',
 };
 
-export function GlobalSearch({ className }: { className?: string }) {
+export function GlobalSearch({
+  className,
+  variant = 'icon',
+}: {
+  className?: string;
+  /** `bar` matches the dashboard header search field look */
+  variant?: 'icon' | 'bar';
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -128,12 +135,23 @@ export function GlobalSearch({ className }: { className?: string }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          'flex items-center justify-center gap-2 h-11 min-h-11 min-w-11 px-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          variant === 'bar'
+            ? 'relative z-0 flex w-full max-w-full items-center gap-3 h-11 min-h-11 rounded-xl border border-border bg-slate-50 px-4 text-left text-sm text-muted-foreground hover:bg-white hover:border-primary/25 transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+            : 'flex items-center justify-center gap-2 h-11 min-h-11 min-w-11 px-2.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           className,
         )}
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline text-[13px] font-medium">Search</span>
+        {variant === 'bar' ? (
+          <>
+            <span className="min-w-0 flex-1 truncate">Search courses, topics, resources...</span>
+            <kbd className="hidden md:inline-flex shrink-0 items-center rounded-md border border-border bg-white px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ⌘K
+            </kbd>
+          </>
+        ) : (
+          <span className="hidden sm:inline text-[13px] font-medium">Search</span>
+        )}
       </button>
 
       {open && (

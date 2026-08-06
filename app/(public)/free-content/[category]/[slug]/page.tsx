@@ -25,7 +25,10 @@ import {
   buildOrganizationSchema,
 } from '@/lib/seo';
 
-export const revalidate = 300;
+// Cache off while developing — set ENABLE_DATA_CACHE in lib/dev-cache.ts and swap these
+// to `revalidate = 300` (remove `dynamic`) when re-enabling.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function BlogPostPage({
   params,
@@ -57,13 +60,13 @@ export default async function BlogPostPage({
   const faqSchema = buildFAQSchema(faqs);
 
   return (
-    <article className="min-h-[100dvh] pb-16">
+    <article className="pb-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd data={buildBreadcrumbSchema(breadcrumbItems)} />
       <JsonLd data={buildArticleSchema(post)} />
       {faqSchema && <JsonLd data={faqSchema} />}
 
-      <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 py-6">
+      <div className="w-full max-w-3xl py-2">
         <Breadcrumbs items={breadcrumbItems} />
 
         <header className="mb-8 text-center">

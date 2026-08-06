@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
 
-/** Matches the header bar column — keep in sync with AppTopNav / PublicHeader */
+/** Full-width main content padding — fills the area beside the sidebar */
 export const PAGE_SHELL_CLASS =
-  'mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8 lg:px-10';
+  'w-full px-4 sm:px-6 md:px-8';
 
 export function PageContainer({
   children,

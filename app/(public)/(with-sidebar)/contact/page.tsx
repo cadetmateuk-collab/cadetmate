@@ -25,7 +25,7 @@ export const metadata: Metadata = buildPageMetadata({
 
 export default function ContactPage() {
   return (
-    <div className="mx-auto max-w-2xl py-12 sm:py-16">
+    <div className="mx-auto w-full max-w-2xl py-12 sm:py-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd data={buildContactPageSchema()} />
       <JsonLd

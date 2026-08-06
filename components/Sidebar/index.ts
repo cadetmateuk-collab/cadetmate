@@ -1,4 +1,4 @@
-/** @deprecated Legacy sidebar chrome — unused by AppShell/PublicShell. Prefer AppTopNav. */
+/** Legacy sidebar building blocks — prefer MainSidebar via AppShell/PublicShell. */
 export { CadetMateSidebar } from "./CadetMateSidebar";
 export { AppSidebar } from "./AppSidebar";
 export { SidebarNavItem } from "./SidebarNavItem";

@@ -15,6 +15,7 @@ import { GlobalSearch } from '../layout/GlobalSearch';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { CadetMateLogo } from '../brand/CadetMateLogo';
 import { useFocusTrap } from '@/lib/a11y/useFocusTrap';
+import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
 import {
   APP_NAV_GROUPS,
   MOBILE_BOTTOM_NAV,
@@ -267,12 +268,17 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                   ref={profileButtonRef}
                   type="button"
                   onClick={() => setProfileOpen((p) => !p)}
-                  className="h-11 w-11 min-h-11 min-w-11 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-primary hover:bg-primary/90 transition-colors ring-2 ring-primary/20 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="h-11 w-11 min-h-11 min-w-11 rounded-full flex items-center justify-center overflow-hidden hover:opacity-90 transition-opacity ring-2 ring-primary/20 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label="Profile menu"
                   aria-expanded={profileOpen}
                   aria-haspopup="menu"
                 >
-                  {userProfile.initials}
+                  <UserAvatar
+                    fullName={userProfile.name}
+                    avatarKind={userProfile.avatarKind}
+                    avatarPreset={userProfile.avatarPreset}
+                    size={44}
+                  />
                 </button>
                 {profileOpen && (
                   <NavDropdownPanel align="right" className="w-52">

@@ -147,7 +147,7 @@ export default function AdminPage() {
         .adm-anim-3 { animation: fadeUp 0.4s ease both 0.17s; }
 
         .adm-page {
-          min-height: 100dvh;
+          min-height: 0;
           background-color: hsl(var(--background));
           font-family: inherit;
           position: relative;
@@ -168,7 +168,7 @@ export default function AdminPage() {
         }
 
         .adm-header {
-          position: sticky; top: 0; z-index: 40;
+          position: sticky; top: 4rem; z-index: 20;
           background: hsl(var(--background) / 0.92);
           backdrop-filter: blur(14px);
           border-bottom: 1px solid hsl(var(--border));

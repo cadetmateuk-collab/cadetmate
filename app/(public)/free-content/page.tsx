@@ -12,8 +12,6 @@ import {
   absoluteUrl,
 } from '@/lib/seo';
 
-export const revalidate = 300;
-
 export const metadata = buildPageMetadata({
   title: 'Free Maritime Training Articles & Cadet Resources',
   description:
@@ -22,12 +20,7 @@ export const metadata = buildPageMetadata({
   keywords: [...FREE_CONTENT_KEYWORDS],
 });
 
-export default async function FreeContentPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string }>;
-}) {
-  const { q } = await searchParams;
+export default async function FreeContentPage() {
   const posts = await getAllBlogPosts();
 
   const breadcrumbSchema = buildBreadcrumbSchema([
@@ -52,7 +45,7 @@ export default async function FreeContentPage({
       <JsonLd data={buildWebSiteSchema()} />
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={collectionSchema} />
-      <FreeContentListing posts={posts} initialQuery={q?.trim() ?? ''} />
+      <FreeContentListing posts={posts} />
     </>
   );
 }

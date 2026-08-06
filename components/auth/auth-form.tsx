@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { useSearchParams } from 'next/navigation'
-import { Mail, Lock, User, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Image from 'next/image'
 import { mobileAuthCallbackUrl } from '@/lib/mobile/urls'
+import { safeRedirectPath } from '@/lib/security/env'
+import { DeveloperGateModal } from '@/components/auth/onboarding/DeveloperGateModal'
+import { OnboardingWizard } from '@/components/auth/onboarding/OnboardingWizard'
 
 type Mode = 'login' | 'signup' | 'forgot'
-
-import { safeRedirectPath } from '@/lib/security/env'
 
 function passwordResetRedirectUrl(): string {
   if (typeof window === 'undefined') return '/reset-password'
@@ -26,22 +27,28 @@ function passwordResetRedirectUrl(): string {
 
 function AuthFormInner() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const redirectTo = safeRedirectPath(searchParams.get('redirectTo'))
 
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
   const [resetEmail, setResetEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
+  const [showDevGate, setShowDevGate] = useState(false)
+  const [onboardingActive, setOnboardingActive] = useState(false)
+  const [isTestFlow, setIsTestFlow] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     if (searchParams.get('mode') === 'signup') {
       setMode('signup')
+      setShowDevGate(true)
+      setOnboardingActive(false)
+      setIsTestFlow(false)
     }
   }, [searchParams])
 
@@ -51,38 +58,28 @@ function AuthFormInner() {
     setMessage(null)
 
     try {
-      if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        try {
-          const { trackConversion, trackEvent } = await import('@/lib/analytics')
-          trackConversion('login', { method: 'email', user_id: data.user?.id })
-          trackEvent('form_submit', { form_name: 'auth_login', status: 'success' })
-        } catch { /* analytics optional */ }
-        setMessage({ type: 'success', text: 'Login successful!' })
-        // Let the browser flush auth cookies before navigating (critical on ngrok / slow devices).
-        await new Promise((r) => setTimeout(r, 50))
-        const target = redirectTo.startsWith('/')
-          ? `${window.location.origin}${redirectTo}`
-          : `${window.location.origin}/dashboard`
-        window.location.assign(target)
-        return
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } },
-        })
-        if (error) throw error
-        try {
-          const { trackConversion, trackEvent } = await import('@/lib/analytics')
-          trackConversion('sign_up', { method: 'email', user_id: data.user?.id })
-          trackEvent('form_submit', { form_name: 'auth_signup', status: 'success' })
-        } catch { /* analytics optional */ }
-        setMessage({ type: 'success', text: 'Check your email to confirm your account!' })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      try {
+        const { trackConversion, trackEvent } = await import('@/lib/analytics')
+        trackConversion('login', { method: 'email', user_id: data.user?.id })
+        trackEvent('form_submit', { form_name: 'auth_login', status: 'success' })
+      } catch { /* analytics optional */ }
+      setMessage({ type: 'success', text: 'Login successful!' })
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) throw sessionError
+      if (!sessionData.session) {
+        throw new Error(
+          'Signed in but the browser did not store the session. Clear site cookies for localhost:3000 and try again.',
+        )
       }
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message })
+      const target = redirectTo.startsWith('/')
+        ? `${window.location.origin}${redirectTo}`
+        : `${window.location.origin}/dashboard`
+      window.location.href = target
+      return
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Sign in failed' })
     } finally {
       setLoading(false)
     }
@@ -99,38 +96,74 @@ function AuthFormInner() {
       })
       if (error) throw error
       setResetSent(true)
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Reset failed' })
     } finally {
       setLoading(false)
     }
   }
 
   const switchMode = (newMode: Mode) => {
-    setMode(newMode)
     setMessage(null)
     setEmail('')
     setPassword('')
-    setFullName('')
     setResetEmail('')
     setResetSent(false)
+
+    if (newMode === 'signup') {
+      setMode('signup')
+      setShowDevGate(true)
+      setOnboardingActive(false)
+      setIsTestFlow(false)
+      return
+    }
+
+    setMode(newMode)
+    setShowDevGate(false)
+    setOnboardingActive(false)
+    setIsTestFlow(false)
+    if (newMode === 'login' && searchParams.get('mode') === 'signup') {
+      router.replace('/auth')
+    }
+  }
+
+  const startOnboarding = (asDeveloper: boolean) => {
+    setIsTestFlow(asDeveloper)
+    setShowDevGate(false)
+    setOnboardingActive(true)
+  }
+
+  if (mode === 'signup' && onboardingActive) {
+    return (
+      <OnboardingWizard
+        onBackToLogin={() => switchMode('login')}
+        isTestFlow={isTestFlow}
+      />
+    )
   }
 
   return (
-    <div className="w-full max-w-md space-y-8">
+    <div
+      className="flex flex-col justify-center space-y-5"
+      style={{ width: 'min(26rem, calc(100vw - 2rem))', height: '36rem' }}
+    >
+      <DeveloperGateModal
+        isOpen={showDevGate}
+        onContinueAsUser={() => startOnboarding(false)}
+        onContinueAsDeveloper={() => startOnboarding(true)}
+      />
 
-      {/* Logo and Header */}
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-3">
         <div className="flex justify-center">
-          <div className="relative h-20 w-20">
-            <Image src="/images/logo.webp" alt="Cadet Mate" fill className="object-contain" priority sizes="96px" />
+          <div className="relative h-16 w-16">
+            <Image src="/images/logo.webp" alt="Cadet Mate" fill className="object-contain" priority sizes="64px" />
           </div>
         </div>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-bold text-foreground">
             {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Get Started' : 'Reset Password'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {mode === 'login'
               ? 'Sign in to continue your maritime training'
               : mode === 'signup'
@@ -160,8 +193,6 @@ function AuthFormInner() {
         </CardHeader>
 
         <CardContent className="pb-8 px-6">
-
-          {/* ── Forgot Password Mode ── */}
           {mode === 'forgot' && (
             <>
               {resetSent ? (
@@ -171,7 +202,7 @@ function AuthFormInner() {
                   </div>
                   <h2 className="text-lg font-semibold text-foreground">Check your inbox</h2>
                   <p className="text-muted-foreground text-sm">
-                    We've sent a password reset link to <strong>{resetEmail}</strong>
+                    We&apos;ve sent a password reset link to <strong>{resetEmail}</strong>
                   </p>
                   <button
                     type="button"
@@ -227,29 +258,8 @@ function AuthFormInner() {
             </>
           )}
 
-          {/* ── Login / Signup Mode ── */}
-          {mode !== 'forgot' && (
+          {mode === 'login' && (
             <form onSubmit={handleAuth} className="space-y-5">
-              {mode === 'signup' && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
-                    Full Name
-                  </Label>
-                  <div className="relative group">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
-                    <Input
-                      id="fullName"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                      className="pl-11 h-12 bg-background border-2 border-input focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-foreground">
                   Email Address
@@ -273,15 +283,13 @@ function AuthFormInner() {
                   <Label htmlFor="password" className="text-sm font-medium text-foreground">
                     Password
                   </Label>
-                  {mode === 'login' && (
-                    <button
-                      type="button"
-                      onClick={() => switchMode('forgot')}
-                      className="inline-flex items-center min-h-11 text-xs font-medium text-primary hover:underline touch-manipulation px-1"
-                    >
-                      Forgot password?
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => switchMode('forgot')}
+                    className="inline-flex items-center min-h-11 text-xs font-medium text-primary hover:underline touch-manipulation px-1"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-all" />
@@ -292,8 +300,7 @@ function AuthFormInner() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={mode === 'signup' ? 8 : undefined}
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    autoComplete="current-password"
                     className="pl-11 pr-11 h-12 bg-background border-2 border-input focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/20 transition-all"
                   />
                   <button
@@ -305,12 +312,6 @@ function AuthFormInner() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                {mode === 'signup' && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1.5">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-                    Minimum 8 characters required
-                  </p>
-                )}
               </div>
 
               {message && (
@@ -322,18 +323,7 @@ function AuthFormInner() {
                     ? 'bg-red-50 text-red-700 border-red-200'
                     : 'bg-blue-50 text-blue-700 border-blue-200'
                 }`}>
-                  <div className="flex items-start gap-3">
-                    {message.type === 'success' ? (
-                      <svg className="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    <p className="text-sm font-medium">{message.text}</p>
-                  </div>
+                  <p className="text-sm font-medium">{message.text}</p>
                 </div>
               )}
 
@@ -349,13 +339,21 @@ function AuthFormInner() {
                     Processing...
                   </span>
                 ) : (
-                  mode === 'login' ? 'Login' : 'Create Account'
+                  'Login'
                 )}
               </Button>
             </form>
           )}
 
-          {/* ── Toggle login/signup ── */}
+          {mode === 'signup' && !onboardingActive && (
+            <div className="py-8 text-center space-y-3 text-sm text-muted-foreground">
+              <p>Confirm whether you&apos;re signing up as a user or a developer to continue.</p>
+              <Button type="button" onClick={() => setShowDevGate(true)}>
+                Continue
+              </Button>
+            </div>
+          )}
+
           {mode !== 'forgot' && (
             <>
               <div className="relative my-6">
@@ -371,7 +369,7 @@ function AuthFormInner() {
               >
                 <span className="text-sm font-medium text-foreground">
                   {mode === 'login' ? (
-                    <>Don't have an account?{' '}<span className="text-primary font-semibold group-hover:underline">Sign up for free</span></>
+                    <>Don&apos;t have an account?{' '}<span className="text-primary font-semibold group-hover:underline">Sign up for free</span></>
                   ) : (
                     <>Already have an account?{' '}<span className="text-primary font-semibold group-hover:underline">Sign in</span></>
                   )}
@@ -379,7 +377,6 @@ function AuthFormInner() {
               </button>
             </>
           )}
-
         </CardContent>
       </Card>
 
@@ -389,7 +386,6 @@ function AuthFormInner() {
           <Image src="/images/supabase-logo-wordmark--light.svg" alt="Supabase" fill className="object-contain" />
         </div>
       </div>
-
     </div>
   )
 }

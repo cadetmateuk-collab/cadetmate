@@ -109,7 +109,7 @@ export default async function SeaSurvivalArticlePage({
         .bp-anim-6 { animation: fadeUp 0.4s ease both 0.36s; }
 
         .bp-page {
-          min-height: 100dvh;
+          min-height: 0;
           background: transparent;
           position: relative;
           overflow-x: hidden;

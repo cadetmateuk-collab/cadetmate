@@ -1,25 +1,27 @@
 import { unstable_cache } from 'next/cache';
 import { createPublicSupabase } from '@/lib/supabase/public';
+import { ENABLE_DATA_CACHE, REVALIDATE_SECONDS } from '@/lib/dev-cache';
 import { resolveCategorySlug } from '@/lib/blog/paths';
 import type { BlogPost, BlogPostSummary } from './types';
 
-const REVALIDATE_SECONDS = process.env.NODE_ENV === 'development' ? 120 : 300;
 const SUMMARY_FIELDS =
   'id, title, excerpt, slug, author, author_avatar, date, category, category_slug, image, read_time, featured';
 
-export const getAllBlogPosts = unstable_cache(
-  async (): Promise<BlogPostSummary[]> => {
-    const supabase = createPublicSupabase();
-    const { data } = await supabase
-      .from('blog_posts')
-      .select(SUMMARY_FIELDS)
-      .eq('hidden', false)
-      .order('date', { ascending: false });
-    return (data ?? []) as BlogPostSummary[];
-  },
-  ['all-blog-posts'],
-  { revalidate: REVALIDATE_SECONDS },
-);
+async function fetchAllBlogPosts(): Promise<BlogPostSummary[]> {
+  const supabase = createPublicSupabase();
+  const { data } = await supabase
+    .from('blog_posts')
+    .select(SUMMARY_FIELDS)
+    .eq('hidden', false)
+    .order('date', { ascending: false });
+  return (data ?? []) as BlogPostSummary[];
+}
+
+export const getAllBlogPosts = ENABLE_DATA_CACHE
+  ? unstable_cache(fetchAllBlogPosts, ['all-blog-posts'], {
+      revalidate: REVALIDATE_SECONDS,
+    })
+  : fetchAllBlogPosts;
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   const supabase = createPublicSupabase();

@@ -1,24 +1,39 @@
-import { PublicHeader } from './PublicHeader';
-import { PublicFooter } from './PublicFooter';
-import { PageBackground } from './PageBackground';
-import { PageContainer } from './PageContainer';
+'use client';
+
+import { useState } from 'react';
+import { MainSidebar } from '@/components/layout/MainSidebar';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { PublicFooter } from '@/components/layout/PublicFooter';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { SkipLink } from '@/components/a11y/SkipLink';
 import { PageTransition } from '@/components/motion/PageTransition';
 
+/** Public chrome — sticky sidebar + top bar; page scrolls */
 export function PublicShell({ children }: { children: React.ReactNode }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-screen w-full bg-[#F5F7FB]">
       <SkipLink />
-      <PageBackground />
-      <PublicHeader />
-      <main id="main-content" tabIndex={-1} className="relative z-[1] flex-1 outline-none">
-        <div className="min-h-full">
-          <PageContainer>
-            <PageTransition>{children}</PageTransition>
-          </PageContainer>
-        </div>
-      </main>
-      <PublicFooter />
+      <MainSidebar
+        variant="public"
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <AppHeader
+          variant="public"
+          onOpenSidebar={() => setMobileOpen(true)}
+        />
+        <main id="main-content" tabIndex={-1} className="relative flex-1 outline-none">
+          <div className="py-6 md:py-8">
+            <PageContainer>
+              <PageTransition>{children}</PageTransition>
+            </PageContainer>
+          </div>
+          <PublicFooter />
+        </main>
+      </div>
     </div>
   );
 }

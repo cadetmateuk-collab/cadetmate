@@ -142,7 +142,7 @@ export default function PartnersPage() {
 
         /* ── Page shell ── */
         .pp-page {
-          min-height: 100dvh;
+          min-height: 0;
           background: transparent;
           font-family: inherit;
           position: relative;

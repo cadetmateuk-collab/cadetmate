@@ -3,8 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { safeRedirectPath } from '@/lib/security/env';
+import { syncOnboardingFromMetadata } from '@/lib/onboarding/sync-from-metadata';
 
-const PROFILE_COLUMNS = 'full_name, email, role';
+const PROFILE_COLUMNS =
+  'full_name, email, role, training_phase, nautical_college, learning_interests, referral_source, avatar_kind, avatar_preset, onboarding_completed';
+
+const PROFILE_COLUMNS_FALLBACK = 'full_name, email, role';
 
 async function authRedirectPath(): Promise<string> {
   const headerStore = await headers();
@@ -25,11 +29,29 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  const { data: profile } = await supabase
+  try {
+    await syncOnboardingFromMetadata(user.id, user.user_metadata);
+  } catch {
+    /* migration may not be applied yet */
+  }
+
+  let profile = null;
+  const full = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
     .eq('id', user.id)
     .single();
+
+  if (full.error) {
+    const fallback = await supabase
+      .from('profiles')
+      .select(PROFILE_COLUMNS_FALLBACK)
+      .eq('id', user.id)
+      .single();
+    profile = fallback.data;
+  } else {
+    profile = full.data;
+  }
 
   return {
     ...user,

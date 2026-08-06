@@ -1,0 +1,7 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Star avatar">
+  <circle cx="128" cy="128" r="128" fill="#0F2F6B"/>
+  <path d="M128 52 L144 108 L202 108 L156 142 L172 198 L128 166 L84 198 L100 142 L54 108 L112 108 Z" fill="#F4C95F"/>
+  <circle cx="70" cy="70" r="5" fill="#fff" opacity=".8"/>
+  <circle cx="190" cy="78" r="4" fill="#fff" opacity=".7"/>
+  <circle cx="198" cy="170" r="3" fill="#fff" opacity=".6"/>
+</svg>

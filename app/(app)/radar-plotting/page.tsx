@@ -574,7 +574,7 @@ export default function RadarPlottingSheet(){
   const selInst=instruments.find(i=>i.id===selectedInstr);
 
   return(
-    <div style={{display:"flex",height:"100vh",background:"hsl(var(--background))",color:"hsl(var(--foreground))",overflow:"hidden",fontFamily:"var(--font-manrope,system-ui,sans-serif)",userSelect:"none"}}>
+    <div style={{display:"flex",height:"100%",minHeight:0,flex:1,background:"hsl(var(--background))",color:"hsl(var(--foreground))",overflow:"hidden",fontFamily:"var(--font-manrope,system-ui,sans-serif)",userSelect:"none"}}>
       <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
 
         {/* Top bar */}

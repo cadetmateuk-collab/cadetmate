@@ -1,14 +1,20 @@
-/** Shared sidebar visual tokens — used by AppSidebar and legacy CadetMateSidebar */
+/** Shared sidebar visual tokens — #2569ED */
 
 export const SIDEBAR_COLORS = {
-  primary: '#2966F4',
+  /** Sidebar blue */
+  primary: '#2569ED',
+  /** Sidebar surface */
+  surface: '#2569ED',
+  surfaceDark: '#1B54D4',
+  /** Active / accent */
+  accent: '#2569ED',
   yellow: '#F8E9A1',
 } as const;
 
 export const SIDEBAR_TEXT = {
-  idle: 'text-white/90',
+  idle: 'text-white/85',
   border: 'border-white/10',
-  label: 'text-white text-[10px] font-semibold uppercase tracking-[1.4px]',
+  label: 'text-white/45 text-[10px] font-semibold uppercase tracking-[1.4px]',
 } as const;
 
 export type GlassStrength = 'idle' | 'hover' | 'active';
@@ -17,19 +23,15 @@ export function glassStyle(strength: GlassStrength): React.CSSProperties {
   return {
     background:
       strength === 'active'
-        ? 'rgba(255,255,255,0.18)'
+        ? 'rgba(255,255,255,0.2)'
         : strength === 'hover'
-          ? 'rgba(255,255,255,0.11)'
+          ? 'rgba(255,255,255,0.1)'
           : 'transparent',
-    backdropFilter: strength !== 'idle' ? 'blur(8px)' : undefined,
-    WebkitBackdropFilter: strength !== 'idle' ? 'blur(8px)' : undefined,
-    border: `1px solid rgba(255,255,255,${strength === 'active' ? '0.22' : strength === 'hover' ? '0.13' : '0'})`,
+    border: `1px solid rgba(255,255,255,${strength === 'active' ? '0.18' : strength === 'hover' ? '0.1' : '0'})`,
     boxShadow:
       strength === 'active'
-        ? '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.25)'
-        : strength === 'hover'
-          ? 'inset 0 1px 0 rgba(255,255,255,0.14)'
-          : undefined,
+        ? '0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2)'
+        : undefined,
   };
 }
 

@@ -33,7 +33,7 @@ export default async function CommunityPreviewPage() {
     .limit(10);
 
   return (
-    <div className="mx-auto max-w-3xl py-12 sm:py-16">
+    <div className="w-full py-12 sm:py-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd
         data={buildBreadcrumbSchema([

@@ -156,8 +156,8 @@ export default function MorseReceiverQuiz() {
   const passed = score !== null && score >= 18;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-b from-slate-50 to-slate-100">
-      <div className="max-w-5xl mx-auto">
+    <div className="w-full bg-gradient-to-b from-slate-50 to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 py-2">
+      <div className="w-full">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-2">Morse Code Receiver Quiz</h1>
           <p className="text-slate-600">Watch the visual morse code signals and identify each character (20 characters/minute)</p>

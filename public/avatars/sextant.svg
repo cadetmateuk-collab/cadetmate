@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Sextant avatar">
+  <circle cx="128" cy="128" r="128" fill="#163A8C"/>
+  <path d="M70 170 A80 80 0 0 1 186 170" fill="none" stroke="#F4C95F" stroke-width="12" stroke-linecap="round"/>
+  <line x1="128" y1="70" x2="128" y2="170" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+  <line x1="128" y1="70" x2="178" y2="150" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="128" cy="70" r="10" fill="#F4C95F"/>
+  <circle cx="178" cy="150" r="8" fill="#fff"/>
+</svg>

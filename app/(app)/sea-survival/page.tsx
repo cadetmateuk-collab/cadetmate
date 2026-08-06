@@ -77,7 +77,7 @@ export default function SeaSurvivalPage() {
         .ss-anim-3 { animation: fadeUp 0.4s ease both 0.21s; }
 
         /* ── Shell ── */
-        .ss-page { min-height:100dvh; background:hsl(var(--background)); position:relative; overflow-x:hidden; }
+        .ss-page { min-height:0; background:hsl(var(--background)); position:relative; overflow-x:hidden; }
         .ss-loading { display:flex; align-items:center; justify-content:center; }
         .ss-spinner {
           width:2rem; height:2rem; border-radius:50%;

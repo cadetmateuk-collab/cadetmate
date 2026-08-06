@@ -8,9 +8,15 @@ type CookieToSet = {
   options: Record<string, unknown>;
 };
 
-function applyCookies(response: NextResponse, cookies: CookieToSet[]) {
+function applyCookies(response: NextResponse, cookies: CookieToSet[], requestUrl?: URL) {
+  const isHttps = requestUrl?.protocol === 'https:';
   cookies.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
+    const nextOptions = { ...options };
+    // Browsers reject Secure cookies on http://localhost — force off when not HTTPS.
+    if (!isHttps) {
+      nextOptions.secure = false;
+    }
+    response.cookies.set(name, value, nextOptions);
   });
 }
 
@@ -46,7 +52,7 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request: { headers: requestHeaders },
           });
-          applyCookies(supabaseResponse, cookiesToSet);
+          applyCookies(supabaseResponse, cookiesToSet, request.nextUrl);
         },
       },
     },
@@ -67,15 +73,24 @@ export async function updateSession(request: NextRequest) {
       request.nextUrl.searchParams.get('redirectTo');
     if (next) authUrl.searchParams.set('redirectTo', next);
     const res = NextResponse.redirect(authUrl);
-    applyCookies(res, cookiesToSet);
+    applyCookies(res, cookiesToSet, request.nextUrl);
     return res;
+  }
+
+  // Manifest disabled while developing — stop browser PWA refetch spam.
+  if (
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/manifest.json' ||
+    pathname === '/site.webmanifest'
+  ) {
+    return new NextResponse(null, { status: 204 });
   }
 
   if (pathname === '/blog' || pathname.startsWith('/blog/')) {
     const contentUrl = request.nextUrl.clone();
     contentUrl.pathname = pathname.replace(/^\/blog/, '/free-content');
     const res = NextResponse.redirect(contentUrl);
-    applyCookies(res, cookiesToSet);
+    applyCookies(res, cookiesToSet, request.nextUrl);
     return res;
   }
 
@@ -90,11 +105,14 @@ export async function updateSession(request: NextRequest) {
         .maybeSingle();
 
       if (post) {
-        const canonicalUrl = request.nextUrl.clone();
-        canonicalUrl.pathname = buildBlogPostPath(post);
-        const res = NextResponse.redirect(canonicalUrl, 308);
-        applyCookies(res, cookiesToSet);
-        return res;
+        const canonicalPath = buildBlogPostPath(post);
+        if (canonicalPath !== pathname) {
+          const canonicalUrl = request.nextUrl.clone();
+          canonicalUrl.pathname = canonicalPath;
+          const res = NextResponse.redirect(canonicalUrl, 308);
+          applyCookies(res, cookiesToSet, request.nextUrl);
+          return res;
+        }
       }
     }
   }
@@ -105,7 +123,7 @@ export async function updateSession(request: NextRequest) {
       loginUrl.pathname = '/auth';
       loginUrl.searchParams.set('redirectTo', pathname);
       const res = NextResponse.redirect(loginUrl);
-      applyCookies(res, cookiesToSet);
+      applyCookies(res, cookiesToSet, request.nextUrl);
       return res;
     }
 
@@ -119,7 +137,7 @@ export async function updateSession(request: NextRequest) {
       const deniedUrl = request.nextUrl.clone();
       deniedUrl.pathname = '/unauthorized';
       const res = NextResponse.redirect(deniedUrl);
-      applyCookies(res, cookiesToSet);
+      applyCookies(res, cookiesToSet, request.nextUrl);
       return res;
     }
   }
@@ -131,6 +149,6 @@ export async function updateSession(request: NextRequest) {
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
-  applyCookies(response, cookiesToSet);
+  applyCookies(response, cookiesToSet, request.nextUrl);
   return response;
 }

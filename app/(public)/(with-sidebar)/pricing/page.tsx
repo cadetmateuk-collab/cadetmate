@@ -69,7 +69,7 @@ export default function PricingPage() {
   const faqSchema = buildFAQSchema(PRICING_FAQS);
 
   return (
-    <div className="mx-auto max-w-6xl py-12 sm:py-16">
+    <div className="mx-auto w-full py-12 sm:py-16">
       <JsonLd data={buildOrganizationSchema()} />
       <JsonLd data={buildServiceSchema()} />
       <JsonLd
@@ -102,7 +102,7 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full">
         <div className="rounded-2xl border border-border p-8">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Free</h2>
           <p className="text-4xl font-bold mt-2">£0</p>

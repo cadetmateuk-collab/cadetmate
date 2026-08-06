@@ -15,10 +15,15 @@ test.describe('Search Console readiness', () => {
   test('sitemap.xml returns URLs', async ({ request }) => {
     const res = await request.get('/sitemap.xml');
     expect(res.ok()).toBeTruthy();
+    expect(res.headers()['content-type'] ?? '').toMatch(/application\/xml/);
     const body = await res.text();
-    expect(body).toContain('<urlset');
-    expect(body).toContain('/home');
-    expect(body).toContain('/free-content');
+    // Single urlset under 50k URLs, or sitemapindex when split
+    expect(body).toMatch(/<(urlset|sitemapindex)\s/);
+    expect(body).toContain('http://www.sitemaps.org/schemas/sitemap/0.9');
+    if (body.includes('<urlset')) {
+      expect(body).toContain('/home');
+      expect(body).toContain('/free-content');
+    }
   });
 
   test('home has a canonical link', async ({ page }) => {
