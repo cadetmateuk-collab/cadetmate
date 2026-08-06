@@ -51,9 +51,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local sql dumps / schema exports (use supabase/migrations for tracked schema)
+# local sql dumps / schema exports
 schemas.sql
 schema.sql
+
+# Keep Supabase migrations local — not pushed to GitHub
+supabase/migrations/
+
+# Internal build / deploy docs — not pushed to GitHub
+/docs/
 
 node_modules/
 .env
