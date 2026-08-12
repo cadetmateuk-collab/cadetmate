@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { ChevronDown, ChevronRight, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { VoteControls } from './VoteControls';
+import { CommunityAuthor } from './CommunityAuthor';
 import { Button } from '@/components/ui/button';
-import { timeAgo, displayName } from '@/lib/community/utils';
+import { timeAgo } from '@/lib/community/utils';
 import type { Comment } from '@/lib/community/types';
 
 interface CommentItemProps {
@@ -53,23 +53,18 @@ export function CommentItem({
         />
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <div className="mb-1 flex items-center gap-2 overflow-visible text-xs text-muted-foreground">
             {hasReplies && (
               <button
                 type="button"
                 onClick={() => setCollapsed(!collapsed)}
-                className="p-0.5 hover:bg-muted rounded"
+                className="rounded p-0.5 hover:bg-muted"
                 aria-label={collapsed ? 'Expand thread' : 'Collapse thread'}
               >
                 {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </button>
             )}
-            <Link
-              href={`/community/user/${comment.user_id}`}
-              className="font-medium hover:text-primary"
-            >
-              {displayName(comment.author)}
-            </Link>
+            <CommunityAuthor userId={comment.user_id} author={comment.author} size={24} />
             <span>·</span>
             <time dateTime={comment.created_at}>{timeAgo(comment.created_at)}</time>
           </div>

@@ -1,9 +1,4 @@
-/** Subtle dotted page backdrop — fixed so pattern stays coherent while scrolling */
+/** Solid page backdrop (dot grid removed). Kept for call-site compatibility. */
 export function PageBackground() {
-  return (
-    <div
-      className="bg-chart-dots pointer-events-none fixed inset-0 z-0"
-      aria-hidden="true"
-    />
-  );
+  return null;
 }

@@ -7,6 +7,8 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import AdminModal from '@/components/AdminModal'
 import { slugifySegment, buildBlogPostPath } from '@/lib/blog/paths';
+import { useCanDelete } from '@/components/admin/permissions-context'
+import { logClientActivity } from '@/lib/activity/log-event-client';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -283,6 +285,7 @@ function DeleteModal({ postTitle, onConfirm, onCancel }: DeleteModalProps) {
 // ── Main tab component ─────────────────────────────────────────────────────────
 
 export default function AdminBlogTab() {
+  const canDelete = useCanDelete();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -331,10 +334,22 @@ export default function AdminBlogTab() {
       const { error } = await supabase.from('blog_posts').update(savePayload).eq('id', id);
       if (error) { showToast(`Failed to update: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Post updated!', 'success');
+      void logClientActivity({
+        action: 'blog.updated',
+        entityType: 'blog_post',
+        entityId: id,
+        entityTitle: savePayload.title,
+      });
     } else {
       const { error } = await supabase.from('blog_posts').insert([savePayload]);
       if (error) { showToast(`Failed to create: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Post created!', 'success');
+      void logClientActivity({
+        action: 'blog.created',
+        entityType: 'blog_post',
+        entityId: savePayload.slug,
+        entityTitle: savePayload.title,
+      });
     }
 
     setSaving(false);
@@ -344,6 +359,7 @@ export default function AdminBlogTab() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canDelete) { showToast('You do not have permission to delete posts', 'error'); setDeleteConfirm(null); return; }
     const { error } = await supabase.from('blog_posts').delete().eq('id', id);
     if (error) showToast('Failed to delete post', 'error');
     else { showToast('Post deleted', 'success'); fetchPosts(); }
@@ -407,13 +423,13 @@ export default function AdminBlogTab() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             placeholder="Search by title or author..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -502,13 +518,15 @@ export default function AdminBlogTab() {
                       >
                         <Pencil size={16} />
                       </button>
-                      <button
-                        onClick={() => setDeleteConfirm(post.id!)}
-                        title="Delete post"
-                        className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => setDeleteConfirm(post.id!)}
+                          title="Delete post"
+                          className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

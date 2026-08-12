@@ -10,7 +10,7 @@ import {
   buildFAQSchema,
 } from '@/lib/seo/schema';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { PublicHome } from '@/components/home/PublicHome';
+import { LandingPage } from '@/components/home/landing/LandingPage';
 import { getLandingPageStats, getTopCommunityPosts } from '@/lib/data/cached-queries';
 import { LANDING_FAQS } from '@/lib/seo/faqs';
 
@@ -56,7 +56,7 @@ export default async function HomePage() {
       <JsonLd data={buildSoftwareApplicationSchema()} />
       {faqSchema && <JsonLd data={faqSchema} />}
 
-      <PublicHome
+      <LandingPage
         data={{
           stats: {
             users: stats.users,

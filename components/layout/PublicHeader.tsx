@@ -42,7 +42,9 @@ export function PublicHeader() {
   }, [pathname]);
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/home' && pathname.startsWith(`${href}/`));
+    pathname === href ||
+    (href === '/home' && (pathname === '/' || pathname === '/home')) ||
+    (href !== '/home' && pathname.startsWith(`${href}/`));
 
   return (
     <header className="sticky top-0 z-50 w-full overflow-visible bg-transparent pt-2 pb-2 pointer-events-none safe-pad-x">

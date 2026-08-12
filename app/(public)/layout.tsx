@@ -8,6 +8,7 @@ import {
   SITE_NAME,
   DEFAULT_DESCRIPTION,
 } from '@/lib/seo/site';
+import { SiteAnalyticsBeacon } from '@/components/analytics/SiteAnalyticsBeacon';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -37,5 +38,10 @@ export const metadata: Metadata = {
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <SiteAnalyticsBeacon />
+      {children}
+    </>
+  );
 }

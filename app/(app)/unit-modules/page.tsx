@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Search, Lock, CheckCircle2, Clock, ChevronRight, Sparkles,
+  Search, Lock, CheckCircle2, Clock, ChevronRight, ChevronDown, Sparkles,
   BookOpen, LayoutGrid, List, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -501,7 +501,13 @@ function ModulesPageInner({
             .eq("id", userId)
             .maybeSingle();
           const role = profile?.role;
-          setResolvedAccess(role === "admin" ? "admin" : role === "premium" ? "premium" : "free");
+          setResolvedAccess(
+            role === "admin"
+              ? "admin"
+              : role === "premium" || role === "content"
+                ? "premium"
+                : "free",
+          );
         }
 
         // Pull section-level progress rows for this user (if logged in)
@@ -655,22 +661,25 @@ function ModulesPageInner({
           {/* Search + controls row */}
           <div className="flex items-center gap-2">
             <div className="relative flex-1 sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
               <input type="text" placeholder="Search modules…" value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[13px] text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))] focus:outline-none focus:border-[hsl(var(--primary)/0.4)] focus:bg-[hsl(var(--background))] transition-all" />
+                className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] py-2 pl-10 pr-4 text-[13px] text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))] transition-all focus:border-[hsl(var(--primary)/0.4)] focus:bg-[hsl(var(--background))] focus:outline-none" />
             </div>
 
-            <div className="flex items-center gap-2 ml-auto flex-shrink-0">
+            <div className="ml-auto flex flex-shrink-0 items-center gap-2">
               {/* Status filter */}
-              <select value={filter} onChange={(e) => setFilter(e.target.value as FilterState)}
-                className="appearance-none pl-3 pr-3 py-2 rounded-lg bg-[hsl(var(--muted))] border border-[hsl(var(--border))] text-[12px] text-[hsl(var(--muted-foreground))] focus:outline-none cursor-pointer transition-all hidden sm:block">
-                <option value="all">All</option>
-                <option value="available">Available</option>
-                <option value="in-progress">In progress</option>
-                <option value="completed">Completed</option>
-                <option value="locked">Locked</option>
-              </select>
+              <div className="relative hidden sm:block">
+                <select value={filter} onChange={(e) => setFilter(e.target.value as FilterState)}
+                  className="cursor-pointer appearance-none rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] py-2 pl-3 pr-9 text-[12px] text-[hsl(var(--muted-foreground))] transition-all focus:outline-none">
+                  <option value="all">All</option>
+                  <option value="available">Available</option>
+                  <option value="in-progress">In progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="locked">Locked</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              </div>
 
               {/* View toggle */}
               <div className="flex items-center bg-[hsl(var(--muted))] border border-[hsl(var(--border))] rounded-lg p-0.5 gap-0.5">

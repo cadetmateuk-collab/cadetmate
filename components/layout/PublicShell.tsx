@@ -26,7 +26,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           onOpenSidebar={() => setMobileOpen(true)}
         />
         <main id="main-content" tabIndex={-1} className="relative flex-1 outline-none">
-          <div className="py-6 md:py-8">
+          <div className="w-full py-6 pb-10 md:py-8">
             <PageContainer>
               <PageTransition>{children}</PageTransition>
             </PageContainer>

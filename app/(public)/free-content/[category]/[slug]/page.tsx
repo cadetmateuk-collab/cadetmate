@@ -66,7 +66,7 @@ export default async function BlogPostPage({
       <JsonLd data={buildArticleSchema(post)} />
       {faqSchema && <JsonLd data={faqSchema} />}
 
-      <div className="w-full max-w-3xl py-2">
+      <div className="mx-auto w-full max-w-3xl py-2">
         <Breadcrumbs items={breadcrumbItems} />
 
         <header className="mb-8 text-center">

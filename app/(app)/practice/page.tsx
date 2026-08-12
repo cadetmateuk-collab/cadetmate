@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { Mic, HelpCircle, Zap, Target, GraduationCap, Lock, ArrowRight, LifeBuoy } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/get-user';
+import { isPremiumRole } from '@/lib/auth/roles';
 import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
 import QuestionOfDay from '@/components/QuestionOfDay';
 import { HashScrollSync } from '@/components/navigation/HashScrollSync';
@@ -74,7 +75,7 @@ const PRACTICE_ITEMS = [
 
 export default async function PracticePage() {
   const user = await getCurrentUser();
-  const isPremium = user?.profile?.role === 'premium' || user?.profile?.role === 'admin';
+  const isPremium = isPremiumRole(user?.profile?.role);
 
   return (
     <div className="py-8">

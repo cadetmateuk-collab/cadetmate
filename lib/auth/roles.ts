@@ -1,6 +1,15 @@
 export {
   type UserRole,
+  type Permission,
   isPremiumRole,
   isAdminRole,
+  isStaffRole,
+  isContentRole,
+  isProtectedStaffRole,
   getAccessLevel,
+  getPermissionsForRole,
+  hasPermission,
+  hasAnyPermission,
+  canDeleteContent,
+  can,
 } from '@cadet-mate/shared';

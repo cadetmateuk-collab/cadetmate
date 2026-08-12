@@ -8,6 +8,8 @@ import {
   GripVertical, List, Bold, Italic, LayoutList
 } from 'lucide-react'
 import { C } from '@/components/admin/ui'
+import { useCanDelete } from '@/components/admin/permissions-context'
+import { logClientActivity } from '@/lib/activity/log-event-client'
 
 const supabase = createClient()
 
@@ -750,6 +752,7 @@ const labelStyle: React.CSSProperties = {
 
 // ─── Main tab component ───────────────────────────────────────
 export default function AdminTRBTasksTab() {
+  const canDelete = useCanDelete()
   const [tasks, setTasks]     = useState<TRBTask[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
@@ -789,11 +792,18 @@ export default function AdminTRBTasksTab() {
       : await supabase.from('trb_tasks').insert(payload)
 
     if (error) { alert(error.message); return }
+    void logClientActivity({
+      action: task.id && tasks.find(t => t.id === task.id) ? 'trb.updated' : 'trb.created',
+      entityType: 'trb_task',
+      entityId: task.id || task.code,
+      entityTitle: task.title,
+    })
     setAdding(false)
     await loadTasks()
   }
 
   async function deleteTask(id: string) {
+    if (!canDelete) { alert('You do not have permission to delete TRB tasks'); return }
     if (!confirm(`Delete task ${id}? This cannot be undone.`)) return
     await supabase.from('trb_tasks').delete().eq('id', id)
     await loadTasks()
@@ -893,7 +903,7 @@ export default function AdminTRBTasksTab() {
               key={task.id}
               task={task}
               onSave={saveTask}
-              onDelete={deleteTask}
+              onDelete={canDelete ? deleteTask : undefined}
             />
           ))}
 

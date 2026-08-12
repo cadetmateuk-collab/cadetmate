@@ -83,4 +83,4 @@ export interface SessionCardState {
   progress: CardProgress;
 }
 
-export type UserRole = 'free' | 'basic' | 'premium' | 'admin';
+export type UserRole = 'free' | 'basic' | 'premium' | 'content' | 'admin';

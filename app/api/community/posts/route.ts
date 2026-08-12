@@ -150,6 +150,24 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const { logActivityEvent, requestContext } = await import('@/lib/activity/log-event');
+  void logActivityEvent({
+    actorId: user.id,
+    actorRole: profile?.role ?? null,
+    action: 'community.post_created',
+    entityType: 'post',
+    entityId: post.id,
+    entityTitle: title.trim(),
+    metadata: { status },
+    ...requestContext(request),
+  });
+
   await supabase.from('moderation_logs').insert({
     content_type: 'post',
     content_id: post.id,
@@ -161,6 +179,17 @@ export async function POST(request: NextRequest) {
     explanation: moderation.explanation,
     raw_response: moderation.raw ?? null,
   });
+
+  if (moderation.action === 'flagged') {
+    const { notifyAdminsOfFlaggedContent } = await import('@/lib/community/notify-admins');
+    void notifyAdminsOfFlaggedContent({
+      contentType: 'post',
+      contentId: post.id,
+      authorId: user.id,
+      excerpt: `${title.trim()}: ${postBody.trim()}`,
+      categories: moderation.categories,
+    });
+  }
 
   if (tags.length > 0) {
     for (const tagName of tags.slice(0, 5)) {

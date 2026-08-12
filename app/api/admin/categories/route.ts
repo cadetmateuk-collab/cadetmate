@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminApi } from '@/lib/auth/require-admin-api';
+import { requirePermissionApi } from '@/lib/auth/require-permission-api';
+import { logActivityEvent, requestContext } from '@/lib/activity/log-event';
 
 export async function GET() {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('categories.update');
+  if ('error' in auth) return auth.error;
 
   try {
-    const { data, error } = await supabaseAdmin
-      .from('categories')
-      .select('*')
-      .order('name');
+    const { data, error } = await supabaseAdmin.from('categories').select('*').order('name');
 
     if (error) throw error;
 
@@ -22,8 +20,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('categories.create');
+  if ('error' in auth) return auth.error;
 
   try {
     const { name, description } = await request.json();
@@ -39,6 +37,17 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    const ctx = requestContext(request);
+    void logActivityEvent({
+      actorId: auth.user.id,
+      actorRole: auth.role,
+      action: 'category.created',
+      entityType: 'category',
+      entityId: data[0]?.id ?? name.trim(),
+      entityTitle: name.trim(),
+      ...ctx,
+    });
+
     return NextResponse.json({ success: true, data: data[0] });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -47,8 +56,8 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('categories.update');
+  if ('error' in auth) return auth.error;
 
   try {
     const { oldName, newName, description } = await request.json();
@@ -65,6 +74,18 @@ export async function PUT(request: Request) {
 
     if (error) throw error;
 
+    const ctx = requestContext(request);
+    void logActivityEvent({
+      actorId: auth.user.id,
+      actorRole: auth.role,
+      action: 'category.updated',
+      entityType: 'category',
+      entityId: data[0]?.id ?? newName.trim(),
+      entityTitle: newName.trim(),
+      metadata: { oldName },
+      ...ctx,
+    });
+
     return NextResponse.json({ success: true, data: data[0] });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -73,8 +94,8 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('categories.delete');
+  if ('error' in auth) return auth.error;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -84,12 +105,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
-      .from('categories')
-      .delete()
-      .eq('name', name);
+    const { error } = await supabaseAdmin.from('categories').delete().eq('name', name);
 
     if (error) throw error;
+
+    const ctx = requestContext(request);
+    void logActivityEvent({
+      actorId: auth.user.id,
+      actorRole: auth.role,
+      action: 'category.deleted',
+      entityType: 'category',
+      entityId: name,
+      entityTitle: name,
+      ...ctx,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

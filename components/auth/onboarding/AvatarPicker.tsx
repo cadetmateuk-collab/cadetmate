@@ -12,20 +12,56 @@ type Props = {
   avatarKind: AvatarKind;
   avatarPreset: string | null;
   onChange: (kind: AvatarKind, preset: string | null) => void;
+  /** `md` for onboarding; `sm` for profile settings */
+  size?: 'sm' | 'md';
 };
 
-/** 3×3 grid: initials + 8 presets — sized to fit the fixed onboarding panel without scrolling. */
-export function AvatarPicker({ fullName, avatarKind, avatarPreset, onChange }: Props) {
+const SIZE = {
+  sm: {
+    grid: 'grid grid-cols-3 gap-2 max-w-[13rem]',
+    tile: 'h-11 w-11',
+    img: 44,
+    initials: 'text-xs',
+    check: 'h-4 w-4 -bottom-0.5 -right-0.5',
+    checkIcon: 'h-2.5 w-2.5',
+  },
+  md: {
+    grid: 'grid grid-cols-3 gap-3 max-w-[17rem] h-full content-center',
+    tile: 'h-[4.25rem] w-[4.25rem]',
+    img: 64,
+    initials: 'text-sm',
+    check: 'h-5 w-5 -bottom-0.5 -right-0.5',
+    checkIcon: 'h-3 w-3',
+  },
+} as const;
+
+/** 3×3 grid: initials + 8 presets */
+export function AvatarPicker({
+  fullName,
+  avatarKind,
+  avatarPreset,
+  onChange,
+  size = 'md',
+}: Props) {
   const initials = getInitials(fullName || 'You');
+  const s = SIZE[size];
 
   return (
-    <div className="grid grid-cols-3 gap-3 place-items-center content-center h-full max-w-[17rem] mx-auto">
+    <div className={cn(s.grid, 'place-items-center mx-auto sm:mx-0')}>
       <AvatarTile
         selected={avatarKind === 'initials'}
         label="Use initials"
+        tileClass={s.tile}
+        checkClass={s.check}
+        checkIconClass={s.checkIcon}
         onSelect={() => onChange('initials', null)}
       >
-        <span className="flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+        <span
+          className={cn(
+            'flex h-full w-full items-center justify-center rounded-full bg-primary text-primary-foreground font-bold',
+            s.initials,
+          )}
+        >
           {initials}
         </span>
       </AvatarTile>
@@ -35,13 +71,16 @@ export function AvatarPicker({ fullName, avatarKind, avatarPreset, onChange }: P
           key={preset.id}
           selected={avatarKind === 'preset' && avatarPreset === preset.id}
           label={preset.label}
+          tileClass={s.tile}
+          checkClass={s.check}
+          checkIconClass={s.checkIcon}
           onSelect={() => onChange('preset', preset.id)}
         >
           <Image
             src={preset.src}
             alt={preset.label}
-            width={64}
-            height={64}
+            width={s.img}
+            height={s.img}
             className="h-full w-full object-cover rounded-full"
           />
         </AvatarTile>
@@ -55,11 +94,17 @@ function AvatarTile({
   label,
   onSelect,
   children,
+  tileClass,
+  checkClass,
+  checkIconClass,
 }: {
   selected: boolean;
   label: string;
   onSelect: () => void;
   children: React.ReactNode;
+  tileClass: string;
+  checkClass: string;
+  checkIconClass: string;
 }) {
   return (
     <motion.button
@@ -71,14 +116,20 @@ function AvatarTile({
       aria-pressed={selected}
       aria-label={label}
       className={cn(
-        'relative h-[4.25rem] w-[4.25rem] rounded-full p-0.5 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'relative rounded-full p-0.5 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        tileClass,
         selected ? 'ring-[3px] ring-primary shadow-md' : 'ring-2 ring-transparent hover:ring-border',
       )}
     >
       <span className="block h-full w-full overflow-hidden rounded-full">{children}</span>
       {selected && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-          <Check className="h-3 w-3" aria-hidden />
+        <span
+          className={cn(
+            'absolute flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow',
+            checkClass,
+          )}
+        >
+          <Check className={checkIconClass} aria-hidden />
         </span>
       )}
     </motion.button>

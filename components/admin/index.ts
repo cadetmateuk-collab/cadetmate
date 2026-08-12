@@ -17,3 +17,16 @@ export {
   AdminSelect,
   AdminCard,
 } from '@/components/admin/ui';
+export {
+  AdminPermissionsProvider,
+  useAdminPermissions,
+  useCanDelete,
+} from '@/components/admin/permissions-context';
+export { AdminShell } from '@/components/admin/AdminShell';
+export {
+  AdminPageHeader,
+  AdminStatCard,
+  AdminPanel,
+  AdminEmptyState,
+  AdminLoadingState,
+} from '@/components/admin/AdminChrome';

@@ -10,6 +10,8 @@ import {
   AdminIconBtn as IconBtn,
   AdminTextarea as Textarea,
 } from '@/components/admin/ui'
+import { useCanDelete } from '@/components/admin/permissions-context'
+import { logClientActivity } from '@/lib/activity/log-event-client'
 
 const supabase = createClient()
 
@@ -96,6 +98,7 @@ function NoticeRow({ notice, onSave, onDelete, isNew = false, onCancelNew }: {
 }
 
 export default function AdminNoticeboardTab() {
+  const canDelete = useCanDelete()
   const [notices, setNotices]   = useState<Notice[]>([])
   const [nLoading, setNLoading] = useState(true)
   const [nError, setNError]     = useState<string | null>(null)
@@ -119,11 +122,18 @@ export default function AdminNoticeboardTab() {
       ? await supabase.from('notices').update({ text, active }).eq('id', id)
       : await supabase.from('notices').insert({ text, active })
     if (error) { alert(error.message); return }
+    void logClientActivity({
+      action: id ? 'notice.updated' : 'notice.created',
+      entityType: 'notice',
+      entityId: id ?? null,
+      entityTitle: text.slice(0, 80),
+    })
     if (!id) setAddingN(false)
     await loadNotices()
   }
 
   async function deleteNotice(id: string) {
+    if (!canDelete) { alert('You do not have permission to delete notices'); return }
     if (!confirm('Delete this notice?')) return
     await supabase.from('notices').delete().eq('id', id)
     await loadNotices()
@@ -158,7 +168,7 @@ export default function AdminNoticeboardTab() {
       {!nLoading && !nError && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {addingN && <NoticeRow notice={{ text: '', active: true }} onSave={saveNotice} isNew onCancelNew={() => setAddingN(false)} />}
-          {notices.map(n => <NoticeRow key={n.id} notice={n} onSave={saveNotice} onDelete={deleteNotice} />)}
+          {notices.map(n => <NoticeRow key={n.id} notice={n} onSave={saveNotice} onDelete={canDelete ? deleteNotice : undefined} />)}
           {notices.length === 0 && !addingN && (
             <div style={S.empty}>
               <Pin size={36} color={C.border} style={{ margin: '0 auto 12px' }} />

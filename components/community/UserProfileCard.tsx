@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Calendar, MessageSquare, FileText, Award } from 'lucide-react';
-import { displayName, getInitials, timeAgo } from '@/lib/community/utils';
+import { UserAvatar, RoleNameBadge } from '@/components/auth/onboarding/UserAvatar';
+import { displayName, timeAgo } from '@/lib/community/utils';
 import { PostCard } from './PostCard';
 import type { Post } from '@/lib/community/types';
 
@@ -11,6 +12,10 @@ interface UserProfileData {
   full_name: string | null;
   email: string | null;
   created_at: string;
+  role?: string | null;
+  avatar_kind?: string | null;
+  avatar_preset?: string | null;
+  avatar_color?: string | null;
   karma_score: number;
   post_count: number;
   comment_count: number;
@@ -30,17 +35,25 @@ interface UserProfileCardProps {
 
 export function UserProfileCard({ profile, recentPosts, recentComments }: UserProfileCardProps) {
   const name = displayName(profile);
-  const initials = getInitials(name);
+  const avatarKind = profile.avatar_kind === 'preset' ? 'preset' : 'initials';
 
   return (
     <div className="space-y-6">
       <div className="p-6 bg-card border border-border rounded-xl shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold">
-            {initials}
-          </div>
+        <div className="flex items-center gap-4 overflow-visible">
+          <UserAvatar
+            fullName={name}
+            avatarKind={avatarKind}
+            avatarPreset={profile.avatar_preset ?? null}
+            avatarColor={profile.avatar_color ?? null}
+            size={64}
+            showRoleBadge={false}
+          />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{name}</h1>
+            <h1 className="inline-flex items-center gap-2 text-2xl font-bold text-foreground">
+              <span>{name}</span>
+              <RoleNameBadge role={profile.role} />
+            </h1>
             <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
               <Calendar className="h-3.5 w-3.5" />
               Joined {timeAgo(profile.created_at)}

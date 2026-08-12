@@ -22,13 +22,14 @@ export async function syncOnboardingFromMetadata(userId: string, metadata: Onboa
   if (!metadata?.onboarding_completed && !metadata?.training_phase) return;
 
   const supabase = await createClient();
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('onboarding_completed')
     .eq('id', userId)
     .maybeSingle();
 
-  if (profile?.onboarding_completed) return;
+  // If the column/query fails or onboarding is already done, never write again.
+  if (error || profile?.onboarding_completed) return;
 
   const fullName = typeof metadata.full_name === 'string' ? metadata.full_name.trim() : '';
   if (!fullName) return;

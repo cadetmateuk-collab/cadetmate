@@ -4,11 +4,12 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { safeRedirectPath } from '@/lib/security/env';
 import { syncOnboardingFromMetadata } from '@/lib/onboarding/sync-from-metadata';
+import { hasPermission, isPremiumRole, type Permission } from '@/lib/auth/roles';
 
 const PROFILE_COLUMNS =
-  'full_name, email, role, training_phase, nautical_college, learning_interests, referral_source, avatar_kind, avatar_preset, onboarding_completed';
+  'full_name, email, role, training_phase, nautical_college, learning_interests, referral_source, avatar_kind, avatar_preset, avatar_color, onboarding_completed';
 
-const PROFILE_COLUMNS_FALLBACK = 'full_name, email, role';
+const PROFILE_COLUMNS_FALLBACK = 'full_name, email, role, avatar_kind, avatar_preset';
 
 async function authRedirectPath(): Promise<string> {
   const headerStore = await headers();
@@ -83,10 +84,22 @@ export async function requireAdmin() {
   return requireRole(['admin']);
 }
 
+export async function requireStaff() {
+  return requireRole(['admin', 'content']);
+}
+
+export async function requirePermission(permission: Permission) {
+  const user = await requireAuth();
+  if (!user.profile || !hasPermission(user.profile.role, permission)) {
+    redirect('/unauthorized');
+  }
+  return user;
+}
+
 export async function requirePremium() {
   const user = await requireAuth();
 
-  if (!user.profile || (user.profile.role !== 'premium' && user.profile.role !== 'admin')) {
+  if (!user.profile || !isPremiumRole(user.profile.role)) {
     redirect('/store');
   }
 

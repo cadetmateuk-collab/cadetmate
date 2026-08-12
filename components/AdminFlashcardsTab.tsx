@@ -6,6 +6,8 @@ import {
   Sparkles, Copy, Eye, EyeOff, Crown, Layers,
 } from 'lucide-react';
 import { C } from '@/components/admin/ui';
+import { useCanDelete } from '@/components/admin/permissions-context';
+import { logClientActivity } from '@/lib/activity/log-event-client';
 
 const supabase = createClient();
 
@@ -84,6 +86,7 @@ const difficultyColor: Record<Difficulty, string> = {
 };
 
 export default function AdminFlashcardsTab() {
+  const canDelete = useCanDelete();
   const [packs, setPacks] = useState<Pack[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Pack | null>(null);
@@ -130,6 +133,12 @@ export default function AdminFlashcardsTab() {
       difficulty: 'beginner', status: 'draft',
     }).select().single();
     if (error) return alert(error.message);
+    void logClientActivity({
+      action: 'flashcard_pack.created',
+      entityType: 'flashcard_pack',
+      entityId: data.id,
+      entityTitle: data.title,
+    });
     refresh(); openPack(data as Pack);
   }
 
@@ -143,11 +152,18 @@ export default function AdminFlashcardsTab() {
       card_count: cards.length,
     }).eq('id', editing.id);
     if (error) return alert(error.message);
+    void logClientActivity({
+      action: 'flashcard_pack.updated',
+      entityType: 'flashcard_pack',
+      entityId: editing.id,
+      entityTitle: editing.title,
+    });
     await refresh();
     alert('Saved');
   }
 
   async function deletePack(p: Pack) {
+    if (!canDelete) return alert('You do not have permission to delete packs');
     if (!confirm(`Delete "${p.title}"?`)) return;
     await supabase.from('flashcard_packs').delete().eq('id', p.id);
     if (editing?.id === p.id) setEditing(null);
@@ -185,6 +201,7 @@ export default function AdminFlashcardsTab() {
     }).eq('id', c.id);
   }
   async function deleteCard(id: string) {
+    if (!canDelete) return alert('You do not have permission to delete cards');
     await supabase.from('flashcards').delete().eq('id', id);
     setCards((cs) => cs.filter((x) => x.id !== id));
   }
@@ -374,7 +391,7 @@ export default function AdminFlashcardsTab() {
           {cards.map((c, i) => (
             <CardRow key={c.id} card={c} index={i}
               onChange={(next) => { setCards((cs) => cs.map((x) => x.id === c.id ? next : x)); saveCard(next); }}
-              onDelete={() => deleteCard(c.id)} />
+              onDelete={canDelete ? () => deleteCard(c.id) : undefined} />
           ))}
         </div>
       </div>
@@ -480,7 +497,9 @@ export default function AdminFlashcardsTab() {
                 </Btn>
                 <Btn variant="ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => clonePack(p)}><Copy size={10} /></Btn>
                 <Btn variant="ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => openPack(p)}><Pencil size={10} /> Edit</Btn>
-                <Btn variant="danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deletePack(p)}><Trash2 size={10} /></Btn>
+                {canDelete && (
+                  <Btn variant="danger" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => deletePack(p)}><Trash2 size={10} /></Btn>
+                )}
               </div>
             </div>
           ))}
@@ -497,7 +516,7 @@ const lbl: any = {
 };
 
 function CardRow({ card, index, onChange, onDelete }: {
-  card: Card; index: number; onChange: (c: Card) => void; onDelete: () => void;
+  card: Card; index: number; onChange: (c: Card) => void; onDelete?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -516,7 +535,9 @@ function CardRow({ card, index, onChange, onDelete }: {
         <Btn variant="ghost" style={{ fontSize: 11, padding: '4px 9px' }} onClick={() => setOpen((o) => !o)}>
           {open ? 'Collapse' : 'Expand'}
         </Btn>
-        <Btn variant="danger" style={{ marginLeft: 'auto', fontSize: 11, padding: '4px 8px' }} onClick={onDelete}><Trash2 size={11} /></Btn>
+        {onDelete && (
+          <Btn variant="danger" style={{ marginLeft: 'auto', fontSize: 11, padding: '4px 8px' }} onClick={onDelete}><Trash2 size={11} /></Btn>
+        )}
       </div>
       <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <div><div style={lbl}>Front</div><Textarea value={card.front} onChange={(v: string) => onChange({ ...card, front: v })} /></div>

@@ -23,6 +23,7 @@ type AppHeaderProps = {
 
 function rankLabel(role: NavUser['role']) {
   if (role === 'admin') return 'Admin';
+  if (role === 'content') return 'Content';
   if (role === 'premium') return 'Premium Cadet';
   return 'Deck Cadet';
 }
@@ -45,7 +46,7 @@ function PublicSearchBar({ className }: { className?: string }) {
       </label>
       <div className="relative flex items-center">
         <Search
-          className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
         <input
@@ -126,12 +127,15 @@ export function AppHeader({ variant, user, onOpenSidebar }: AppHeaderProps) {
                 aria-expanded={profileOpen}
                 aria-haspopup="menu"
               >
-                <span className="ring-2 ring-primary/15 rounded-full">
+                <span className="inline-flex overflow-visible rounded-full ring-2 ring-primary/15">
                   <UserAvatar
                     fullName={user.name}
                     avatarKind={user.avatarKind}
                     avatarPreset={user.avatarPreset}
+                    avatarColor={user.avatarColor}
                     size={36}
+                    role={user.role}
+                    badgeScale={0.25}
                   />
                 </span>
                 <span className="hidden sm:block text-left leading-tight min-w-0">
@@ -155,7 +159,10 @@ export function AppHeader({ variant, user, onOpenSidebar }: AppHeaderProps) {
                       fullName={user.name}
                       avatarKind={user.avatarKind}
                       avatarPreset={user.avatarPreset}
+                      avatarColor={user.avatarColor}
                       size={40}
+                      role={user.role}
+                      badgeScale={0.25}
                     />
 
                     <div className="min-w-0">

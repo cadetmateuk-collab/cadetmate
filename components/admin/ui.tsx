@@ -1,44 +1,54 @@
 /**
  * Shared admin UI primitives used across Admin*Tab screens.
- * Prefer these over copy-pasted local Btn/Input/Badge helpers.
+ * Token-aligned with the site design system (app/tokens.css).
  */
 
-import type { CSSProperties, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import type {
+  ChangeEvent,
+  CSSProperties,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
+import { ChevronDown } from 'lucide-react';
 
-/** Inline-style admin palette (legacy hex tabs). Prefer CSS tokens in new work. */
+/** Token-backed palette — black actions, yellow nav accent. */
 export const C = {
-  bg: '#ffffff',
-  fg: '#000000',
-  primary: '#2966f4',
-  primaryLight: '#eef2fe',
-  muted: '#f5f5f5',
-  mutedFg: '#737373',
-  border: '#ededed',
-  green: '#16a34a',
-  greenLight: '#f0fdf4',
-  greenBorder: '#bbf7d0',
-  red: '#dc2626',
-  redLight: '#fef2f2',
-  amber: '#d97706',
-  amberLight: '#fffbeb',
-  purple: '#7c3aed',
-  purpleLight: '#f5f3ff',
-  gold: '#f59e0b',
-  radius: '8px',
-  radiusSm: '6px',
+  bg: 'hsl(var(--card))',
+  fg: 'hsl(var(--foreground))',
+  primary: '#242423',
+  primaryLight: 'rgba(36, 36, 35, 0.08)',
+  muted: 'hsl(var(--muted))',
+  mutedFg: 'hsl(var(--muted-foreground))',
+  border: 'hsl(var(--border))',
+  green: 'hsl(var(--starboard))',
+  greenLight: 'hsl(var(--starboard-light))',
+  greenBorder: 'hsl(var(--starboard) / 0.25)',
+  red: 'hsl(var(--destructive))',
+  redLight: 'hsl(var(--destructive) / 0.08)',
+  amber: '#f5cb5c',
+  amberLight: 'rgba(245, 203, 92, 0.18)',
+  /** Yellow accent for active tabs / nav (not buttons) */
+  accent: '#f5cb5c',
+  accentFg: '#242423',
+  purple: '#242423',
+  purpleLight: 'rgba(36, 36, 35, 0.08)',
+  gold: '#f5cb5c',
+  radius: 'var(--radius-md, 8px)',
+  radiusSm: 'var(--radius-sm, 6px)',
 } as const;
 
-/** Token-aligned colors for newer admin surfaces */
 export const adminColors = {
-  bg: 'hsl(var(--background))',
-  fg: 'hsl(var(--foreground))',
-  muted: 'hsl(var(--muted-foreground))',
-  border: 'hsl(var(--border))',
-  card: 'hsl(var(--card))',
-  primary: 'hsl(var(--primary))',
-  primarySolid: '#2A61FA',
+  bg: '#e8eddf',
+  fg: '#242423',
+  muted: '#333533',
+  border: '#cfdbd5',
+  card: '#ffffff',
+  primary: '#242423',
+  primarySolid: '#242423',
   danger: 'hsl(var(--destructive))',
-  success: '#16a34a',
+  success: 'hsl(var(--starboard))',
 } as const;
 
 export function AdminBtn({
@@ -69,15 +79,15 @@ export function AdminBtn({
     border: 'none',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
-    transition: 'opacity 0.15s',
+    transition: 'opacity 0.15s, background 0.15s',
     fontFamily: 'inherit',
     ...style,
   };
   const variants: Record<string, CSSProperties> = {
-    primary: { background: C.primary, color: '#fff' },
+    primary: { background: '#242423', color: '#ffffff', border: `1px solid #242423` },
     default: { background: C.bg, color: C.fg, border: `1px solid ${C.border}` },
     ghost: { background: 'transparent', color: C.mutedFg, border: `1px solid ${C.border}` },
-    danger: { background: C.redLight, color: C.red, border: `1px solid ${C.red}33` },
+    danger: { background: C.redLight, color: C.red, border: `1px solid hsl(var(--destructive) / 0.2)` },
   };
   return (
     <button type={type} onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant] }}>
@@ -92,17 +102,22 @@ export function AdminBadge({
   tone,
 }: {
   children: ReactNode;
-  variant?: 'primary' | 'success' | 'muted' | 'danger' | 'neutral';
+  variant?: 'primary' | 'success' | 'muted' | 'danger' | 'neutral' | 'warning';
   /** @deprecated use variant */
   tone?: 'neutral' | 'primary' | 'success' | 'danger';
 }) {
   const v = tone === 'neutral' ? 'muted' : tone ?? variant;
   const styles: Record<string, CSSProperties> = {
-    primary: { background: C.primaryLight, color: C.primary, border: `1px solid ${C.primary}33` },
+    primary: { background: '#242423', color: '#ffffff', border: `1px solid #242423` },
     success: { background: C.greenLight, color: C.green, border: `1px solid ${C.greenBorder}` },
     muted: { background: C.muted, color: C.mutedFg, border: `1px solid ${C.border}` },
     neutral: { background: C.muted, color: C.mutedFg, border: `1px solid ${C.border}` },
-    danger: { background: C.redLight, color: C.red, border: `1px solid ${C.red}33` },
+    danger: { background: C.redLight, color: C.red, border: `1px solid hsl(var(--destructive) / 0.2)` },
+    warning: {
+      background: C.amberLight,
+      color: '#242423',
+      border: `1px solid hsl(var(--signal-amber) / 0.35)`,
+    },
   };
   return (
     <span
@@ -151,7 +166,7 @@ export function AdminInfoBanner({ children }: { children: ReactNode }) {
         padding: '12px 16px',
         borderRadius: C.radius,
         background: C.primaryLight,
-        border: `1px solid ${C.primary}22`,
+        border: `1px solid hsl(var(--primary) / 0.15)`,
         marginBottom: 16,
       }}
     >
@@ -199,6 +214,8 @@ export function AdminIconBtn({
   );
 }
 
+type InputChange = ((v: string) => void) | ((e: ChangeEvent<HTMLInputElement>) => void);
+
 export function AdminInput({
   value,
   onChange,
@@ -209,7 +226,7 @@ export function AdminInput({
   ...rest
 }: {
   value: string;
-  onChange?: (v: string) => void;
+  onChange?: InputChange;
   disabled?: boolean;
   type?: string;
   placeholder?: string;
@@ -221,7 +238,17 @@ export function AdminInput({
       value={value}
       placeholder={placeholder}
       disabled={disabled}
-      onChange={(e) => onChange?.(e.target.value)}
+      onChange={(e) => {
+        if (!onChange) return;
+        if (onChange.length >= 1) {
+          // Support both (value: string) and event handlers
+          try {
+            (onChange as (v: string) => void)(e.target.value);
+          } catch {
+            (onChange as (ev: ChangeEvent<HTMLInputElement>) => void)(e);
+          }
+        }
+      }}
       style={{
         width: '100%',
         padding: '8px 12px',
@@ -256,7 +283,7 @@ export function AdminTextarea({
   ...rest
 }: {
   value: string;
-  onChange?: (v: string) => void;
+  onChange?: ((v: string) => void) | ((e: ChangeEvent<HTMLTextAreaElement>) => void);
   disabled?: boolean;
   rows?: number;
   placeholder?: string;
@@ -268,7 +295,14 @@ export function AdminTextarea({
       rows={rows}
       placeholder={placeholder}
       disabled={disabled}
-      onChange={(e) => onChange?.(e.target.value)}
+      onChange={(e) => {
+        if (!onChange) return;
+        try {
+          (onChange as (v: string) => void)(e.target.value);
+        } catch {
+          (onChange as (ev: ChangeEvent<HTMLTextAreaElement>) => void)(e);
+        }
+      }}
       style={{
         width: '100%',
         padding: '8px 12px',
@@ -299,45 +333,78 @@ export function AdminSelect({
   onChange,
   disabled,
   options,
+  children,
+  style,
+  ...rest
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: ((v: string) => void) | ((e: ChangeEvent<HTMLSelectElement>) => void);
   disabled?: boolean;
-  options: { label: string; value: string }[];
-}) {
+  options?: { label: string; value: string }[];
+  children?: ReactNode;
+  style?: CSSProperties;
+} & Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange' | 'value'>) {
   return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      style={{
-        width: '100%',
-        padding: '8px 12px',
-        borderRadius: C.radius,
-        fontSize: 12,
-        border: `1px solid ${C.border}`,
-        background: disabled ? C.muted : C.bg,
-        color: C.fg,
-        fontFamily: 'inherit',
-        outline: 'none',
-        boxSizing: 'border-box',
-      }}
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <div style={{ position: 'relative', width: '100%' }}>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => {
+          try {
+            (onChange as (v: string) => void)(e.target.value);
+          } catch {
+            (onChange as (ev: ChangeEvent<HTMLSelectElement>) => void)(e);
+          }
+        }}
+        style={{
+          width: '100%',
+          padding: '8px 36px 8px 12px',
+          borderRadius: C.radius,
+          fontSize: 12,
+          border: `1px solid ${C.border}`,
+          background: disabled ? C.muted : C.bg,
+          color: C.fg,
+          fontFamily: 'inherit',
+          outline: 'none',
+          boxSizing: 'border-box',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+          ...style,
+        }}
+        {...rest}
+      >
+        {children ??
+          options?.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+      </select>
+      <ChevronDown
+        size={14}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          right: 12,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: C.mutedFg,
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   );
 }
 
 export function AdminCard({
   children,
   highlighted = false,
+  style,
 }: {
   children: ReactNode;
   highlighted?: boolean;
+  style?: CSSProperties;
 }) {
   return (
     <div
@@ -346,7 +413,10 @@ export function AdminCard({
         border: `1px solid ${highlighted ? C.primary : C.border}`,
         borderRadius: C.radius,
         padding: 16,
-        boxShadow: highlighted ? `0 0 0 1px ${C.primary}22` : undefined,
+        boxShadow: highlighted
+          ? `0 0 0 1px hsl(var(--primary) / 0.15)`
+          : 'var(--shadow-card, 0 1px 2px hsl(var(--primary) / 0.06))',
+        ...style,
       }}
     >
       {children}

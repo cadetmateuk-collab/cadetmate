@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
+import { isPremiumRole } from '@/lib/auth/roles';
 import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
 import { Button } from '@/components/ui/button';
 
@@ -29,7 +30,7 @@ const LEARN_SECTIONS = [
 
 export default async function LearnPage() {
   const user = await getCurrentUser();
-  const isPremium = user?.profile?.role === 'premium' || user?.profile?.role === 'admin';
+  const isPremium = isPremiumRole(user?.profile?.role);
   const supabase = await createClient();
 
   const { data: recentModules } = user

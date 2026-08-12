@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminApi } from '@/lib/auth/require-admin-api';
+import { requirePermissionApi } from '@/lib/auth/require-permission-api';
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('categories.update');
+  if ('error' in auth) return auth.error;
 
   try {
     const body = await request.json();

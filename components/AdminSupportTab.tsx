@@ -218,7 +218,7 @@ export default function AdminSupportTab() {
           { key: 'resolved',    label: `Resolved (${counts.resolved})` },
         ] as const).map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
-            style={{ padding: '5px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.03em', border: `1px solid ${filter === f.key ? C.primary : C.border}`, background: filter === f.key ? C.primary : 'transparent', color: filter === f.key ? 'white' : C.mutedFg, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
+            style={{ padding: '5px 12px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.03em', border: `1px solid ${filter === f.key ? C.accent : C.border}`, background: filter === f.key ? C.accent : 'transparent', color: filter === f.key ? C.accentFg : C.mutedFg, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}
           >{f.label}</button>
         ))}
       </div>

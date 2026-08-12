@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateComment } from '@/lib/community/validation';
+import { moderateContent } from '@/lib/community/moderation';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -25,15 +26,64 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const moderation = await moderateContent(body);
+  if (moderation.action === 'blocked') {
+    await supabase.from('moderation_logs').insert({
+      content_type: 'comment',
+      content_id: id,
+      user_id: user.id,
+      provider: moderation.provider,
+      action: 'blocked',
+      categories: moderation.categories,
+      toxicity_score: moderation.toxicityScore,
+      explanation: moderation.explanation,
+      raw_response: moderation.raw ?? null,
+    });
+    return NextResponse.json({ error: moderation.explanation }, { status: 422 });
+  }
+
+  const status = moderation.action === 'flagged' ? 'flagged' : 'published';
+
   const { data, error } = await supabase
     .from('comments')
-    .update({ body: body.trim(), updated_at: new Date().toISOString() })
+    .update({
+      body: body.trim(),
+      status,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
-    .select('id, body, updated_at')
+    .select('id, body, status, updated_at')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ comment: data });
+
+  if (moderation.action === 'flagged') {
+    await supabase.from('moderation_logs').insert({
+      content_type: 'comment',
+      content_id: id,
+      user_id: user.id,
+      provider: moderation.provider,
+      action: 'flagged',
+      categories: moderation.categories,
+      toxicity_score: moderation.toxicityScore,
+      explanation: moderation.explanation,
+      raw_response: moderation.raw ?? null,
+    });
+
+    const { notifyAdminsOfFlaggedContent } = await import('@/lib/community/notify-admins');
+    void notifyAdminsOfFlaggedContent({
+      contentType: 'comment',
+      contentId: id,
+      authorId: user.id,
+      excerpt: String(body).trim(),
+      categories: moderation.categories,
+    });
+  }
+
+  return NextResponse.json({
+    comment: data,
+    warning: moderation.action === 'flagged' ? moderation.explanation : undefined,
+  });
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {

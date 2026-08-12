@@ -22,9 +22,10 @@ interface UserProfile {
   name: string;
   email: string;
   initials: string;
-  role?: "free" | "premium" | "admin";
+  role?: "free" | "premium" | "admin" | "content";
   avatarKind: "initials" | "preset";
   avatarPreset: string | null;
+  avatarColor: string | null;
 }
 
 interface CadetMateSidebarProps {
@@ -356,13 +357,15 @@ function SidebarContent({
               <button
                 onClick={() => router.push("/settings")}
                 title={userProfile.name}
-                className="h-8 w-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 overflow-hidden"
+                className="flex h-9 w-9 items-center justify-center overflow-visible rounded-full transition-opacity hover:opacity-80"
               >
                 <UserAvatar
                   fullName={userProfile.name}
                   avatarKind={userProfile.avatarKind}
                   avatarPreset={userProfile.avatarPreset}
+                  avatarColor={userProfile.avatarColor}
                   size={32}
+                  role={userProfile.role}
                 />
               </button>
             ) : (
@@ -371,12 +374,14 @@ function SidebarContent({
                   onClick={() => router.push("/settings")}
                   className="flex items-center gap-2.5 flex-1 min-w-0 px-2 py-2 rounded-lg transition-colors hover:bg-white/8"
                 >
-                  <div className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-visible">
                     <UserAvatar
                       fullName={userProfile.name}
                       avatarKind={userProfile.avatarKind}
                       avatarPreset={userProfile.avatarPreset}
+                      avatarColor={userProfile.avatarColor}
                       size={28}
+                      role={userProfile.role}
                     />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
@@ -487,8 +492,17 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
   const router              = useRouter();
   const { theme, setTheme } = useTheme();
 
-  const isPremium = useMemo(() => userProfile?.role === "admin" || userProfile?.role === "premium", [userProfile]);
-  const isAdmin   = useMemo(() => userProfile?.role === "admin", [userProfile]);
+  const isPremium = useMemo(
+    () =>
+      userProfile?.role === 'admin' ||
+      userProfile?.role === 'premium' ||
+      userProfile?.role === 'content',
+    [userProfile],
+  );
+  const isAdmin = useMemo(
+    () => userProfile?.role === 'admin' || userProfile?.role === 'content',
+    [userProfile],
+  );
 
   // Auto-collapse when entering a module route, restore when leaving
   const preModuleCollapsed = useRef<boolean | null>(null);
@@ -553,18 +567,19 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           role?: string | null;
           avatar_kind?: string | null;
           avatar_preset?: string | null;
+          avatar_color?: string | null;
         } | null = null;
 
         const withAvatar = await supabase
           .from("profiles")
-          .select("full_name, email, role, avatar_kind, avatar_preset")
+          .select("full_name, email, role, avatar_kind, avatar_preset, avatar_color")
           .eq("id", user.id)
           .single();
 
         if (withAvatar.error) {
           const fallback = await supabase
             .from("profiles")
-            .select("full_name, email, role")
+            .select("full_name, email, role, avatar_kind, avatar_preset")
             .eq("id", user.id)
             .single();
           profile = fallback.data;
@@ -585,6 +600,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           avatarPreset: avatarKind === "preset"
             ? (profile?.avatar_preset ?? user.user_metadata?.avatar_preset ?? null)
             : null,
+          avatarColor: profile?.avatar_color ?? user.user_metadata?.avatar_color ?? null,
         });
       } catch (e) {
         console.error("Sidebar user fetch error:", e);
@@ -752,12 +768,14 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
                 className="flex items-center gap-3 flex-1 min-w-0 px-2 py-2.5 rounded-xl transition-colors"
                 style={{ background: "rgba(255,255,255,0.08)" }}
               >
-                <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-visible">
                   <UserAvatar
                     fullName={userProfile.name}
                     avatarKind={userProfile.avatarKind}
                     avatarPreset={userProfile.avatarPreset}
+                    avatarColor={userProfile.avatarColor}
                     size={36}
+                    role={userProfile.role}
                   />
                 </div>
                 <div className="flex-1 min-w-0 text-left">

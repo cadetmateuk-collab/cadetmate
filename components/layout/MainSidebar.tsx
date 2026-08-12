@@ -285,6 +285,7 @@ function SidebarBrand({ href }: { href: string }) {
 
 function roleLabel(role?: UserRole) {
   if (role === 'admin') return 'Admin';
+  if (role === 'content') return 'Content';
   if (role === 'premium') return 'Premium Cadet';
   return 'Deck Cadet';
 }
@@ -526,7 +527,10 @@ export function MainSidebar({
   const setOpen = onMobileOpenChange ?? setInternalMobileOpen;
 
   const resolvedRole = user?.role ?? role ?? 'free';
-  const isPremium = resolvedRole === 'admin' || resolvedRole === 'premium';
+  const isPremium =
+    resolvedRole === 'admin' ||
+    resolvedRole === 'premium' ||
+    resolvedRole === 'content';
   const homeHref = variant === 'app' ? '/dashboard' : '/home';
 
   const appGroups = useMemo(

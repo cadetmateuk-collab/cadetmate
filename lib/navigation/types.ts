@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type UserRole = 'free' | 'premium' | 'admin';
+export type UserRole = 'free' | 'basic' | 'premium' | 'content' | 'admin';
 
 export type NavItemConfig = {
   id: string;
@@ -11,6 +11,8 @@ export type NavItemConfig = {
   premiumOnly?: boolean;
   /** Only visible to admins */
   adminOnly?: boolean;
+  /** Visible to admin and content staff */
+  staffOnly?: boolean;
   /** Exact match instead of startsWith */
   exact?: boolean;
   badge?: string;
@@ -24,6 +26,7 @@ export type NavGroupConfig = {
   /** Collapsed by default unless a child is active */
   defaultOpen?: boolean;
   adminOnly?: boolean;
+  staffOnly?: boolean;
 };
 
 export type MobileNavItem = {

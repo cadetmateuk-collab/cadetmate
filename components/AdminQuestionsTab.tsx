@@ -13,6 +13,8 @@ import {
   AdminSelect as Select,
   AdminLabel as Label,
 } from '@/components/admin/ui'
+import { useCanDelete } from '@/components/admin/permissions-context'
+import { logClientActivity } from '@/lib/activity/log-event-client'
 
 const supabase = createClient()
 
@@ -151,6 +153,7 @@ function QuestionRow({ q, onSave, onDelete, isNew = false, onCancelNew }: {
 
 // ─── Main Tab ──────────────────────────────────────────────────────────────────
 export default function AdminQuestionsTab() {
+  const canDelete = useCanDelete()
   const [questions, setQuestions] = useState<Question[]>([])
   const [qLoading, setQLoading]   = useState(true)
   const [qError, setQError]       = useState<string | null>(null)
@@ -186,11 +189,18 @@ export default function AdminQuestionsTab() {
       ? await supabase.from('daily_questions').update(payload).eq('id', id)
       : await supabase.from('daily_questions').insert(payload)
     if (error) { alert(error.message); return }
+    void logClientActivity({
+      action: id ? 'question.updated' : 'question.created',
+      entityType: 'daily_question',
+      entityId: id ?? null,
+      entityTitle: data.question.slice(0, 80),
+    })
     if (!id) setAddingQ(false)
     await loadQuestions()
   }
 
   async function deleteQuestion(id: string) {
+    if (!canDelete) { alert('You do not have permission to delete questions'); return }
     if (!confirm('Delete this question?')) return
     await supabase.from('daily_questions').delete().eq('id', id)
     await loadQuestions()
@@ -234,17 +244,17 @@ export default function AdminQuestionsTab() {
 
           {upcoming.length > 0 && <>
             <span style={S.subLabel}>Upcoming / Today</span>
-            {upcoming.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={deleteQuestion} />)}
+            {upcoming.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={canDelete ? deleteQuestion : undefined} />)}
           </>}
 
           {undated.length > 0 && <>
             <span style={{ ...S.subLabel, paddingTop: upcoming.length > 0 ? '20px' : '0' }}>Random Pool</span>
-            {undated.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={deleteQuestion} />)}
+            {undated.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={canDelete ? deleteQuestion : undefined} />)}
           </>}
 
           {past.length > 0 && <>
             <span style={{ ...S.subLabel, paddingTop: '20px' }}>Past</span>
-            {past.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={deleteQuestion} />)}
+            {past.map(q => <QuestionRow key={q.id} q={q} onSave={saveQuestion} onDelete={canDelete ? deleteQuestion : undefined} />)}
           </>}
 
           {questions.length === 0 && !addingQ && (

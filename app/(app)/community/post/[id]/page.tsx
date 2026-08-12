@@ -7,12 +7,13 @@ import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { VoteControls } from '@/components/community/VoteControls';
 import { CommentThread } from '@/components/community/CommentThread';
+import { CommunityAuthor } from '@/components/community/CommunityAuthor';
 import { PostSkeleton } from '@/components/community/PostSkeleton';
 import { ToastContainer } from '@/components/community/ToastContainer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/lib/hooks/useToast';
-import { timeAgo, displayName } from '@/lib/community/utils';
+import { timeAgo } from '@/lib/community/utils';
 import type { Post } from '@/lib/community/types';
 import { Badge } from '@/components/ui/badge';
 
@@ -136,15 +137,13 @@ export default function PostPage({ params }: { params: Promise<{ id: string }> }
         />
 
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2 overflow-visible text-xs text-muted-foreground">
+            <CommunityAuthor userId={post.user_id} author={post.author} size={36} />
             {post.category && (
               <Badge variant="outline" style={{ borderColor: post.category.color ?? undefined, color: post.category.color ?? undefined }}>
                 {post.category.name}
               </Badge>
             )}
-            <Link href={`/community/user/${post.user_id}`} className="font-medium hover:text-primary">
-              {displayName(post.author)}
-            </Link>
             <span>·</span>
             <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
           </div>

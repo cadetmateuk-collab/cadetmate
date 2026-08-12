@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { requireAdminApi } from '@/lib/auth/require-admin-api';
+import { requirePermissionApi } from '@/lib/auth/require-permission-api';
+import { logActivityEvent, requestContext } from '@/lib/activity/log-event';
 
 export async function POST(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('modules.update');
+  if ('error' in auth) return auth.error;
 
   try {
     const { moduleId, hidden } = await request.json();
@@ -23,6 +24,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Module not found or not updated' }, { status: 404 });
     }
 
+    const ctx = requestContext(request);
+    void logActivityEvent({
+      actorId: auth.user.id,
+      actorRole: auth.role,
+      action: 'module.visibility_updated',
+      entityType: 'module',
+      entityId: moduleId,
+      entityTitle: data[0]?.title ?? null,
+      metadata: { hidden },
+      ...ctx,
+    });
+
     return NextResponse.json({ success: true, data: data[0] });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -31,8 +44,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireAdminApi();
-  if (auth.error) return auth.error;
+  const auth = await requirePermissionApi('modules.delete');
+  if ('error' in auth) return auth.error;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -42,14 +55,28 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Module ID required' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from('modules')
-      .delete()
-      .eq('id', moduleId);
+      .select('id, title')
+      .eq('id', moduleId)
+      .maybeSingle();
+
+    const { error } = await supabaseAdmin.from('modules').delete().eq('id', moduleId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+
+    const ctx = requestContext(request);
+    void logActivityEvent({
+      actorId: auth.user.id,
+      actorRole: auth.role,
+      action: 'module.deleted',
+      entityType: 'module',
+      entityId: moduleId,
+      entityTitle: existing?.title ?? null,
+      ...ctx,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

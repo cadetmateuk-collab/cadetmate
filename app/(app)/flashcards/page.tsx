@@ -80,12 +80,13 @@ export default function FlashcardLibraryPage() {
           position: relative; max-width: 480px; margin: 0 auto 1.25rem;
         }
         .fl-search-icon {
-          position: absolute; left: 13px; top: 50%;
+          position: absolute; left: 12px; top: 50%;
           transform: translateY(-50%);
+          width: 16px; height: 16px;
           color: hsl(var(--muted-foreground)); pointer-events: none;
         }
         .fl-search {
-          width: 100%; padding: 10px 14px 10px 38px;
+          width: 100%; padding: 10px 14px 10px 40px;
           border-radius: 10px; font-size: 13px;
           border: 1px solid hsl(var(--border));
           background: hsl(var(--background));

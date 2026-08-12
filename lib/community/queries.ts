@@ -1,10 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Post, AuthorProfile } from '@/lib/community/types';
 
+export const AUTHOR_SELECT =
+  'id, full_name, email, created_at, role, avatar_kind, avatar_preset, avatar_color';
+
 export const POST_SELECT = `
   id, user_id, category_id, title, body, vote_score, comment_count,
   hot_score, status, is_deleted, created_at, updated_at,
-  author:profiles!posts_user_id_fkey(id, full_name, email, created_at),
+  author:profiles!posts_user_id_fkey(${AUTHOR_SELECT}),
   category:post_categories(id, name, slug, description, color)
 `;
 

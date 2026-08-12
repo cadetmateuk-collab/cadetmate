@@ -30,6 +30,10 @@ export interface AuthorProfile {
   full_name: string | null;
   email: string | null;
   created_at: string;
+  role?: string | null;
+  avatar_kind?: string | null;
+  avatar_preset?: string | null;
+  avatar_color?: string | null;
   community_user_profiles?: CommunityProfile | null;
 }
 
@@ -75,6 +79,28 @@ export interface Vote {
   target_type: VoteTarget;
   target_id: string;
   value: -1 | 1;
+}
+
+export interface ModerationQueueItem {
+  id: string;
+  contentType: 'post' | 'comment';
+  contentId: string;
+  title: string | null;
+  body: string;
+  postId: string | null;
+  createdAt: string;
+  author: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  } | null;
+  log: {
+    provider: string;
+    categories: unknown;
+    toxicity_score: number | null;
+    explanation: string | null;
+    created_at: string;
+  } | null;
 }
 
 export interface ModerationResult {

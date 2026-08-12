@@ -242,6 +242,24 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       }, { onConflict: "user_id,module_id" });
 
       setCompleted(newCompleted);
+
+      const { logClientActivity } = await import('@/lib/activity/log-event-client');
+      void logClientActivity({
+        action: 'lesson.completed',
+        entityType: 'module',
+        entityId: moduleData.id,
+        entityTitle: moduleData.title ?? null,
+        metadata: { pageIndex, progressPct },
+      });
+      if (isComplete) {
+        void logClientActivity({
+          action: 'module.completed',
+          entityType: 'module',
+          entityId: moduleData.id,
+          entityTitle: moduleData.title ?? null,
+          metadata: { progressPct },
+        });
+      }
     } catch (e) { console.error("Failed to save progress:", e); }
     finally { setSaving(false); }
   }, [resolvedUserId, moduleData, completed, totalPages]);

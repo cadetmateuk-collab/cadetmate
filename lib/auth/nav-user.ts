@@ -1,5 +1,6 @@
 import type { UserRole } from '@/lib/navigation/types';
 import type { AvatarKind } from '@/lib/onboarding/constants';
+import { normalizeAvatarColor } from '@/lib/onboarding/constants';
 
 export type NavUser = {
   name: string;
@@ -8,6 +9,7 @@ export type NavUser = {
   role: UserRole;
   avatarKind: AvatarKind;
   avatarPreset: string | null;
+  avatarColor: string | null;
 };
 
 type AuthUserLike = {
@@ -16,6 +18,7 @@ type AuthUserLike = {
     full_name?: string;
     avatar_kind?: string;
     avatar_preset?: string | null;
+    avatar_color?: string | null;
   };
   profile?: {
     full_name?: string | null;
@@ -23,6 +26,7 @@ type AuthUserLike = {
     role?: string | null;
     avatar_kind?: string | null;
     avatar_preset?: string | null;
+    avatar_color?: string | null;
   } | null;
 };
 
@@ -39,6 +43,7 @@ export function toNavUser(user: AuthUserLike): NavUser {
     avatarKind === 'preset'
       ? (user.profile?.avatar_preset ?? user.user_metadata?.avatar_preset ?? null)
       : null;
+  const rawColor = user.profile?.avatar_color ?? user.user_metadata?.avatar_color ?? null;
 
   return {
     name,
@@ -52,5 +57,6 @@ export function toNavUser(user: AuthUserLike): NavUser {
     role: (user.profile?.role as UserRole) || 'free',
     avatarKind,
     avatarPreset,
+    avatarColor: rawColor ? normalizeAvatarColor(rawColor) : null,
   };
 }

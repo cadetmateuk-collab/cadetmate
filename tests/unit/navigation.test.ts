@@ -57,6 +57,30 @@ describe('filterNavForUser', () => {
     expect(filtered.map((g) => g.id)).toContain('admin');
   });
 
+  it('keeps staff groups for content role', () => {
+    const staffGroups: NavGroupConfig[] = [
+      {
+        id: 'main',
+        label: 'Main',
+        items: [{ id: 'dash', label: 'Home', href: '/dashboard' }],
+      },
+      {
+        id: 'admin',
+        label: 'Admin',
+        staffOnly: true,
+        items: [
+          { id: 'admin-home', label: 'Admin', href: '/admin', staffOnly: true },
+          { id: 'activity', label: 'Activity', href: '/admin?tab=activity', adminOnly: true },
+        ],
+      },
+    ];
+    const filtered = filterNavForUser(staffGroups, 'content');
+    expect(filtered.map((g) => g.id)).toContain('admin');
+    expect(filtered.find((g) => g.id === 'admin')?.items.map((i) => i.id)).toEqual([
+      'admin-home',
+    ]);
+  });
+
   it('APP_NAV_GROUPS always has a main dashboard entry', () => {
     const main = APP_NAV_GROUPS.find((g) => g.id === 'main');
     expect(main?.items.some((i) => i.href === '/dashboard')).toBe(true);

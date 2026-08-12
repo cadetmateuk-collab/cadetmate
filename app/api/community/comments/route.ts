@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { moderateContent } from '@/lib/community/moderation';
 import { validateComment } from '@/lib/community/validation';
+import { AUTHOR_SELECT } from '@/lib/community/queries';
 import type { Comment } from '@/lib/community/types';
 
 const COMMENT_SELECT = `
   id, post_id, parent_id, user_id, body, vote_score, depth,
   status, is_deleted, created_at, updated_at,
-  author:profiles!comments_user_id_fkey(id, full_name, email, created_at)
+  author:profiles!comments_user_id_fkey(${AUTHOR_SELECT})
 `;
 
 export async function GET(request: NextRequest) {
@@ -156,6 +157,17 @@ export async function POST(request: NextRequest) {
     explanation: moderation.explanation,
     raw_response: moderation.raw ?? null,
   });
+
+  if (moderation.action === 'flagged') {
+    const { notifyAdminsOfFlaggedContent } = await import('@/lib/community/notify-admins');
+    void notifyAdminsOfFlaggedContent({
+      contentType: 'comment',
+      contentId: comment.id,
+      authorId: user.id,
+      excerpt: body.trim(),
+      categories: moderation.categories,
+    });
+  }
 
   const raw = comment.author as unknown;
   const author = Array.isArray(raw) ? raw[0] : raw;

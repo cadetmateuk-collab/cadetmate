@@ -9,6 +9,7 @@
     "./algorithms": "./src/algorithms.ts",
     "./types": "./src/types.ts",
     "./roles": "./src/roles.ts",
+    "./permissions": "./src/permissions.ts",
     "./supabase": "./src/supabase.ts",
     "./config": "./src/config.ts"
   },

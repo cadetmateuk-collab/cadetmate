@@ -1,8 +1,14 @@
 'use client';
 
-/** Activity tracking for authenticated app/protected routes only. */
+/** Client chrome for authenticated routes. */
 import { ActivityTrackerProvider } from '@/components/ActivityTrackerProvider';
+import { SiteAnalyticsBeacon } from '@/components/analytics/SiteAnalyticsBeacon';
 
 export function AuthenticatedClientChrome() {
-  return <ActivityTrackerProvider />;
+  return (
+    <>
+      <ActivityTrackerProvider />
+      <SiteAnalyticsBeacon />
+    </>
+  );
 }

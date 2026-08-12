@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, Users, RefreshCw, ChevronDown } from 'lucide-react';
 import { adminColors } from '@/components/admin/ui';
 
-type UserRole = 'free' | 'basic' | 'premium';
+type UserRole = 'free' | 'basic' | 'premium' | 'content';
 
 interface Profile {
   id: string;
@@ -16,13 +16,14 @@ interface Profile {
   last_seen_at: string | null;
 }
 
-const ROLE_OPTIONS: UserRole[] = ['free', 'basic', 'premium'];
+const ROLE_OPTIONS: UserRole[] = ['free', 'basic', 'premium', 'content'];
 
 const ROLE_STYLES: Record<string, { bg: string; color: string }> = {
   free:    { bg: 'hsl(var(--muted))',          color: 'hsl(var(--muted-foreground))' },
   basic:   { bg: 'hsl(38 90% 52% / 0.12)',     color: 'hsl(38 90% 42%)' },
   premium: { bg: 'hsl(var(--primary) / 0.1)',  color: 'hsl(var(--primary))' },
-  admin:   { bg: 'hsl(280 55% 55% / 0.12)',    color: 'hsl(280 55% 45%)' },
+  content: { bg: 'hsl(152 55% 38% / 0.12)',    color: 'hsl(152 55% 32%)' },
+  admin:   { bg: 'hsl(var(--primary) / 0.14)', color: 'hsl(var(--primary))' },
 };
 
 function getRoleStyle(role: string | null) {
@@ -72,7 +73,18 @@ function RoleSelector({
       .update({ role })
       .eq('id', userId);
     setSaving(false);
-    if (!error) onUpdate(userId, role);
+    if (!error) {
+      onUpdate(userId, role);
+      void import('@/lib/activity/log-event-client').then(({ logClientActivity }) =>
+        logClientActivity({
+          action: 'ADMIN_ROLE_CHANGED',
+          entityType: 'user',
+          entityId: userId,
+          entityTitle: role,
+          metadata: { previousRole: currentRole, nextRole: role },
+        }),
+      );
+    }
   };
 
   const r = currentRole ?? 'free';
@@ -200,6 +212,7 @@ export default function AdminUsersTab() {
     free:    users.filter(u => (u.role ?? 'free') === 'free').length,
     basic:   users.filter(u => u.role === 'basic').length,
     premium: users.filter(u => u.role === 'premium').length,
+    content: users.filter(u => u.role === 'content').length,
   };
 
   const C = {
@@ -256,12 +269,13 @@ export default function AdminUsersTab() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px' }}>
         {([
           { label: 'Total',   value: counts.all,     color: C.fg },
           { label: 'Free',    value: counts.free,    color: C.mutedFg },
           { label: 'Basic',   value: counts.basic,   color: 'hsl(38 90% 42%)' },
           { label: 'Premium', value: counts.premium, color: C.primary },
+          { label: 'Content', value: counts.content, color: 'hsl(152 55% 32%)' },
         ] as const).map(s => (
           <div key={s.label} style={{
             padding: '14px 16px', borderRadius: '12px',
@@ -276,14 +290,14 @@ export default function AdminUsersTab() {
       {/* Search + role filter */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
-          <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: C.mutedFg }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.mutedFg, pointerEvents: 'none' }} />
           <input
             type="text"
             placeholder="Search by name or email…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
-              width: '100%', padding: '8px 10px 8px 30px',
+              width: '100%', padding: '8px 12px 8px 40px',
               borderRadius: '8px', fontSize: '12px',
               border: `1px solid ${C.border}`, background: C.bg,
               color: C.fg, fontFamily: 'inherit', outline: 'none',
@@ -303,9 +317,9 @@ export default function AdminUsersTab() {
               style={{
                 padding: '6px 12px', borderRadius: '999px',
                 fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
-                border: `1px solid ${filterRole === r ? C.primary : C.border}`,
-                background: filterRole === r ? C.primary : 'transparent',
-                color: filterRole === r ? 'white' : C.mutedFg,
+                border: `1px solid ${filterRole === r ? C.accent : C.border}`,
+                background: filterRole === r ? C.accent : 'transparent',
+                color: filterRole === r ? C.accentFg : C.mutedFg,
                 cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
               }}
             >

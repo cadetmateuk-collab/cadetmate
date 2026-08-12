@@ -103,6 +103,44 @@ export function avatarPresetSrc(presetId: string | null | undefined): string | n
   return found?.src ?? `/avatars/${presetId}.svg`;
 }
 
+/** Default CadetMate brand blue */
+export const DEFAULT_AVATAR_COLOR = '#2966f2';
+
+export const AVATAR_COLOR_SWATCHES = [
+  '#2966f2',
+  '#0ea5e9',
+  '#14b8a6',
+  '#22c55e',
+  '#eab308',
+  '#f97316',
+  '#ef4444',
+  '#ec4899',
+  '#a855f7',
+  '#242423',
+  '#64748b',
+  '#78716c',
+] as const;
+
+export function isValidAvatarColor(value: string): boolean {
+  return /^#[0-9a-f]{6}$/i.test(value.trim());
+}
+
+export function normalizeAvatarColor(value: string | null | undefined): string {
+  if (value && isValidAvatarColor(value)) return value.trim().toLowerCase();
+  return DEFAULT_AVATAR_COLOR;
+}
+
+/** Pick white or near-black text for contrast on a hex background. */
+export function contrastTextOn(hex: string): '#ffffff' | '#242423' {
+  const raw = normalizeAvatarColor(hex).slice(1);
+  const r = parseInt(raw.slice(0, 2), 16) / 255;
+  const g = parseInt(raw.slice(2, 4), 16) / 255;
+  const b = parseInt(raw.slice(4, 6), 16) / 255;
+  const toLin = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126 * toLin(r) + 0.7152 * toLin(g) + 0.0722 * toLin(b);
+  return L > 0.55 ? '#242423' : '#ffffff';
+}
+
 export function getInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';

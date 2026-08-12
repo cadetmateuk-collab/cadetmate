@@ -133,7 +133,8 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (profile?.role !== 'admin') {
+    const role = profile?.role;
+    if (role !== 'admin' && role !== 'content') {
       const deniedUrl = request.nextUrl.clone();
       deniedUrl.pathname = '/unauthorized';
       const res = NextResponse.redirect(deniedUrl);

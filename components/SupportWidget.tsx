@@ -268,13 +268,13 @@ export default function SupportWidget() {
                       id="sw-category"
                       value={category}
                       onChange={e => setCategory(e.target.value)}
-                      style={{ width: '100%', minHeight: 44, padding: '10px 30px 10px 10px', borderRadius: '8px', border: '1px solid #ededed', background: '#f5f5f5', color: '#111', fontSize: '16px', fontFamily: 'inherit', outline: 'none', appearance: 'none', cursor: 'pointer' }}
+                      style={{ width: '100%', minHeight: 44, padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #ededed', background: '#f5f5f5', color: '#111', fontSize: '16px', fontFamily: 'inherit', outline: 'none', appearance: 'none', cursor: 'pointer' }}
                       onFocus={e => { e.currentTarget.style.borderColor = '#2966f4'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(41,102,244,0.25)'; }}
                       onBlur={e => { e.currentTarget.style.borderColor = '#ededed'; e.currentTarget.style.boxShadow = 'none'; }}
                     >
                       {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <ChevronDown size={12} aria-hidden style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#737373', pointerEvents: 'none' }} />
+                    <ChevronDown size={14} aria-hidden style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#737373', pointerEvents: 'none' }} />
                   </div>
 
                   {/* Subject */}

@@ -1,4 +1,5 @@
 import { requireAuth } from '@/lib/auth/get-user'
+import { isPremiumRole } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -59,7 +60,7 @@ export default async function DashboardPage() {
     })
   }
 
-  const isPremium = user.profile?.role === 'premium' || user.profile?.role === 'admin'
+  const isPremium = isPremiumRole(user.profile?.role)
   const isAdmin = user.profile?.role === 'admin'
 
   const totalHours = Math.floor((stats?.total_time_seconds || 0) / 3600)

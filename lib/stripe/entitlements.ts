@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { isProtectedStaffRole } from '@cadet-mate/shared';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
 /** Comma-separated Stripe Price IDs that grant Premium (subscription or one-time). */
@@ -79,7 +80,7 @@ export async function grantPremium(opts: {
   };
   if (customerId) patch.stripe_customer_id = customerId;
   if (subscriptionId) patch.stripe_subscription_id = subscriptionId;
-  if (profile?.role !== 'admin') patch.role = 'premium';
+  if (!isProtectedStaffRole(profile?.role)) patch.role = 'premium';
 
   await supabaseAdmin.from('profiles').update(patch).eq('id', userId);
 
@@ -124,7 +125,7 @@ export async function revokePremium(opts: {
       .eq('stripe_subscription_id', opts.subscriptionId)
       .maybeSingle();
     userId = data?.id ?? null;
-    if (data?.role === 'admin') return;
+    if (isProtectedStaffRole(data?.role)) return;
   }
 
   if (!userId && opts.customerId) {
@@ -134,7 +135,7 @@ export async function revokePremium(opts: {
       .eq('stripe_customer_id', opts.customerId)
       .maybeSingle();
     userId = data?.id ?? null;
-    if (data?.role === 'admin') return;
+    if (isProtectedStaffRole(data?.role)) return;
   }
 
   if (!userId) return;
@@ -144,7 +145,7 @@ export async function revokePremium(opts: {
     .select('role')
     .eq('id', userId)
     .maybeSingle();
-  if (profile?.role === 'admin') return;
+  if (isProtectedStaffRole(profile?.role)) return;
 
   await supabaseAdmin
     .from('profiles')

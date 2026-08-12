@@ -8,42 +8,10 @@ const PAGE_SHELL_CSS = `
 
 .cm-page-shell {
   min-height: 0;
-  background-color: hsl(var(--background));
+  background-color: transparent;
   position: relative;
   overflow-x: hidden;
   color: hsl(var(--foreground));
-}
-
-.cm-dot-grid {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-}
-
-.cm-glow {
-  pointer-events: none;
-  position: fixed;
-  top: -200px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 0;
-  width: 900px;
-  height: 900px;
-  border-radius: 50%;
-  background: radial-gradient(circle, hsl(var(--primary) / 0.055) 0%, transparent 66%);
-}
-
-.cm-noise {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 180px 180px;
-  opacity: 0.025;
-  mix-blend-mode: multiply;
 }
 
 .cm-content {
@@ -94,7 +62,7 @@ const PAGE_SHELL_CSS = `
 .cm-back-link:hover { color: hsl(var(--primary)); }
 
 @media (min-width: 640px) {
-  .cm-content { padding: 2.5rem 2rem 6rem; }
+  .cm-content { padding: 0 0 6rem; }
 }
 `;
 
@@ -109,9 +77,6 @@ export function PageShell({ children, wide = false, className }: PageShellProps)
     <>
       <style>{PAGE_SHELL_CSS}</style>
       <div className="cm-page-shell">
-        <div className="cm-dot-grid bg-chart-dots" aria-hidden="true" />
-        <div className="cm-glow" aria-hidden="true" />
-        <div className="cm-noise" aria-hidden="true" />
         <div className={cn('cm-content', wide && 'cm-content-wide', className)}>
           {children}
         </div>

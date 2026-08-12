@@ -1,14 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAuth } from '@/lib/auth/get-user';
+import { isPremiumRole } from '@/lib/auth/roles';
 import { createClient } from '@/lib/supabase/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { User, Sparkles, CreditCard, Bell, Settings, Crown } from 'lucide-react';
+import { User, Sparkles, CreditCard, Bell, Settings, Crown, Shield, Ship } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
 import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
 import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
+import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
 import { labelForPhase, labelsForInterests, labelForReferral } from '@/lib/onboarding/constants';
 
 export const metadata: Metadata = buildPageMetadata({
@@ -34,7 +36,8 @@ export default async function ProfilePage({
   const { tab } = await searchParams;
   const user = await requireAuth();
   const supabase = await createClient();
-  const isPremium = user.profile?.role === 'premium' || user.profile?.role === 'admin';
+  const role = user.profile?.role ?? 'free';
+  const isPremium = isPremiumRole(role);
 
   const { data: communityProfile } = await supabase
     .from('community_user_profiles')
@@ -42,29 +45,48 @@ export default async function ProfilePage({
     .eq('user_id', user.id)
     .maybeSingle();
 
+  const roleBadge =
+    role === 'admin' ? (
+      <Badge className="bg-slate-100 text-slate-800 border-slate-200">
+        <Shield className="h-3 w-3 mr-1" /> Admin
+      </Badge>
+    ) : role === 'content' ? (
+      <Badge className="bg-sky-100 text-sky-800 border-sky-200">
+        <Ship className="h-3 w-3 mr-1" /> Content
+      </Badge>
+    ) : role === 'premium' ? (
+      <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+        <Crown className="h-3 w-3 mr-1" /> Premium
+      </Badge>
+    ) : null;
+
+  const avatarKind = user.profile?.avatar_kind === 'preset' ? 'preset' : 'initials';
+  const avatarPreset = user.profile?.avatar_preset ?? null;
+  const avatarColor =
+    typeof user.profile?.avatar_color === 'string' ? user.profile.avatar_color : null;
+
   return (
     <div className="w-full py-2">
-      <div className="flex items-start gap-4 mb-8">
+      <div className="mb-8 flex items-start gap-4 overflow-visible">
         <UserAvatar
           fullName={user.profile?.full_name ?? 'Cadet'}
-          avatarKind={user.profile?.avatar_kind === 'preset' ? 'preset' : 'initials'}
-          avatarPreset={user.profile?.avatar_preset ?? null}
-          size={64}
-          className="rounded-2xl"
+          avatarKind={avatarKind}
+          avatarPreset={avatarPreset}
+          avatarColor={avatarColor}
+          size={72}
+          role={role}
+          badgeScale={0.25}
         />
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold">{user.profile?.full_name ?? 'Cadet'}</h1>
-            {isPremium && (
-              <Badge className="bg-amber-100 text-amber-800 border-amber-200">
-                <Crown className="h-3 w-3 mr-1" /> Premium
-              </Badge>
-            )}
+            {roleBadge}
           </div>
           <p className="text-muted-foreground text-sm">{user.email}</p>
           {communityProfile && (
             <p className="text-xs text-muted-foreground mt-1">
-              {communityProfile.karma_score ?? 0} karma · {communityProfile.post_count ?? 0} posts · {communityProfile.comment_count ?? 0} comments
+              {communityProfile.karma_score ?? 0} karma · {communityProfile.post_count ?? 0} posts ·{' '}
+              {communityProfile.comment_count ?? 0} comments
             </p>
           )}
         </div>
@@ -96,43 +118,57 @@ export default async function ProfilePage({
         <div className="space-y-6">
           <div className="rounded-lg border border-border p-6 space-y-4">
             <h2 className="font-semibold">Account Details</h2>
-            <div className="grid sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Full Name</p>
-                <p className="font-medium">{user.profile?.full_name ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Email</p>
-                <p className="font-medium">{user.email}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Role</p>
-                <p className="font-medium capitalize">{user.profile?.role ?? 'free'}</p>
-              </div>
-              {user.profile?.training_phase && (
+
+            <ProfileAvatarEditor
+              fullName={user.profile?.full_name ?? 'Cadet'}
+              avatarKind={avatarKind}
+              avatarPreset={avatarPreset}
+              avatarColor={avatarColor}
+              role={role}
+            />
+
+            <div className="border-t border-border pt-4">
+              <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Training phase</p>
-                  <p className="font-medium">{labelForPhase(user.profile.training_phase)}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Full Name</p>
+                  <p className="font-medium">{user.profile?.full_name ?? '—'}</p>
                 </div>
-              )}
-              {user.profile?.nautical_college && (
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Nautical college</p>
-                  <p className="font-medium">{user.profile.nautical_college}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Email</p>
+                  <p className="font-medium">{user.email}</p>
                 </div>
-              )}
-              {user.profile?.referral_source && (
                 <div>
-                  <p className="text-muted-foreground text-xs mb-1">Heard about us</p>
-                  <p className="font-medium">{labelForReferral(user.profile.referral_source)}</p>
+                  <p className="text-muted-foreground text-xs mb-1">Role</p>
+                  <p className="font-medium capitalize">{user.profile?.role ?? 'free'}</p>
                 </div>
-              )}
-              {Array.isArray(user.profile?.learning_interests) && user.profile.learning_interests.length > 0 && (
-                <div className="sm:col-span-2">
-                  <p className="text-muted-foreground text-xs mb-1">Learning interests</p>
-                  <p className="font-medium">{labelsForInterests(user.profile.learning_interests).join(', ')}</p>
-                </div>
-              )}
+                {user.profile?.training_phase && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Training phase</p>
+                    <p className="font-medium">{labelForPhase(user.profile.training_phase)}</p>
+                  </div>
+                )}
+                {user.profile?.nautical_college && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Nautical college</p>
+                    <p className="font-medium">{user.profile.nautical_college}</p>
+                  </div>
+                )}
+                {user.profile?.referral_source && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Heard about us</p>
+                    <p className="font-medium">{labelForReferral(user.profile.referral_source)}</p>
+                  </div>
+                )}
+                {Array.isArray(user.profile?.learning_interests) &&
+                  user.profile.learning_interests.length > 0 && (
+                    <div className="sm:col-span-2">
+                      <p className="text-muted-foreground text-xs mb-1">Learning interests</p>
+                      <p className="font-medium">
+                        {labelsForInterests(user.profile.learning_interests).join(', ')}
+                      </p>
+                    </div>
+                  )}
+              </div>
             </div>
             <PasswordResetButton />
           </div>

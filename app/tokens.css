@@ -47,6 +47,11 @@
   --input: 40 12% 90%;
   --ring: var(--brand-blue);
 
+  /* ── Admin accent (#f5cb5c) — scoped via .admin-theme ─────────── */
+  --admin-accent: 43 88% 66%;
+  --admin-accent-foreground: 60 1% 14%;
+  --admin-accent-muted: 84 28% 90%;
+
   /* ── Dot grid ──────────────────────────────────────────────────── */
   --dot-color: 222 95% 57%;
   --dot-opacity: 0.16;

@@ -151,6 +151,37 @@
     display: none;
   }
 
+  /* Search / select field icon alignment — keep icons clear of text */
+  .cm-field {
+    position: relative;
+    width: 100%;
+  }
+  .cm-field__icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1rem;
+    height: 1rem;
+    pointer-events: none;
+    color: hsl(var(--muted-foreground));
+  }
+  .cm-field__icon--left {
+    left: 0.75rem;
+  }
+  .cm-field__icon--right {
+    right: 0.75rem;
+  }
+  .cm-field__input {
+    width: 100%;
+    padding-left: 2.5rem !important;
+  }
+  .cm-field__select {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.5rem !important;
+  }
+
   /* ── Motion / feel utilities ─────────────────────────────────── */
   .cm-scroll {
     overflow-y: auto;
@@ -534,12 +565,11 @@
 }
 
 @layer utilities {
-  /* Chart-paper dot grid — uniform across full scroll */
+  /* Legacy class names — solid background only (dot grid removed) */
   .bg-chart-dots,
   .page-dot-grid {
     background-color: hsl(var(--background));
-    background-image: radial-gradient(circle, hsl(var(--dot-color) / var(--dot-opacity)) 1.25px, transparent 1.25px);
-    background-size: 24px 24px;
+    background-image: none;
   }
 
   /* Rope-stitch border — solid accent only */
@@ -773,4 +803,109 @@
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: hsl(var(--muted-foreground));
+}
+
+/* Admin area — black sidebar + yellow accent (#f5cb5c) */
+html.admin-theme,
+.admin-theme {
+  --brand-blue: 43 88% 66%;
+  --brand-blue-light: 43 90% 72%;
+  --brand-blue-dark: 43 70% 42%;
+  --brand-blue-deep: 60 1% 14%;
+  --admin-accent: 43 88% 66%;
+  --admin-accent-foreground: 60 1% 14%;
+  --admin-accent-muted: 84 28% 90%;
+  --primary: 43 88% 66%;
+  --primary-foreground: 60 1% 14%;
+  --ring: 43 88% 66%;
+  --background: 84 28% 90%;
+  --foreground: 60 1% 14%;
+  --card: 0 0% 100%;
+  --muted: 152 14% 84%;
+  --muted-foreground: 120 2% 30%;
+  --border: 152 14% 78%;
+  --accent: 152 14% 84%;
+  --accent-foreground: 60 1% 14%;
+  --sidebar-primary: 43 88% 66%;
+  --sidebar-primary-foreground: 60 1% 14%;
+  --sidebar-ring: 43 88% 66%;
+  --color-primary: #f5cb5c;
+  --color-primary-foreground: #242423;
+  --color-ring: #f5cb5c;
+  --tw-ring-color: #f5cb5c;
+}
+
+html.admin-theme.dark,
+.dark .admin-theme,
+.dark.admin-theme {
+  --primary: 43 88% 66%;
+  --primary-foreground: 60 1% 14%;
+  --ring: 43 88% 66%;
+  --color-primary: #f5cb5c;
+  --color-ring: #f5cb5c;
+}
+
+/* Legacy admin tabs still use Tailwind blue-* utilities → yellow palette */
+.admin-theme :is(
+  .bg-blue-50,
+  .hover\:bg-blue-50:hover
+) {
+  background-color: #e8eddf !important;
+}
+.admin-theme :is(
+  .bg-blue-100,
+  .hover\:bg-blue-100:hover
+) {
+  background-color: #cfdbd5 !important;
+}
+.admin-theme :is(
+  .bg-blue-600,
+  .bg-blue-700,
+  .hover\:bg-blue-600:hover,
+  .hover\:bg-blue-700:hover
+) {
+  background-color: #242423 !important;
+  color: #ffffff !important;
+}
+.admin-theme :is(
+  .text-blue-600,
+  .text-blue-700,
+  .hover\:text-blue-600:hover
+) {
+  color: #333533 !important;
+}
+.admin-theme :is(
+  .border-blue-600,
+  .border-b-2.border-blue-600
+) {
+  border-color: #242423 !important;
+}
+.admin-theme :is(
+  .ring-blue-400,
+  .ring-blue-500,
+  .focus\:ring-blue-400:focus,
+  .focus\:ring-blue-500:focus
+) {
+  --tw-ring-color: #f5cb5c !important;
+}
+
+/* Primary admin buttons → black (yellow reserved for nav accent) */
+html.admin-theme :is(.btn-primary, .btn-accent),
+.admin-theme :is(.btn-primary, .btn-accent) {
+  color: #ffffff !important;
+  background-color: #242423 !important;
+  border-color: #242423 !important;
+}
+html.admin-theme :is(.btn-primary:hover, .btn-accent:hover),
+.admin-theme :is(.btn-primary:hover, .btn-accent:hover) {
+  color: #ffffff !important;
+  background-color: #333533 !important;
+}
+html.admin-theme :is(.bg-primary, .bg-primary\/90),
+.admin-theme :is(.bg-primary) {
+  background-color: #242423 !important;
+}
+html.admin-theme :is(.text-primary-foreground),
+.admin-theme :is(.text-primary-foreground) {
+  color: #ffffff !important;
 }

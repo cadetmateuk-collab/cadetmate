@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import { VoteControls } from './VoteControls';
-import { timeAgo, displayName } from '@/lib/community/utils';
+import { CommunityAuthor } from './CommunityAuthor';
+import { timeAgo } from '@/lib/community/utils';
 import type { Post } from '@/lib/community/types';
 import { Badge } from '@/components/ui/badge';
 
@@ -14,7 +15,6 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, showBody = false, onVoteChange }: PostCardProps) {
-  const authorName = displayName(post.author);
   const excerpt = post.body.length > 280 ? `${post.body.slice(0, 280)}…` : post.body;
 
   return (
@@ -28,7 +28,8 @@ export function PostCard({ post, showBody = false, onVoteChange }: PostCardProps
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-1">
+        <div className="mb-2 flex flex-wrap items-center gap-2 overflow-visible text-xs text-muted-foreground">
+          <CommunityAuthor userId={post.user_id} author={post.author} size={32} />
           {post.category && (
             <Badge
               variant="outline"
@@ -38,12 +39,6 @@ export function PostCard({ post, showBody = false, onVoteChange }: PostCardProps
               {post.category.name}
             </Badge>
           )}
-          <Link
-            href={`/community/user/${post.user_id}`}
-            className="font-medium hover:text-primary transition-colors"
-          >
-            {authorName}
-          </Link>
           <span>·</span>
           <time dateTime={post.created_at}>{timeAgo(post.created_at)}</time>
         </div>
@@ -52,7 +47,7 @@ export function PostCard({ post, showBody = false, onVoteChange }: PostCardProps
           <h2 className="text-base sm:text-lg font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
             {post.title}
           </h2>
-          {(showBody ? (
+          {showBody ? (
             <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap break-words">
               {post.body}
             </p>
@@ -60,7 +55,7 @@ export function PostCard({ post, showBody = false, onVoteChange }: PostCardProps
             <p className="mt-1 text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
               {excerpt}
             </p>
-          ))}
+          )}
         </Link>
 
         {post.tags && post.tags.length > 0 && (

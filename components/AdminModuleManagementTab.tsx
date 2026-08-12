@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import AdminModal from '@/components/AdminModal'
+import { useCanDelete } from '@/components/admin/permissions-context'
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
@@ -139,6 +140,7 @@ const CATEGORY_COLOURS = [
 ];
 
 function CategoryManager({ onClose, onUpdate, addToast }: CategoryManagerProps) {
+  const canDelete = useCanDelete();
   const [categories, setCategories] = useState<{ id: string; name: string; description: string | null; color: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
@@ -187,6 +189,7 @@ function CategoryManager({ onClose, onUpdate, addToast }: CategoryManagerProps) 
   };
 
   const deleteCategory = async (id: string, name: string) => {
+    if (!canDelete) { addToast('You do not have permission to delete categories', 'error'); return; }
     if (!confirm(`Delete category "${name}"?`)) return;
     const { error } = await supabase.from('categories').delete().eq('id', id);
     if (error) { addToast(error.message, 'error'); return; }
@@ -272,8 +275,10 @@ function CategoryManager({ onClose, onUpdate, addToast }: CategoryManagerProps) 
                       <div className="flex gap-1.5">
                         <button onClick={() => { setEditing(cat.id); setEditName(cat.name); setEditDesc(cat.description || ''); setEditColor(cat.color || CATEGORY_COLOURS[0]); }}
                           className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"><Edit className="h-4 w-4" /></button>
-                        <button onClick={() => deleteCategory(cat.id, cat.name)}
-                          className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                        {canDelete && (
+                          <button onClick={() => deleteCategory(cat.id, cat.name)}
+                            className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -481,6 +486,7 @@ function EditPanel({ module, categories, onSave, onClose }: EditPanelProps) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const AdminModuleManagementTab: React.FC = () => {
+  const canDelete = useCanDelete();
   const [modules,           setModules]           = useState<Module[]>([]);
   const [filteredModules,   setFilteredModules]   = useState<Module[]>([]);
   const [searchTerm,        setSearchTerm]        = useState('');
@@ -550,6 +556,7 @@ const AdminModuleManagementTab: React.FC = () => {
   };
 
   const deleteModule = async (module: Module) => {
+    if (!canDelete) { addToast('You do not have permission to delete modules', 'error'); return; }
     if (!confirm(`Delete "${module.title}"? This cannot be undone.`)) return;
     const { error } = await supabase.from('modules').delete().eq('id', module.id);
     if (error) { addToast(error.message, 'error'); return; }
@@ -668,15 +675,18 @@ const AdminModuleManagementTab: React.FC = () => {
         {/* Search + filter */}
         <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-6 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input type="text" placeholder="Search modules, categories, tags…" value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent" />
+              className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400" />
           </div>
-          <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
-            className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400">
-            {allCategories.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>)}
-          </select>
+          <div className="relative">
+            <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
+              className="appearance-none rounded-xl border border-gray-200 py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              {allCategories.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : cat}</option>)}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          </div>
         </div>
 
         {/* Module list */}
@@ -769,10 +779,12 @@ const AdminModuleManagementTab: React.FC = () => {
                                 title={module.hidden ? 'Make visible' : 'Hide'}>
                                 {module.hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                               </button>
-                              <button onClick={() => deleteModule(module)}
-                                className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="Delete">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              {canDelete && (
+                                <button onClick={() => deleteModule(module)}
+                                  className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="Delete">
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>

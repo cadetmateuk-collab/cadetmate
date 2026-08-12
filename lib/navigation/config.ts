@@ -36,8 +36,10 @@ import {
   LogIn,
   Bookmark,
   LifeBuoy,
+  ClipboardList,
 } from 'lucide-react';
-import type { MobileNavItem, NavGroupConfig, NavItemConfig } from './types';
+import type { MobileNavItem, NavGroupConfig, NavItemConfig, UserRole } from './types';
+import { isAdminRole, isStaffRole } from '@cadet-mate/shared';
 
 /** Public marketing site navigation */
 export const PUBLIC_NAV: NavItemConfig[] = [
@@ -161,12 +163,13 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
     id: 'admin',
     label: 'Admin',
     icon: Shield,
-    adminOnly: true,
+    staffOnly: true,
     items: [
-      { id: 'admin-home', label: 'Admin Home', href: '/admin/admin-home', icon: Shield },
-      { id: 'admin-modules', label: 'Module Management', href: '/admin/modules', icon: BookOpen },
-      { id: 'admin-builder', label: 'Module Builder', href: '/admin/module-builder', icon: PenLine },
-      { id: 'admin-content', label: 'Content Manager', href: '/admin/free-content-manager', icon: FileText },
+      { id: 'admin-home', label: 'Dashboard', href: '/admin/dashboard', icon: Shield, staffOnly: true },
+      { id: 'admin-activity', label: 'Activity Log', href: '/admin/activity', icon: ClipboardList, adminOnly: true },
+      { id: 'admin-modules', label: 'Modules', href: '/admin/modules', icon: BookOpen, staffOnly: true },
+      { id: 'admin-builder', label: 'Module Builder', href: '/admin/module-builder', icon: PenLine, staffOnly: true },
+      { id: 'admin-content', label: 'Free Content', href: '/admin/free-content', icon: FileText, staffOnly: true },
     ],
   },
 ];
@@ -201,14 +204,24 @@ export function isGroupActive(pathname: string, items: NavItemConfig[]): boolean
 
 export function filterNavForUser(
   groups: NavGroupConfig[],
-  role: 'free' | 'premium' | 'admin' | undefined,
+  role: UserRole | undefined,
 ): NavGroupConfig[] {
-  const isAdmin = role === 'admin';
+  const isAdmin = isAdminRole(role);
+  const isStaff = isStaffRole(role);
+
   return groups
-    .filter((g) => !g.adminOnly || isAdmin)
+    .filter((g) => {
+      if (g.adminOnly && !isAdmin) return false;
+      if (g.staffOnly && !isStaff) return false;
+      return true;
+    })
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => !item.adminOnly || isAdmin),
+      items: g.items.filter((item) => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.staffOnly && !isStaff) return false;
+        return true;
+      }),
     }))
     .filter((g) => g.items.length > 0);
 }

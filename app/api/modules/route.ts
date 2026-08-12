@@ -1,18 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { hasPermission } from '@/lib/auth/roles'
+import { logActivityEvent, requestContext } from '@/lib/activity/log-event'
 
 export async function GET(request: Request) {
-  console.log('GET /api/modules called')
-  
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const slug = searchParams.get('slug')
-    
+
     const supabase = await createClient()
-    
+
     if (id) {
-      // Get specific module by ID
       const { data, error } = await supabase
         .from('modules')
         .select('*')
@@ -20,13 +19,13 @@ export async function GET(request: Request) {
         .single()
 
       if (error) {
-        console.error('Supabase error:', error)
         return NextResponse.json({ error: error.message }, { status: 404 })
       }
 
       return NextResponse.json(data)
-    } else if (slug) {
-      // Get specific module by slug
+    }
+
+    if (slug) {
       const { data, error } = await supabase
         .from('modules')
         .select('*')
@@ -34,26 +33,22 @@ export async function GET(request: Request) {
         .single()
 
       if (error) {
-        console.error('Supabase error:', error)
         return NextResponse.json({ error: error.message }, { status: 404 })
       }
 
       return NextResponse.json(data)
-    } else {
-      // Get all modules
-      const { data, error } = await supabase
-        .from('modules')
-        .select('*')
-        .order('category', { ascending: true })
-
-      if (error) {
-        console.error('Supabase error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-      }
-
-      console.log('Modules found:', data?.length || 0)
-      return NextResponse.json(data || [])
     }
+
+    const { data, error } = await supabase
+      .from('modules')
+      .select('*')
+      .order('category', { ascending: true })
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(data || [])
   } catch (error) {
     console.error('Server error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -61,76 +56,58 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  console.log('POST /api/modules called')
-  
   try {
     const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
-      console.error('Auth error:', authError)
       return NextResponse.json({ error: 'Unauthorized - Please login' }, { status: 401 })
     }
-    
-    console.log('User authenticated:', user.id)
-    
-    // Check if user is admin
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    
+
     if (profileError) {
-      console.error('Profile error:', profileError)
       return NextResponse.json({ error: 'Could not verify user role' }, { status: 500 })
     }
-    
-    console.log('User role:', profile?.role)
-    
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ 
-        error: 'Forbidden - Admin access required. Your role: ' + (profile?.role || 'none') 
-      }, { status: 403 })
-    }
-    
-    // Get module data
+
+    const role = profile?.role
     const moduleData = await request.json()
-    console.log('Module data received:', {
-      title: moduleData.title,
-      category: moduleData.category,
-      subcategory: moduleData.subcategory,
-      blocksCount: moduleData.blocks?.length || 0
-    })
-    
-    // Compute total_lessons and estimated_hours from page-break blocks
+    const isUpdate = Boolean(moduleData.id)
+    const needed = isUpdate ? 'modules.update' : 'modules.create'
+
+    if (!hasPermission(role, needed as 'modules.create' | 'modules.update')) {
+      return NextResponse.json(
+        { error: `Forbidden - ${needed} required. Your role: ${role || 'none'}` },
+        { status: 403 },
+      )
+    }
+
     const blocks: any[] = moduleData.blocks || []
     const pageBreaks = blocks.filter((b: any) => b.type === 'page-break')
-    // Number of pages = number of page-breaks + 1
     const totalLessons = pageBreaks.length + 1
-    // Sum estimatedMinutes from each page-break (each break carries the time for the page before it)
-    // Plus give the last page a default of 5 min
-    const totalMinutes = pageBreaks.reduce((sum: number, b: any) => sum + (b.content?.estimatedMinutes || 5), 0) + 5
+    const totalMinutes =
+      pageBreaks.reduce((sum: number, b: any) => sum + (b.content?.estimatedMinutes || 5), 0) + 5
     const estimatedHours = Math.max(0.1, Math.round((totalMinutes / 60) * 10) / 10)
-    
-    // Generate slug
-    const categorySlug = moduleData.category.toLowerCase().replace(/\s+/g, '-');
-    const subcategorySlug = moduleData.subcategory 
+
+    const categorySlug = moduleData.category.toLowerCase().replace(/\s+/g, '-')
+    const subcategorySlug = moduleData.subcategory
       ? moduleData.subcategory.toLowerCase().replace(/\s+/g, '-')
-      : moduleData.title.toLowerCase().replace(/\s+/g, '-');
-    
-    const slug = `${categorySlug}/${subcategorySlug}`;
-    
-    // Generate ID if not provided
+      : moduleData.title.toLowerCase().replace(/\s+/g, '-')
+
+    const slug = `${categorySlug}/${subcategorySlug}`
+
     if (!moduleData.id) {
       moduleData.id = `${slug}-${Date.now()}`
     }
-    
-    console.log('Saving module with slug:', slug)
-    
-    // Save to database
+
     const { data, error } = await supabase
       .from('modules')
       .upsert({
@@ -148,88 +125,103 @@ export async function POST(request: Request) {
       })
       .select()
       .single()
-    
+
     if (error) {
-      console.error('Database error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-    
-    console.log('Module saved successfully:', data.id)
+
+    const ctx = requestContext(request)
+    void logActivityEvent({
+      actorId: user.id,
+      actorRole: role,
+      action: isUpdate ? 'module.updated' : 'module.created',
+      entityType: 'module',
+      entityId: data.id,
+      entityTitle: data.title,
+      metadata: { slug: data.slug, category: data.category },
+      ...ctx,
+    })
+
     return NextResponse.json(data)
   } catch (error: any) {
-    console.error('Server error:', error)
-    return NextResponse.json({ 
-      error: error.message || 'Internal server error' 
-    }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 },
+    )
   }
 }
 
 export async function DELETE(request: Request) {
-  console.log('DELETE /api/modules called')
-  
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    
+
     if (!id) {
       return NextResponse.json({ error: 'Module ID is required' }, { status: 400 })
     }
-    
+
     const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError || !user) {
-      console.error('Auth error:', authError)
       return NextResponse.json({ error: 'Unauthorized - Please login' }, { status: 401 })
     }
-    
-    console.log('User authenticated:', user.id)
-    
-    // Check if user is admin
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
-    
+
     if (profileError) {
-      console.error('Profile error:', profileError)
       return NextResponse.json({ error: 'Could not verify user role' }, { status: 500 })
     }
-    
-    console.log('User role:', profile?.role)
-    
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ 
-        error: 'Forbidden - Admin access required. Your role: ' + (profile?.role || 'none') 
-      }, { status: 403 })
+
+    if (!hasPermission(profile?.role, 'modules.delete')) {
+      return NextResponse.json(
+        {
+          error:
+            'Forbidden - modules.delete required. Your role: ' + (profile?.role || 'none'),
+        },
+        { status: 403 },
+      )
     }
-    
-    console.log('Deleting module:', id)
-    
-    // Delete the module
-    const { error: deleteError } = await supabase
+
+    const { data: existing } = await supabase
       .from('modules')
-      .delete()
+      .select('id, title')
       .eq('id', id)
-    
+      .maybeSingle()
+
+    const { error: deleteError } = await supabase.from('modules').delete().eq('id', id)
+
     if (deleteError) {
-      console.error('Delete error:', deleteError)
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
-    
-    console.log('Module deleted successfully:', id)
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Module deleted successfully' 
+
+    const ctx = requestContext(request)
+    void logActivityEvent({
+      actorId: user.id,
+      actorRole: profile?.role,
+      action: 'module.deleted',
+      entityType: 'module',
+      entityId: id,
+      entityTitle: existing?.title ?? null,
+      ...ctx,
     })
-    
+
+    return NextResponse.json({
+      success: true,
+      message: 'Module deleted successfully',
+    })
   } catch (error: any) {
-    console.error('Server error:', error)
-    return NextResponse.json({ 
-      error: error.message || 'Internal server error' 
-    }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 },
+    )
   }
 }

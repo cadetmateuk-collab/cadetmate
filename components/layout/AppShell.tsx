@@ -40,6 +40,17 @@ export function AppShell({
   const moduleViewer = isModuleViewerPath(pathname);
   const fullBleedTool = isFullBleedToolPath(pathname);
   const fillMain = moduleViewer || fullBleedTool;
+  const isAdminArea = pathname.startsWith('/admin');
+
+  // Admin has its own chrome — do not trap scroll in a nested overflow shell.
+  if (isAdminArea) {
+    return (
+      <>
+        <SkipLink />
+        {children}
+      </>
+    );
+  }
 
   return (
     <div

@@ -49,7 +49,10 @@ export function AppSidebar({ className, defaultCollapsed = false }: { className?
   const navRef = useRef<HTMLElement>(null);
 
   const isPremium = useMemo(
-    () => userProfile?.role === 'admin' || userProfile?.role === 'premium',
+    () =>
+      userProfile?.role === 'admin' ||
+      userProfile?.role === 'premium' ||
+      userProfile?.role === 'content',
     [userProfile],
   );
 

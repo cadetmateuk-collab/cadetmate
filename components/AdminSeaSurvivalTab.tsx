@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import AdminModal from '@/components/AdminModal'
+import { useCanDelete } from '@/components/admin/permissions-context'
+import { logClientActivity } from '@/lib/activity/log-event-client';
 
 const supabase = createClient();
 
@@ -200,6 +202,7 @@ function Toggle({ value, onChange, onColour, label }: { value: boolean; onChange
 // ── Main tab ───────────────────────────────────────────────────────────────────
 
 export default function AdminSeaSurvivalTab() {
+  const canDelete = useCanDelete();
   const [articles, setArticles]             = useState<Article[]>([]);
   const [loading, setLoading]               = useState(true);
   const [searchTerm, setSearchTerm]         = useState('');
@@ -244,10 +247,22 @@ export default function AdminSeaSurvivalTab() {
       const { error } = await supabase.from('sea_survival').update(payload).eq('id', id);
       if (error) { showToast(`Failed to update: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Article updated!', 'success');
+      void logClientActivity({
+        action: 'sea_survival.updated',
+        entityType: 'sea_survival',
+        entityId: id,
+        entityTitle: payload.title,
+      });
     } else {
       const { error } = await supabase.from('sea_survival').insert([payload]);
       if (error) { showToast(`Failed to create: ${error.message}`, 'error'); setSaving(false); return; }
       showToast('Article created!', 'success');
+      void logClientActivity({
+        action: 'sea_survival.created',
+        entityType: 'sea_survival',
+        entityId: payload.slug,
+        entityTitle: payload.title,
+      });
     }
 
     setSaving(false);
@@ -258,6 +273,7 @@ export default function AdminSeaSurvivalTab() {
 
   // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
+    if (!canDelete) { showToast('You do not have permission to delete articles', 'error'); setDeleteConfirm(null); return; }
     const { error } = await supabase.from('sea_survival').delete().eq('id', id);
     if (error) showToast(`Failed to delete: ${error.message}`, 'error');
     else { showToast('Article deleted', 'success'); fetchArticles(); }
@@ -321,10 +337,10 @@ export default function AdminSeaSurvivalTab() {
       {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'hsl(var(--muted-foreground))' }} />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'hsl(var(--muted-foreground))' }} />
           <input type="text" placeholder="Search by title or category…" value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-4 py-2 rounded-lg text-sm outline-none"
+            className="w-full rounded-lg py-2 pl-10 pr-4 text-sm outline-none"
             style={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} />
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -332,7 +348,7 @@ export default function AdminSeaSurvivalTab() {
             <button key={cat} onClick={() => setFilterCategory(cat)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={filterCategory === cat
-                ? { background: 'hsl(var(--primary))', color: 'white' }
+                ? { background: '#f5cb5c', color: '#242423' }
                 : { background: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', border: '1px solid hsl(var(--border))' }}>
               {cat}
             </button>
@@ -425,13 +441,15 @@ export default function AdminSeaSurvivalTab() {
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'hsl(var(--muted-foreground))'; }}>
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => setDeleteConfirm(article.id!)}
-                        title="Delete" className="p-1.5 rounded-lg transition-colors"
-                        style={{ color: 'hsl(var(--muted-foreground))' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'hsl(0 72% 55% / 0.08)'; e.currentTarget.style.color = 'hsl(0 72% 55%)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'hsl(var(--muted-foreground))'; }}>
-                        <Trash2 size={15} />
-                      </button>
+                      {canDelete && (
+                        <button onClick={() => setDeleteConfirm(article.id!)}
+                          title="Delete" className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: 'hsl(var(--muted-foreground))' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'hsl(0 72% 55% / 0.08)'; e.currentTarget.style.color = 'hsl(0 72% 55%)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'hsl(var(--muted-foreground))'; }}>
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

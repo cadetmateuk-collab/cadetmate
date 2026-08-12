@@ -158,7 +158,10 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
   const router = useRouter();
 
   const isPremium = useMemo(
-    () => userProfile?.role === 'admin' || userProfile?.role === 'premium',
+    () =>
+      userProfile?.role === 'admin' ||
+      userProfile?.role === 'premium' ||
+      userProfile?.role === 'content',
     [userProfile],
   );
 
@@ -268,7 +271,7 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                   ref={profileButtonRef}
                   type="button"
                   onClick={() => setProfileOpen((p) => !p)}
-                  className="h-11 w-11 min-h-11 min-w-11 rounded-full flex items-center justify-center overflow-hidden hover:opacity-90 transition-opacity ring-2 ring-primary/20 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="flex h-11 w-11 min-h-11 min-w-11 items-center justify-center overflow-visible rounded-full ring-2 ring-primary/20 transition-opacity hover:opacity-90 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label="Profile menu"
                   aria-expanded={profileOpen}
                   aria-haspopup="menu"
@@ -277,7 +280,10 @@ export function AppTopNav({ user: userProfile }: { user: NavUser }) {
                     fullName={userProfile.name}
                     avatarKind={userProfile.avatarKind}
                     avatarPreset={userProfile.avatarPreset}
+                    avatarColor={userProfile.avatarColor}
                     size={44}
+                    role={userProfile.role}
+                    badgeScale={0.25}
                   />
                 </button>
                 {profileOpen && (
