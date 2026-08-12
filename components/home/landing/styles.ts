@@ -13,7 +13,7 @@ export const LANDING_STYLES = `
   background: transparent;
 }
 
-.lp-content { position: relative; z-index: 1; }
+.lp-content { position: relative; z-index: 1; width: 100%; margin-inline: auto; }
 
 .lp-section {
   position: relative;
@@ -52,6 +52,7 @@ export const LANDING_STYLES = `
   letter-spacing: -0.035em;
   line-height: 1.05;
   color: hsl(var(--foreground));
+  text-align: left;
 }
 
 .lp-headline-sm {

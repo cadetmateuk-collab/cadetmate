@@ -76,10 +76,10 @@ const HeroMascot = memo(function HeroMascot() {
       <Image
         src="/images/captain-320.webp"
         alt="CadetMate captain mascot"
-        width={320}
-        height={400}
+        width={448}
+        height={560}
         priority
-        sizes="(max-width: 640px) 220px, 280px"
+        sizes="(max-width: 640px) 280px, 448px"
         className="lp-mascot relative drop-shadow-[0_12px_28px_rgba(0,0,0,0.1)]"
       />
     );
@@ -93,8 +93,8 @@ const HeroMascot = memo(function HeroMascot() {
       loop
       muted
       playsInline
-      width={320}
-      height={400}
+      width={448}
+      height={560}
       preload="none"
       className="lp-mascot relative drop-shadow-[0_12px_28px_rgba(0,0,0,0.1)]"
       aria-label="CadetMate animated captain mascot"
@@ -193,40 +193,36 @@ export function LandingPage({ data }: { data: LandingData }) {
         <div className="lp-content">
           {/* ── HERO ── */}
           <section className="lp-section flex items-center pt-8 sm:pt-12 pb-14 sm:pb-20 lg:pb-24">
-            <div className="w-full">
-              <div className="grid lg:grid-cols-2 gap-10 lg:gap-12 xl:gap-16 items-center">
-                <div className="max-w-2xl lg:max-w-none">
-                  <p className="lp-eyebrow mb-6">
-                    <Anchor className="h-3 w-3" />
-                    CadetMate · UK deck cadet training
-                  </p>
-                  <h1 className="lp-headline">
-                    UK deck cadet training for{' '}
-                    <span className="text-primary">COLREGS, TRB &amp; MCA orals</span>
-                  </h1>
-                  <p className="lp-lead mt-6">
-                    The cadetship companion for merchant navy deck cadets — college modules,
-                    sea phases, flashcards, and oral prep in one place. Free to start.
-                  </p>
-                  <div className="mt-10 flex flex-col sm:flex-row gap-3">
-                    <Link href="/auth?mode=signup" className="lp-btn-primary">
-                      Start Learning Free
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                    <Link href="/free-content" className="lp-btn-ghost">
-                      Browse Free Guides
-                    </Link>
-                  </div>
-                  <p className="mt-4 text-xs text-muted-foreground">
-                    Free to join · No credit card · Built for future Officers of the Watch
-                  </p>
+            <div className="w-full grid lg:grid-cols-2 gap-10 lg:gap-12 xl:gap-16 items-center">
+              <div className="text-left">
+                <p className="lp-eyebrow mb-6 w-fit">
+                  <Anchor className="h-3 w-3" />
+                  CadetMate · UK deck cadet training
+                </p>
+                <h1 className="lp-headline text-left">
+                  UK deck cadet training for{' '}
+                  <span className="text-primary">COLREGS, TRB &amp; MCA orals</span>
+                </h1>
+                <p className="lp-lead mt-6">
+                  The cadetship companion for merchant navy deck cadets — college modules,
+                  sea phases, flashcards, and oral prep in one place. Free to start.
+                </p>
+                <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-start">
+                  <Link href="/auth?mode=signup" className="lp-btn-primary">
+                    Start Learning Free
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link href="/free-content" className="lp-btn-ghost">
+                    Browse Free Guides
+                  </Link>
                 </div>
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Free to join · No credit card · Built for future Officers of the Watch
+                </p>
+              </div>
 
-                <div className="flex justify-center lg:justify-end">
-                  <div className="relative w-full max-w-[220px] sm:max-w-[260px] lg:max-w-[300px]">
-                    <HeroMascot />
-                  </div>
-                </div>
+              <div className="flex justify-center lg:justify-end">
+                <HeroMascot />
               </div>
             </div>
           </section>
@@ -242,7 +238,7 @@ export function LandingPage({ data }: { data: LandingData }) {
                   Built for the UK deck pathway — MCA syllabus topics, sea-phase reality, and oral exam preparation
                 </p>
               </Reveal>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 max-w-5xl mx-auto mb-12">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 w-full mb-12">
                 {[
                   { icon: GraduationCap, title: 'MCA-aligned study', text: 'Modules and revision mapped to how UK deck cadets actually train.' },
                   { icon: Shield, title: 'By mariners, for cadets', text: 'Practical content shaped around college, TRB, and life at sea.' },
@@ -250,8 +246,8 @@ export function LandingPage({ data }: { data: LandingData }) {
                   { icon: MessageSquare, title: 'Cadet community', text: 'Ask questions and learn from cadets on the same journey.' },
                 ].map((item, i) => (
                   <Reveal key={item.title} delay={i * 60}>
-                    <div className="text-center sm:text-left p-1">
-                      <item.icon className="h-5 w-5 text-primary mx-auto sm:mx-0 mb-3" aria-hidden />
+                    <div className="text-center p-1">
+                      <item.icon className="h-5 w-5 text-primary mx-auto mb-3" aria-hidden />
                       <p className="text-sm font-semibold">{item.title}</p>
                       <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{item.text}</p>
                     </div>
@@ -282,7 +278,7 @@ export function LandingPage({ data }: { data: LandingData }) {
 
           {/* ── WHAT'S COVERED ── */}
           <section className="lp-section py-24 lg:py-32 " aria-labelledby="syllabus-heading">
-            <div className="w-full max-w-4xl mx-auto">
+            <div className="w-full">
               <Reveal className="text-center mb-12">
                 <p className="lp-eyebrow mb-4 mx-auto w-fit">What&apos;s covered</p>
                 <h2 id="syllabus-heading" className="lp-headline-sm">
@@ -325,16 +321,16 @@ export function LandingPage({ data }: { data: LandingData }) {
           <section className="lp-section lp-section-fade py-24 lg:py-32 bg-muted/20">
             <div className="w-full">
               <div className="grid lg:grid-cols-2 gap-16 items-center">
-                <Reveal>
-                  <p className="lp-eyebrow mb-4">Study progress</p>
+                <Reveal className="text-center lg:text-left">
+                  <p className="lp-eyebrow mb-4 mx-auto lg:mx-0 w-fit">Study progress</p>
                   <h2 className="lp-headline-sm">
                     Track college modules, sea phase &amp; TRB progress
                   </h2>
-                  <p className="lp-lead mt-4 text-base">
+                  <p className="lp-lead mt-4 text-base mx-auto lg:mx-0">
                     Pick up the same COLREGS module, chartwork revision, or assignment at college
                     or in your cabin — with streaks and phase tracking so you always know where you stand.
                   </p>
-                  <ul className="mt-8 space-y-3">
+                  <ul className="mt-8 space-y-3 inline-block text-left">
                     {[
                       'Resume modules across college and sea phases',
                       'Daily goals and study streaks that keep you consistent',
@@ -348,9 +344,11 @@ export function LandingPage({ data }: { data: LandingData }) {
                       </li>
                     ))}
                   </ul>
-                  <Link href="/auth?mode=signup" className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-8 hover:gap-2 transition-all">
-                    Create a free account <ChevronRight className="h-4 w-4" />
-                  </Link>
+                  <div>
+                    <Link href="/auth?mode=signup" className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-8 hover:gap-2 transition-all">
+                      Create a free account <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </Reveal>
                 <Reveal delay={120}>
                   <DashboardMockup />
@@ -362,8 +360,8 @@ export function LandingPage({ data }: { data: LandingData }) {
           {/* ── TRAINING TOOLS ── */}
           <section className="lp-section py-24 lg:py-32 ">
             <div className="w-full">
-              <Reveal className="max-w-2xl mb-16">
-                <p className="lp-eyebrow mb-4">Training tools</p>
+              <Reveal className="w-full text-center mb-16">
+                <p className="lp-eyebrow mb-4 mx-auto w-fit">Training tools</p>
                 <h2 className="lp-headline-sm">
                   College modules, COLREGS flashcards &amp; MCA oral practice
                 </h2>
@@ -431,7 +429,7 @@ export function LandingPage({ data }: { data: LandingData }) {
           {/* ── PRODUCT SHOWCASE ── */}
           <section className="lp-section lp-section-fade py-24 lg:py-32 bg-muted/15 overflow-hidden">
             <div className="w-full">
-              <Reveal className="text-center max-w-2xl mx-auto mb-16">
+              <Reveal className="text-center w-full mb-16">
                 <p className="lp-eyebrow mb-4 mx-auto w-fit">See it in action</p>
                 <h2 className="lp-headline-sm">
                   Revise COLREGS, ask sea-phase questions, practise emergencies
@@ -440,14 +438,14 @@ export function LandingPage({ data }: { data: LandingData }) {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <Reveal delay={0}>
-                  <div className="space-y-4">
+                  <div className="space-y-4 text-center">
                     <FlashcardMockup />
                     <div>
                       <h3 className="font-semibold">COLREGS flashcards</h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         Spaced-repetition decks for rules of the road and core nautical topics — with XP that rewards consistent study.
                       </p>
-                      <Link href="/auth?mode=signup" className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-3">
+                      <Link href="/auth?mode=signup" className="inline-flex items-center justify-center gap-1 text-sm font-semibold text-primary mt-3">
                         Try free flashcards <ChevronRight className="h-4 w-4" />
                       </Link>
                     </div>
@@ -475,10 +473,10 @@ export function LandingPage({ data }: { data: LandingData }) {
                       ))}
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4">
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
                     Ask TRB, COLREGS, and sea-phase questions — get answers from cadets who&apos;ve been there.
                   </p>
-                  <Link href="/community-preview" className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-2">
+                  <Link href="/community-preview" className="inline-flex items-center justify-center gap-1 text-sm font-semibold text-primary mt-2 w-full">
                     Preview the community <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Reveal>
@@ -500,10 +498,10 @@ export function LandingPage({ data }: { data: LandingData }) {
                       ))}
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-4">
+                  <p className="text-sm text-muted-foreground mt-4 text-center">
                     Practise real emergency responses before you need them on board.
                   </p>
-                  <Link href="/pricing" className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-2">
+                  <Link href="/pricing" className="inline-flex items-center justify-center gap-1 text-sm font-semibold text-primary mt-2 w-full">
                     See Premium tools <ChevronRight className="h-4 w-4" />
                   </Link>
                 </Reveal>
@@ -514,8 +512,8 @@ export function LandingPage({ data }: { data: LandingData }) {
           {/* ── JOURNEY ── */}
           <section className="lp-section py-24 lg:py-32 border-y border-foreground/[0.05]">
             <div className="w-full">
-              <Reveal className="max-w-xl mb-16">
-                <p className="lp-eyebrow mb-4">Your cadetship</p>
+              <Reveal className="w-full text-center mb-16">
+                <p className="lp-eyebrow mb-4 mx-auto w-fit">Your cadetship</p>
                 <h2 className="lp-headline-sm">From first day at college to qualified OOW</h2>
                 <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                   CadetMate supports each stage of UK deck training — not only last-minute exam cramming.
@@ -533,9 +531,9 @@ export function LandingPage({ data }: { data: LandingData }) {
                     { step: '05', label: 'MCA orals', desc: 'Oral-style practice and readiness tracking toward OOW.', href: '/pricing' },
                   ].map((item, i) => (
                     <Reveal key={item.step} delay={i * 70} className={i % 2 === 1 ? 'lg:mt-10' : ''}>
-                      <Link href={item.href} className="group block">
+                      <Link href={item.href} className="group block text-center">
                         <div className="text-[10px] font-bold text-primary mb-3 tracking-wider">{item.step}</div>
-                        <div className="h-px w-8 bg-foreground/15 mb-4 group-hover:w-12 group-hover:bg-primary/40 transition-all duration-300" />
+                        <div className="h-px w-8 mx-auto bg-foreground/15 mb-4 group-hover:w-12 group-hover:bg-primary/40 transition-all duration-300" />
                         <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">{item.label}</h3>
                         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
                       </Link>
@@ -548,7 +546,7 @@ export function LandingPage({ data }: { data: LandingData }) {
 
           {/* ── E-E-A-T / ABOUT ── */}
           <section className="lp-section lp-section-fade py-24 lg:py-32 bg-muted/20" aria-labelledby="eeat-heading">
-            <div className="w-full max-w-3xl mx-auto text-center">
+            <div className="w-full text-center">
               <Reveal>
                 <p className="lp-eyebrow mb-4 mx-auto w-fit">Experience &amp; expertise</p>
                 <h2 id="eeat-heading" className="lp-headline-sm">
@@ -574,15 +572,15 @@ export function LandingPage({ data }: { data: LandingData }) {
           {/* ── COMMUNITY ── */}
           <section className="lp-section py-24 lg:py-32 ">
             <div className="w-full grid lg:grid-cols-2 gap-16 items-start">
-              <Reveal>
-                <p className="lp-eyebrow mb-4">Community</p>
+              <Reveal className="text-center lg:text-left">
+                <p className="lp-eyebrow mb-4 mx-auto lg:mx-0 w-fit">Community</p>
                 <h2 className="lp-headline-sm">Learn alongside UK deck cadets who get it</h2>
-                <p className="lp-lead mt-4 text-base">
+                <p className="lp-lead mt-4 text-base mx-auto lg:mx-0">
                   Discuss COLREGS revision, TRB tasks, sea-phase tips, and oral prep with cadets
                   on the same pathway. Preview discussions free — join to post and vote.
                 </p>
 
-                <div className="mt-8 flex flex-wrap gap-2">
+                <div className="mt-8 flex flex-wrap gap-2 justify-center lg:justify-start">
                   {[
                     { label: 'COLREGs', href: '/free-content?q=COLREGS' },
                     { label: 'TRB', href: '/free-content?q=TRB' },
@@ -604,7 +602,7 @@ export function LandingPage({ data }: { data: LandingData }) {
                   <span className="font-semibold text-foreground"><CountUp value={displayUsers} suffix="+" /></span> cadets exploring the platform
                 </p>
 
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                   <Link href="/auth?mode=signup" className="lp-btn-primary">
                     Create Free Account
                     <ArrowRight className="h-4 w-4" />
@@ -671,14 +669,14 @@ export function LandingPage({ data }: { data: LandingData }) {
                   </div>
                 </div>
               </Reveal>
-              <Reveal className="order-1 lg:order-2">
-                <p className="lp-eyebrow mb-4">Study between watches</p>
+              <Reveal className="order-1 lg:order-2 text-center lg:text-left">
+                <p className="lp-eyebrow mb-4 mx-auto lg:mx-0 w-fit">Study between watches</p>
                 <h2 className="lp-headline-sm">Flashcards on the train. Quizzes between watches.</h2>
-                <p className="lp-lead mt-4 text-base">
+                <p className="lp-lead mt-4 text-base mx-auto lg:mx-0">
                   CadetMate fits around college, sea phase, and leave — so STCW topics and COLREGS
                   revision happen in the gaps, not only the night before an exam.
                 </p>
-                <div className="mt-8 grid sm:grid-cols-2 gap-3">
+                <div className="mt-8 grid sm:grid-cols-2 gap-3 max-w-md mx-auto lg:mx-0">
                   {[
                     { icon: Flame, label: 'Daily streaks' },
                     { icon: BarChart3, label: 'Progress sync' },
@@ -697,7 +695,7 @@ export function LandingPage({ data }: { data: LandingData }) {
 
           {/* ── PREMIUM (short) ── */}
           <section className="lp-section py-24 lg:py-28 ">
-            <div className="w-full max-w-3xl mx-auto text-center">
+            <div className="w-full text-center">
               <Reveal>
                 <p className="lp-eyebrow mb-4 mx-auto w-fit">Free &amp; Premium</p>
                 <h2 className="lp-headline-sm">Start free. Unlock the full library when you need it.</h2>
@@ -721,7 +719,7 @@ export function LandingPage({ data }: { data: LandingData }) {
 
           {/* ── FAQ ── */}
           <section className="lp-section lp-section-fade py-24 lg:py-32 bg-muted/20 border-y border-foreground/[0.05]" aria-labelledby="faq-heading">
-            <div className="w-full max-w-3xl mx-auto">
+            <div className="w-full">
               <Reveal className="text-center mb-12">
                 <p className="lp-eyebrow mb-4 mx-auto w-fit">FAQ</p>
                 <h2 id="faq-heading" className="lp-headline-sm">
@@ -756,7 +754,7 @@ export function LandingPage({ data }: { data: LandingData }) {
           {/* ── FINAL CTA ── */}
           <section className="lp-section py-24 lg:py-32 ">
             <Reveal>
-              <div className="max-w-3xl mx-auto text-center">
+              <div className="w-full text-center">
                 <h2 className="lp-headline-sm">
                   Start UK deck cadet training<br />with CadetMate
                 </h2>

@@ -8,8 +8,7 @@ export const PAGE_SHELL_CLASS = 'w-full px-4 sm:px-6 md:px-8';
  * Caps at 80% of the main column with comfortable side padding.
  * Module viewers / full-bleed tools bypass this via AppShell.
  */
-export const PAGE_CONTENT_CLASS =
-  'mx-auto box-border w-full max-w-[80%] px-5 sm:px-8 lg:px-10';
+export const PAGE_CONTENT_CLASS = 'page-col-80';
 
 export function PageContainer({
   children,

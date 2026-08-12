@@ -18,6 +18,8 @@
 .lp-content {
   position: relative;
   z-index: 1;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .lp-section {
@@ -28,11 +30,12 @@
 .lp-mascot {
   display: block;
   width: auto;
-  max-width: 100%;
-  max-height: min(48vh, 380px);
   height: auto;
-  margin-inline: auto;
+  max-height: min(72vh, 560px);
+  max-width: min(100%, 448px);
+  aspect-ratio: 4 / 5;
   object-fit: contain;
+  margin-inline: auto;
 }
 
 .lp-section-fade::before {
@@ -67,6 +70,7 @@
   letter-spacing: -0.035em;
   line-height: 1.05;
   color: hsl(var(--foreground));
+  text-align: left;
 }
 
 .lp-headline-sm {
@@ -236,6 +240,10 @@
 @media (max-width: 768px) {
   .lp-headline {
     font-size: clamp(2rem, 9vw, 2.75rem);
+  }
+  .lp-mascot {
+    max-height: min(50vh, 420px);
+    max-width: min(100%, 336px);
   }
   .lp-card {
     /* Avoid expensive compositing on mobile scroll */
