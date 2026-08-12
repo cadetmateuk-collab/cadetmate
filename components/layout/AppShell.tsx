@@ -79,7 +79,7 @@ export function AppShell({
           tabIndex={-1}
           className={cn(
             'relative flex-1 outline-none',
-            fillMain && 'flex min-h-0 flex-col overflow-hidden',
+            fillMain ? 'flex min-h-0 flex-col overflow-hidden' : 'flex min-w-0 flex-col items-center',
           )}
         >
           {fillMain ? (
@@ -87,7 +87,7 @@ export function AppShell({
               {children}
             </PageTransition>
           ) : (
-            <div className="w-full py-6 md:py-8 pb-10">
+            <div className="flex w-full flex-col items-center py-6 pb-10 md:py-8">
               <PageContainer>
                 <PageTransition>{children}</PageTransition>
               </PageContainer>

@@ -399,6 +399,9 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
             overflowX: 'hidden',
             WebkitOverflowScrolling: 'touch',
             padding: '24px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
           }}
         >
           <PageContainer>{children}</PageContainer>

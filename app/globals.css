@@ -738,31 +738,26 @@
   scrollbar-width: none;
 }
 
-/* Centered column of the main area (beside the sidebar) */
+/* Centered 80% column of the main area (beside the sidebar) */
 .page-col-80 {
-  width: 80%;
-  max-width: 80%;
-  margin-left: auto;
-  margin-right: auto;
-  box-sizing: border-box;
-}
-
-.public-main-col {
-  box-sizing: border-box;
   width: 80% !important;
   max-width: 80% !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  box-sizing: border-box;
 }
 
+.public-main-col,
 #public-page-col {
   width: 80% !important;
   max-width: 80% !important;
   margin-left: auto !important;
   margin-right: auto !important;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
+  .page-col-80,
   .public-main-col,
   #public-page-col {
     width: calc(100% - 2rem) !important;
