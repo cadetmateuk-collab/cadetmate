@@ -9,17 +9,23 @@ const SUMMARY_FIELDS =
 
 async function fetchAllBlogPosts(): Promise<BlogPostSummary[]> {
   const supabase = createPublicSupabase();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('blog_posts')
     .select(SUMMARY_FIELDS)
-    .eq('hidden', false)
-    .order('date', { ascending: false });
+    .or('hidden.eq.false,hidden.is.null')
+    .order('date', { ascending: false, nullsFirst: false });
+
+  if (error) {
+    console.error('[blog] failed to load posts:', error.message);
+    return [];
+  }
   return (data ?? []) as BlogPostSummary[];
 }
 
 export const getAllBlogPosts = ENABLE_DATA_CACHE
   ? unstable_cache(fetchAllBlogPosts, ['all-blog-posts'], {
       revalidate: REVALIDATE_SECONDS,
+      tags: ['blog-posts'],
     })
   : fetchAllBlogPosts;
 

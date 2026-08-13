@@ -12,6 +12,10 @@ import {
   absoluteUrl,
 } from '@/lib/seo';
 
+// Same as article pages: always read live posts so new admin saves show up.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata = buildPageMetadata({
   title: 'Free Maritime Training Articles & Cadet Resources',
   description:

@@ -327,6 +327,9 @@ export default function AdminBlogTab() {
     const { id, ...payload } = editingPost;
     const savePayload = {
       ...payload,
+      hidden: Boolean(payload.hidden),
+      featured: Boolean(payload.featured),
+      date: payload.date || new Date().toISOString().split('T')[0],
       category_slug: payload.category_slug || slugifySegment(payload.category) || 'general',
     };
 
@@ -356,13 +359,18 @@ export default function AdminBlogTab() {
     setEditingPost(null);
     setIsCreating(false);
     fetchPosts();
+    void fetch('/api/admin/free-content/revalidate', { method: 'POST' });
   };
 
   const handleDelete = async (id: string) => {
     if (!canDelete) { showToast('You do not have permission to delete posts', 'error'); setDeleteConfirm(null); return; }
     const { error } = await supabase.from('blog_posts').delete().eq('id', id);
     if (error) showToast('Failed to delete post', 'error');
-    else { showToast('Post deleted', 'success'); fetchPosts(); }
+    else {
+      showToast('Post deleted', 'success');
+      fetchPosts();
+      void fetch('/api/admin/free-content/revalidate', { method: 'POST' });
+    }
     setDeleteConfirm(null);
   };
 
@@ -371,7 +379,10 @@ export default function AdminBlogTab() {
       await supabase.from('blog_posts').update({ featured: false }).neq('id', id);
     }
     const { error } = await supabase.from('blog_posts').update({ [field]: !current }).eq('id', id);
-    if (!error) fetchPosts();
+    if (!error) {
+      fetchPosts();
+      void fetch('/api/admin/free-content/revalidate', { method: 'POST' });
+    }
   };
 
   const deletePost = posts.find(p => p.id === deleteConfirm);
