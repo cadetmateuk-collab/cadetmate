@@ -1,27 +1,54 @@
+import 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/manrope';
 import { AuthProvider } from '../lib/AuthContext';
+import { OfflineProvider } from '../lib/offline';
+import { StudyActivityTracker } from '../lib/StudyActivityTracker';
+import { LoadingScreen } from '../components/ui';
+import { colors, fonts } from '../theme';
 
 export default function RootLayout() {
+  const [loaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_500Medium,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    Manrope_800ExtraBold,
+  });
+
+  if (!loaded) return <LoadingScreen />;
+
   return (
     <AuthProvider>
-      <StatusBar style="light" />
+      <OfflineProvider>
+      <StudyActivityTracker />
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0B1F3A' },
-          headerTintColor: '#E8EEF7',
-          contentStyle: { backgroundColor: '#0B1F3A' },
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontFamily: fonts.bold, fontWeight: '700', color: colors.text },
+          headerShadowVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
+        contentStyle: { backgroundColor: colors.bg },
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/login" options={{ title: 'Sign in' }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/reset" options={{ title: 'Reset password' }} />
+        <Stack.Screen name="(auth)/onboarding" options={{ title: 'Welcome', headerBackVisible: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="study/[slug]" options={{ title: 'Study' }} />
-        <Stack.Screen
-          name="webview"
-          options={{ title: 'CadetMate Web', presentation: 'modal' }}
-        />
+        <Stack.Screen name="reset-password" options={{ title: 'New password' }} />
       </Stack>
+      </OfflineProvider>
     </AuthProvider>
   );
 }

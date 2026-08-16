@@ -8,6 +8,8 @@ import { User, Sparkles, CreditCard, Bell, Settings, Crown, Shield, Ship } from 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
+import { SubscribeButton } from '@/components/billing/SubscribeButton';
+import { BillingPortalButton } from '@/components/billing/BillingPortalButton';
 import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
 import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
 import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
@@ -179,21 +181,27 @@ export default async function ProfilePage({
         <div className="rounded-lg border border-border p-6">
           <h2 className="font-semibold mb-2">Subscription</h2>
           {isPremium ? (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
-              <Sparkles className="h-5 w-5 text-amber-600" />
-              <div>
-                <p className="font-medium text-amber-900">Premium Active</p>
-                <p className="text-sm text-amber-700">You have full access to all CadetMate features.</p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                <Sparkles className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-medium text-amber-900">Premium Active</p>
+                  <p className="text-sm text-amber-700">You have full access to Premium training features.</p>
+                </div>
               </div>
+              <BillingPortalButton>Manage billing</BillingPortalButton>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Upgrade to Premium to unlock all modules, flashcards, simulators, and the full question bank.
+                Upgrade to Premium to unlock modules, simulators, oral banks, and TRB tools. Flashcard packs are sold separately.
               </p>
-              <Button asChild>
-                <Link href="/store">View Plans & Upgrade</Link>
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <SubscribeButton />
+                <Button variant="outline" asChild>
+                  <Link href="/store">Open store</Link>
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -203,11 +211,18 @@ export default async function ProfilePage({
         <div className="rounded-lg border border-border p-6">
           <h2 className="font-semibold mb-2">Billing</h2>
           <p className="text-sm text-muted-foreground">
-            Manage your subscription and payment methods through the store.
+            Update your payment method, view invoices, or cancel in the Stripe customer portal.
           </p>
-          <Button variant="outline" className="mt-4" asChild>
-            <Link href="/store">Go to Store</Link>
-          </Button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {isPremium ? (
+              <BillingPortalButton>Open billing portal</BillingPortalButton>
+            ) : (
+              <SubscribeButton />
+            )}
+            <Button variant="outline" asChild>
+              <Link href="/store">Go to Store</Link>
+            </Button>
+          </div>
         </div>
       )}
 

@@ -36,7 +36,7 @@ function CommunityFeed() {
   const [feedFilter, setFeedFilter] = useState<'mine' | 'saved' | undefined>(
     urlFilter === 'mine' || urlFilter === 'saved' ? urlFilter : undefined,
   );
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => searchParams.get('compose') === '1');
   const [userId, setUserId] = useState<string | undefined>();
   const categories = useCategories();
 

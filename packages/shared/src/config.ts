@@ -60,7 +60,7 @@ export function stripeReturnUrls(
 ): { success_url: string; cancel_url: string } {
   const origin = webOrigin.replace(/\/$/, '');
   return {
-    success_url: `${origin}/flashcards/${slug}?success=1&source=mobile`,
+    success_url: `${origin}/flashcards/${slug}?success=1&session_id={CHECKOUT_SESSION_ID}&source=mobile`,
     cancel_url: `${origin}/flashcards/${slug}?source=mobile`,
   };
 }

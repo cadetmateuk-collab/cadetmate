@@ -10,6 +10,7 @@ import { rankForXP } from '@/lib/algorithms';
 import { unifiedTotalXp } from '@/lib/gamification';
 import { ProgressTabNav } from '@/components/progress/ProgressTabNav';
 import { ProgressTabSync } from '@/components/progress/ProgressTabSync';
+import { DAILY_STUDY_GOAL_MINUTES, WEEKLY_STUDY_GOAL_MINUTES, buildWeekUsage } from '@/lib/study/time';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Progress',
@@ -22,7 +23,9 @@ export default async function ProgressPage() {
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const [statsResult, xpResult, gamificationResult, completedResult, achievementsResult] = await Promise.all([
+  const activitySince = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [statsResult, xpResult, gamificationResult, completedResult, achievementsResult, activityResult] = await Promise.all([
     supabase.from('user_statistics').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('flashcard_user_xp').select('*').eq('user_id', user.id).maybeSingle(),
     supabase.from('user_gamification').select('*').eq('user_id', user.id).maybeSingle(),
@@ -39,6 +42,11 @@ export default async function ProgressPage() {
       .eq('user_id', user.id)
       .order('unlocked_at', { ascending: false })
       .limit(12),
+    supabase
+      .from('user_activity_log')
+      .select('session_start, duration_seconds')
+      .eq('user_id', user.id)
+      .gte('session_start', activitySince),
   ]);
 
   const stats = statsResult.data;
@@ -53,6 +61,7 @@ export default async function ProgressPage() {
   const examReadiness = Number(gamification?.exam_readiness_score ?? 0);
   const totalHours = Math.floor((stats?.total_time_seconds ?? 0) / 3600);
   const totalMins = Math.floor(((stats?.total_time_seconds ?? 0) % 3600) / 60);
+  const weeklyMinutes = buildWeekUsage(activityResult.data ?? []).reduce((sum, day) => sum + day.minutes, 0);
 
   return (
     <div className="py-8">
@@ -85,9 +94,9 @@ export default async function ProgressPage() {
 
         <DashboardCard title="Weekly Progress" icon={TrendingUp}>
           <ProgressBar
-            value={gamification?.weekly_minutes ?? 0}
-            max={gamification?.weekly_goal_minutes ?? 180}
-            label="Minutes studied this week"
+            value={weeklyMinutes}
+            max={WEEKLY_STUDY_GOAL_MINUTES}
+            label={`${DAILY_STUDY_GOAL_MINUTES} min a day this week`}
           />
         </DashboardCard>
 

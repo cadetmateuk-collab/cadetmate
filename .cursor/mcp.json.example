@@ -1,17 +1,7 @@
 {
   "mcpServers": {
     "supabase": {
-      "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "@supabase/mcp-server-supabase",
-        "--project-ref=YOUR_PROJECT_REF"
-      ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "YOUR_SUPABASE_PERSONAL_ACCESS_TOKEN"
-      }
+      "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF"
     }
   }
 }

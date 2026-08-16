@@ -13,7 +13,7 @@ export const LANDING_FAQS = [
   {
     question: 'Is CadetMate free to start?',
     answer:
-      'Yes. Create a free account for community access, daily quizzes, limited flashcards, progress tracking, and free maritime articles. Premium unlocks the full module library, unlimited flashcards, oral question banks, and simulators when you need them.',
+      'Yes. Create a free account for community access, daily quizzes, limited flashcards, progress tracking, and free maritime articles. Premium unlocks the full module library, oral question banks, and simulators. Flashcard packs are sold separately in the store.',
   },
   {
     question: 'Does CadetMate help with MCA oral exams?',

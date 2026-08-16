@@ -27,6 +27,11 @@ function isFullBleedToolPath(pathname: string) {
   );
 }
 
+/** Home dashboard needs the full main column so the right pane can sit beside content */
+function isDashboardPath(pathname: string) {
+  return pathname === '/dashboard';
+}
+
 /** Logged-in chrome — sticky sidebar + top bar; page scrolls */
 export function AppShell({
   user,
@@ -39,6 +44,7 @@ export function AppShell({
   const pathname = usePathname() ?? '';
   const moduleViewer = isModuleViewerPath(pathname);
   const fullBleedTool = isFullBleedToolPath(pathname);
+  const dashboard = isDashboardPath(pathname);
   const fillMain = moduleViewer || fullBleedTool;
   const isAdminArea = pathname.startsWith('/admin');
 
@@ -79,7 +85,9 @@ export function AppShell({
           tabIndex={-1}
           className={cn(
             'relative flex-1 outline-none',
-            fillMain ? 'flex min-h-0 flex-col overflow-hidden' : 'flex min-w-0 flex-col items-center',
+            fillMain
+              ? 'flex min-h-0 flex-col overflow-hidden'
+              : 'flex min-w-0 flex-col items-center',
           )}
         >
           {fillMain ? (
@@ -87,10 +95,23 @@ export function AppShell({
               {children}
             </PageTransition>
           ) : (
-            <div className="flex w-full flex-col items-center py-6 pb-10 md:py-8">
-              <PageContainer>
-                <PageTransition>{children}</PageTransition>
-              </PageContainer>
+            <div
+              className={cn(
+                'flex flex-col',
+                dashboard
+                  ? 'dashboard-home-shell'
+                  : 'w-full items-center py-6 pb-10 md:py-8',
+              )}
+            >
+              {dashboard ? (
+                <PageTransition className="flex h-full min-h-0 flex-1 flex-col">
+                  {children}
+                </PageTransition>
+              ) : (
+                <PageContainer>
+                  <PageTransition>{children}</PageTransition>
+                </PageContainer>
+              )}
             </div>
           )}
         </main>

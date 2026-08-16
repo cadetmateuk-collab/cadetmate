@@ -11,7 +11,7 @@ import { QuickFire } from '@/components/QuickFire';
 import { Survival } from '@/components/Survival';
 import { XPBar } from '@/components/XPBar';
 import {
-  usePack, useCurrentUser, loadProgress, saveProgress, bumpPackStats, addXP, useUserXP,
+  usePack, useCurrentUser, loadProgress, saveProgress, bumpPackStats, addXP, useUserXP, loadOwnership,
 } from '@/lib/hooks/useFlashcards';
 import {
   sm2, pickNext, computeCardXP, computeSessionBonus, computeBulkSessionXP,
@@ -46,12 +46,31 @@ export default function StudyPage() {
   const [done, setDone] = useState(false);
   const [sessionXp, setSessionXp] = useState(0);
   const [lastXpPop, setLastXpPop] = useState<number | null>(null);
+  const [access, setAccess] = useState<'unknown' | 'allowed' | 'denied'>('unknown');
   const startRef = useRef(Date.now());
   const xpAwardedRef = useRef(0);
   const ratingRef = useRef(false);
 
+  useEffect(() => {
+    if (!pack) return;
+    if (!pack.is_premium) {
+      setAccess('allowed');
+      return;
+    }
+    if (!userId) return;
+    loadOwnership(userId, pack.id).then((owned) => {
+      if (owned) {
+        setAccess('allowed');
+        return;
+      }
+      setAccess('denied');
+      router.replace(`/flashcards/${slug}`);
+    });
+  }, [pack, userId, slug, router]);
+
   // Load progress once auth + pack are ready (avoids double-init when userId resolves)
   useEffect(() => {
+    if (access !== 'allowed') return;
     if (!pack || cards.length === 0 || !userId) return;
 
     let cancelled = false;
@@ -73,7 +92,7 @@ export default function StudyPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [pack?.id, cards.length, userId, mode]);
+  }, [access, pack?.id, cards.length, userId, mode]);
 
   // Always show the front when advancing to a new card
   useEffect(() => {
@@ -191,6 +210,17 @@ export default function StudyPage() {
       </div>
     </div>
   ) : null;
+
+  if (loading || access !== 'allowed') {
+    return (
+      <StudyShell>
+        <Link href={`/flashcards/${slug}`} className="bp-back"><ChevronLeft size={12} /> Back</Link>
+        <div className="bp-loading" style={{ padding: '4rem 0' }}>
+          <div className="bp-spinner" /><span>{access === 'denied' ? 'Redirecting…' : 'Checking access…'}</span>
+        </div>
+      </StudyShell>
+    );
+  }
 
   // ── Specialised modes ─────────────────────────────────────────
   if (mode === 'match') {

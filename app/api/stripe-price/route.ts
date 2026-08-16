@@ -1,21 +1,30 @@
-// app/api/stripe-price/route.ts
-import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { requireStaffApi } from '@/lib/auth/require-permission-api';
+import { getStripe } from '@/lib/stripe/client';
 
 export async function GET(req: NextRequest) {
+  const auth = await requireStaffApi();
+  if ('error' in auth) return auth.error;
+
   const priceId = req.nextUrl.searchParams.get('priceId');
   if (!priceId) return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
 
   try {
-    const price = await stripe.prices.retrieve(priceId);
+    const price = await getStripe().prices.retrieve(priceId);
+    const currency = (price.currency || 'gbp').toUpperCase();
+    const amount = (price.unit_amount ?? 0) / 100;
+    const display = new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency,
+    }).format(amount);
+
     return NextResponse.json({
-      unit_amount: price.unit_amount,       // e.g. 499 for £4.99
-      currency: price.currency,             // e.g. "gbp"
-      display: `£${((price.unit_amount ?? 0) / 100).toFixed(2)}`,
+      unit_amount: price.unit_amount,
+      currency: price.currency,
+      display,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Stripe error';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }

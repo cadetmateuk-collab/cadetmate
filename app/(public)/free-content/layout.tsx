@@ -1,9 +1,9 @@
-import { PublicShell } from '@/components/layout/PublicShell';
+import { AdaptiveShell } from '@/components/layout/AdaptiveShell';
 
 /**
- * Free Content always uses public chrome (no AdaptiveShell / auth headers).
- * AdaptiveShell + force-dynamic was contributing to continuous RSC refetch loops.
+ * Same chrome as other public pages: logged-in users keep the app sidebar,
+ * guests see the public sidebar.
  */
 export default function FreeContentLayout({ children }: { children: React.ReactNode }) {
-  return <PublicShell>{children}</PublicShell>;
+  return <AdaptiveShell>{children}</AdaptiveShell>;
 }

@@ -16,7 +16,7 @@ const SECTIONS = [
   {
     id: 'billing',
     title: 'Premium / subscription',
-    description: 'Stripe price IDs and premium entitlements are managed through environment variables and the Stripe webhook.',
+    description: 'Stripe Premium price (STRIPE_PREMIUM_PRICE_ID) and entitlements are managed through environment variables and the Stripe webhook. Pack prices are set on each flashcard pack in Admin → Flashcards.',
     href: '/store',
   },
   {

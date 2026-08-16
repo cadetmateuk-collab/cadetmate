@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
 import { 
   User, 
   Mail, 
@@ -22,6 +23,10 @@ import {
   KeyRound
 } from 'lucide-react'
 import { PasswordResetButton } from './PasswordResetButton'
+import { SubscribeButton } from '@/components/billing/SubscribeButton'
+import { BillingPortalButton } from '@/components/billing/BillingPortalButton'
+import { getPremiumPrice } from '@/lib/stripe/premium-price'
+
 export default async function DashboardPage() {
   const user = await requireAuth()
   const supabase = await createClient()
@@ -62,6 +67,7 @@ export default async function DashboardPage() {
 
   const isPremium = isPremiumRole(user.profile?.role)
   const isAdmin = user.profile?.role === 'admin'
+  const premiumPrice = await getPremiumPrice()
 
   const totalHours = Math.floor((stats?.total_time_seconds || 0) / 3600)
   const totalMinutes = Math.floor(((stats?.total_time_seconds || 0) % 3600) / 60)
@@ -102,11 +108,17 @@ export default async function DashboardPage() {
                       Upgrade to Premium to access all training modules, TRB tools, and expert guidance
                     </p>
                     <div className="flex gap-3">
-                      <Button className="bg-blue-600 text-white">
-                        <Crown className="mr-2 h-4 w-4" />
-                        Upgrade to Premium
+                      <SubscribeButton
+                        className="bg-blue-600 text-white hover:bg-blue-700"
+                        label={
+                          premiumPrice
+                            ? `Upgrade to Premium · ${premiumPrice.formatted}`
+                            : 'Upgrade to Premium'
+                        }
+                      />
+                      <Button variant="outline" asChild>
+                        <Link href="/pricing">View Benefits</Link>
                       </Button>
-                      <Button variant="outline">View Benefits</Button>
                     </div>
                   </div>
                 </div>
@@ -331,18 +343,18 @@ export default async function DashboardPage() {
                   </div>
                 </div>
                 {!isAdmin && (
-                  <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <BillingPortalButton className="flex-1">
                       <CreditCard className="mr-2 h-4 w-4" />
                       Update Payment Method
-                    </Button>
-                    <Button variant="outline" className="flex-1">
+                    </BillingPortalButton>
+                    <BillingPortalButton className="flex-1">
                       View Billing History
-                    </Button>
-                    <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                    </BillingPortalButton>
+                    <BillingPortalButton className="text-red-600 hover:text-red-700 hover:bg-red-50">
                       <XCircle className="mr-2 h-4 w-4" />
                       Cancel Subscription
-                    </Button>
+                    </BillingPortalButton>
                   </div>
                 )}
               </div>
@@ -371,10 +383,14 @@ export default async function DashboardPage() {
                       <span>Expert tips & guidance</span>
                     </div>
                   </div>
-                  <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
-                    <Crown className="mr-2 h-4 w-4" />
-                    Upgrade to Premium - £9.99/month
-                  </Button>
+                  <SubscribeButton
+                    className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                    label={
+                      premiumPrice
+                        ? `Upgrade to Premium · ${premiumPrice.formattedWithInterval}`
+                        : 'Upgrade to Premium'
+                    }
+                  />
                 </div>
               </div>
             )}

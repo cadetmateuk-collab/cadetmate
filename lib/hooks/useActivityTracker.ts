@@ -2,10 +2,15 @@
 
 import { useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { londonDateKey } from '@/lib/study/time';
+
+const FLUSH_INTERVAL_MS = 60 * 1000;
+const MIN_FLUSH_SECONDS = 15;
 
 export function useActivityTracker() {
   const sessionStartRef = useRef<Date | null>(null);
   const lastActivityUpdateRef = useRef<Date | null>(null);
+  const flushingRef = useRef(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -22,40 +27,48 @@ export function useActivityTracker() {
         .from('user_statistics')
         .update({
           last_activity_at: new Date().toISOString(),
-          last_activity_date: new Date().toISOString().split('T')[0],
+          last_activity_date: londonDateKey(),
         })
         .eq('user_id', user.id);
 
       lastActivityUpdateRef.current = new Date();
     };
 
-    const trackActivity = async () => {
-      if (!sessionStartRef.current) return;
+    const trackActivity = async (force = false) => {
+      if (flushingRef.current || !sessionStartRef.current) return;
 
       const sessionEnd = new Date();
       const durationSeconds = Math.floor(
         (sessionEnd.getTime() - sessionStartRef.current.getTime()) / 1000,
       );
+      if (!force && durationSeconds < MIN_FLUSH_SECONDS) return;
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      flushingRef.current = true;
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-      await supabase.from('user_activity_log').insert({
-        user_id: user.id,
-        session_start: sessionStartRef.current.toISOString(),
-        session_end: sessionEnd.toISOString(),
-        duration_seconds: durationSeconds,
-        page_path: window.location.pathname,
-      });
+        if (durationSeconds >= MIN_FLUSH_SECONDS) {
+          const { error } = await supabase.from('user_activity_log').insert({
+            user_id: user.id,
+            session_start: sessionStartRef.current.toISOString(),
+            session_end: sessionEnd.toISOString(),
+            duration_seconds: durationSeconds,
+            page_path: window.location.pathname,
+          });
+          if (error) return;
 
-      await supabase.rpc('increment_user_time', {
-        p_user_id: user.id,
-        p_seconds: durationSeconds,
-      });
-
-      sessionStartRef.current = new Date();
+          await supabase.rpc('increment_user_time', {
+            p_user_id: user.id,
+            p_seconds: durationSeconds,
+          });
+          sessionStartRef.current = new Date();
+        }
+      } finally {
+        flushingRef.current = false;
+      }
     };
 
     const w = window as Window & {
@@ -75,7 +88,9 @@ export function useActivityTracker() {
       }, 2000);
     }
 
-    const trackInterval = setInterval(trackActivity, 5 * 60 * 1000);
+    const trackInterval = setInterval(() => {
+      void trackActivity();
+    }, FLUSH_INTERVAL_MS);
 
     const activityInterval = setInterval(() => {
       const timeSinceLastUpdate = lastActivityUpdateRef.current
@@ -96,19 +111,31 @@ export function useActivityTracker() {
       }, 60_000);
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        void trackActivity(true);
+      } else if (!sessionStartRef.current) {
+        sessionStartRef.current = new Date();
+      }
+    };
+
     window.addEventListener('click', handleInteraction, { passive: true });
     window.addEventListener('keydown', handleInteraction, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibility);
 
     const handleUnload = () => {
-      void trackActivity();
+      void trackActivity(true);
     };
+    window.addEventListener('pagehide', handleUnload);
     window.addEventListener('beforeunload', handleUnload);
 
     return () => {
-      void trackActivity();
+      void trackActivity(true);
       window.removeEventListener('beforeunload', handleUnload);
+      window.removeEventListener('pagehide', handleUnload);
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('keydown', handleInteraction);
+      document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(trackInterval);
       clearInterval(activityInterval);
       if (interactionTimeout) clearTimeout(interactionTimeout);

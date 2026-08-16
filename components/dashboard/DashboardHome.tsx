@@ -1,377 +1,625 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import {
-  BookOpen,
-  ClipboardList,
-  Trophy,
-  Clock,
   ArrowRight,
-  Anchor,
-  ChevronRight,
-  LayoutGrid,
-  PenLine,
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  Compass,
+  FileText,
+  Flame,
   MessageSquare,
-  Newspaper,
-  GraduationCap,
+  Plus,
+  WalletCards,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
+import { SubscribeButton } from '@/components/billing/SubscribeButton';
+import { QuickLinkGlyph, type QuickLinkGlyphName } from '@/components/dashboard/QuickLinkGlyph';
+import type { AvatarKind } from '@/lib/onboarding/constants';
 
-export function DashCard({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border border-border/60 bg-white shadow-[0_2px_12px_rgba(41,102,242,0.06)]',
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function WelcomeHeader({
-  firstName,
-  quote = 'A smooth sea never made a skilled sailor.',
-}: {
-  firstName: string;
-  quote?: string;
-}) {
-  return (
-    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground">
-          Welcome back, {firstName}!
-        </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground max-w-xl leading-relaxed">
-          Keep learning. Keep growing. Your journey to becoming a competent officer continues.
-        </p>
-      </div>
-      <div className="shrink-0 rounded-xl border border-primary/25 bg-primary/[0.04] px-4 py-3 max-w-sm">
-        <div className="flex items-start gap-2.5">
-          <Anchor className="h-4 w-4 text-primary mt-0.5 shrink-0" strokeWidth={1.75} />
-          <p className="text-sm italic text-foreground/80 leading-snug">&ldquo;{quote}&rdquo;</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  href: string;
-  linkLabel: string;
-  icon: LucideIcon;
-  accent: 'blue' | 'green' | 'amber' | 'violet';
+export type DashboardAvatar = {
+  fullName: string;
+  avatarKind: AvatarKind;
+  avatarPreset: string | null;
+  avatarColor: string | null;
+  role: string | null;
 };
 
-const STAT_ACCENTS = {
-  blue: { wrap: 'bg-primary/10 text-primary', value: 'text-primary' },
-  green: { wrap: 'bg-emerald-500/10 text-emerald-600', value: 'text-emerald-600' },
-  amber: { wrap: 'bg-amber-500/10 text-amber-600', value: 'text-amber-600' },
-  violet: { wrap: 'bg-violet-500/10 text-violet-600', value: 'text-violet-600' },
-} as const;
+export type ContinueModuleSection = {
+  index: number;
+  title: string;
+  completed: boolean;
+};
 
-export function StatCards({ items }: { items: StatCardProps[] }) {
+export type ContinueModule = {
+  id: string;
+  title: string;
+  category: string | null;
+  imageUrl: string | null;
+  progress: number;
+  href: string;
+  sections: ContinueModuleSection[];
+  totalLessons?: number;
+};
+
+export type CommunityPostPreview = {
+  id: string;
+  title: string;
+  createdAtLabel: string;
+  authorName: string;
+  author: DashboardAvatar;
+  userId: string;
+};
+
+export type WeekDayUsage = {
+  key: string;
+  label: string;
+  minutes: number;
+};
+
+export type DashboardHomeProps = {
+  firstName: string;
+  greeting: string;
+  isPremium: boolean;
+  isGuest?: boolean;
+  streakDays: number;
+  weeklyMinutes: number;
+  dailyGoalMinutes: number;
+  todayMinutes: number;
+  targetPercent: number;
+  avatar: DashboardAvatar;
+  weekUsage: WeekDayUsage[];
+  inProgressCount: number;
+  completedCount: number;
+  continueModules: ContinueModule[];
+  suggestedModules: ContinueModule[];
+  communityPosts: CommunityPostPreview[];
+};
+
+function paneCard(className?: string) {
+  return cn(
+    'rounded-2xl border border-black/[0.06] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]',
+    className,
+  );
+}
+
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  colregs: Compass,
+  navigation: Compass,
+  meteorology: Compass,
+  cargo: BookOpen,
+};
+
+function categoryKey(category: string | null) {
+  return (category ?? '').toLowerCase();
+}
+
+function usableCover(url: string | null) {
+  if (!url) return null;
+  if (url.startsWith('/')) return url;
+  try {
+    const host = new URL(url).hostname;
+    if (
+      host.endsWith('supabase.co') ||
+      host === 'images.unsplash.com' ||
+      host === 'cadetmate.co.uk' ||
+      host.endsWith('.cadetmate.co.uk')
+    ) {
+      return url;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function ModuleCover({
+  title,
+  category,
+  imageUrl,
+  className,
+}: {
+  title: string;
+  category: string | null;
+  imageUrl: string | null;
+  className?: string;
+}) {
+  const Icon = CATEGORY_ICON[categoryKey(category)] ?? BookOpen;
+  const cover = usableCover(imageUrl);
+
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4 mb-6">
+    <div className={cn('relative overflow-hidden bg-[#E8EEF9]', className)}>
+      {cover ? (
+        <Image src={cover} alt="" fill sizes="(max-width: 768px) 100vw, 240px" className="object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-primary/10">
+          <Icon className="h-10 w-10 text-primary/55" strokeWidth={1.4} />
+        </div>
+      )}
+      <span className="sr-only">{title}</span>
+    </div>
+  );
+}
+
+function PremiumBanner({
+  isPremium,
+  isGuest,
+}: {
+  isPremium: boolean;
+  isGuest: boolean;
+}) {
+  const ctaClass =
+    'inline-flex h-10 shrink-0 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold !text-primary hover:bg-white/90 hover:!text-primary';
+
+  return (
+    <section className={paneCard('dashboard-home__hero dashboard-premium-banner relative justify-between gap-4 overflow-hidden border-0 px-6 text-white shadow-[0_12px_32px_rgba(41,102,242,0.22)]')}>
+      <div className="min-w-0">
+        <h2 className="dashboard-home__hero-title">Full Syllabus:</h2>
+        <p className="dashboard-home__hero-status">{isPremium ? 'Unlocked' : 'Locked'}</p>
+      </div>
+      {isPremium ? (
+        <Link href="/unit-modules" className={ctaClass}>
+          Browse modules
+          <ArrowRight className="ml-1.5 h-4 w-4" />
+        </Link>
+      ) : isGuest ? (
+        <Link href="/auth?mode=signup&redirectTo=/store" className={ctaClass}>
+          Upgrade to Premium
+        </Link>
+      ) : (
+        <SubscribeButton className={ctaClass} label="Upgrade to Premium" />
+      )}
+    </section>
+  );
+}
+
+function QuickLinks({
+  inProgressCount,
+  completedCount,
+  isGuest,
+}: {
+  inProgressCount: number;
+  completedCount: number;
+  isGuest: boolean;
+}) {
+  const moduleHint =
+    inProgressCount > 0
+      ? `${inProgressCount} in progress`
+      : completedCount > 0
+        ? `${completedCount} completed`
+        : 'Browse the syllabus';
+
+  const items: {
+    href: string;
+    label: string;
+    hint: string;
+    icon: QuickLinkGlyphName;
+    Watermark: LucideIcon;
+  }[] = [
+    {
+      href: isGuest ? '/pricing' : '/unit-modules',
+      label: 'Learn modules',
+      hint: moduleHint,
+      icon: 'book',
+      Watermark: BookOpen,
+    },
+    {
+      href: isGuest ? '/pricing' : '/flashcards',
+      label: 'Flashcards',
+      hint: 'Spaced repetition packs',
+      icon: 'layers',
+      Watermark: WalletCards,
+    },
+    {
+      href: isGuest ? '/pricing' : '/trb',
+      label: 'TRB',
+      hint: 'Training Record Book',
+      icon: 'document',
+      Watermark: FileText,
+    },
+  ];
+
+  return (
+    <div className="dashboard-home__quicklinks">
       {items.map((item) => {
-        const Icon = item.icon;
-        const accent = STAT_ACCENTS[item.accent];
+        const Watermark = item.Watermark;
         return (
-          <DashCard key={item.label} className="p-4 md:p-5">
-            <div className="flex items-start justify-between gap-2">
-              <div
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-xl',
-                  accent.wrap,
-                )}
-              >
-                <Icon className="h-5 w-5" strokeWidth={1.75} />
-              </div>
-            </div>
-            <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <Link
+            key={item.label}
+            href={item.href}
+            className={cn(
+              paneCard(
+                'relative flex h-full flex-col justify-center overflow-hidden px-4 py-3.5 transition-colors hover:border-primary/25 hover:bg-primary/[0.02]',
+              ),
+            )}
+          >
+            <QuickLinkGlyph name={item.icon} className="relative z-10 h-9 w-9 text-primary" />
+            <span className="relative z-10 mt-2.5 text-[11px] font-medium leading-snug text-muted-foreground">
+              {item.hint}
+            </span>
+            <span className="relative z-10 mt-0.5 text-sm font-bold leading-snug text-foreground">
               {item.label}
-            </p>
-            <p className={cn('mt-1 text-3xl font-extrabold tabular-nums tracking-tight', accent.value)}>
-              {item.value}
-            </p>
-            <Link
-              href={item.href}
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-            >
-              {item.linkLabel}
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </DashCard>
+            </span>
+            <Watermark
+              aria-hidden
+              className="pointer-events-none absolute -bottom-7 -right-6 h-32 w-32 rotate-[18deg] text-slate-100"
+              strokeWidth={1}
+            />
+          </Link>
         );
       })}
     </div>
   );
 }
 
-export function ContinueLearningCard({
-  title,
-  description,
-  progress,
-  href,
-  buttonLabel = 'Continue Course',
+function ModuleCard({
+  module,
+  suggested,
 }: {
-  title: string;
-  description: string;
-  progress: number;
-  href: string;
-  buttonLabel?: string;
+  module: ContinueModule;
+  suggested?: boolean;
 }) {
-  const pct = Math.min(100, Math.max(0, Math.round(progress)));
+  const pct = Math.min(100, Math.max(0, Math.round(module.progress)));
+  const sections = module.sections ?? [];
+  const completedSections = sections.filter((section) => section.completed).length;
+  const showSections = sections.length > 0;
 
   return (
-    <DashCard className="overflow-hidden p-0">
-      <div className="flex flex-col sm:flex-row">
-        <div
-          className="relative sm:w-[42%] min-h-[140px] sm:min-h-[200px] shrink-0"
-          style={{
-            background:
-              'linear-gradient(145deg, #1638B0 0%, #2966F2 55%, #5B8CFF 100%)',
-          }}
-        >
-          <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <GraduationCap className="h-16 w-16 text-white/80" strokeWidth={1.25} />
-          </div>
-        </div>
-        <div className="flex flex-1 flex-col justify-center p-5 md:p-6">
-          <span className="inline-flex w-fit items-center rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-            In Progress
+    <article className={paneCard('flex h-full min-h-0 flex-col overflow-hidden transition-colors hover:border-primary/25')}>
+      <Link href={module.href} className="group flex min-h-0 flex-1 flex-col">
+        <ModuleCover
+          title={module.title}
+          category={module.category}
+          imageUrl={module.imageUrl}
+          className="min-h-[6.5rem] w-full flex-1"
+        />
+        <div className="shrink-0 px-3.5 pb-3 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">
+            {module.category || (suggested ? 'Suggested' : 'Module')}
           </span>
-          <h2 className="mt-3 text-lg font-bold tracking-tight text-foreground">{title}</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-            {description}
-          </p>
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="font-semibold text-muted-foreground">{pct}% Complete</span>
+          <h3 className="mt-1 line-clamp-2 text-[13px] font-bold leading-snug text-foreground group-hover:text-primary">
+            {module.title}
+          </h3>
+          {suggested && pct <= 0 ? (
+            <p className="mt-2 text-[11px] font-semibold text-primary">Start this module</p>
+          ) : (
+            <div className="mt-2.5 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+              </div>
+              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">{pct}%</span>
             </div>
-            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
-          <Link
-            href={href}
-            className="mt-5 inline-flex w-fit items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition-colors min-h-[44px]"
-          >
-            {buttonLabel}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          )}
         </div>
-      </div>
-    </DashCard>
+      </Link>
+
+      {showSections && (
+        <details className="group relative z-10 mt-auto flex shrink-0 flex-col border-t border-black/[0.06] bg-white open:min-h-0 open:flex-1">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-slate-50 px-3.5 py-2.5 text-[11px] font-semibold text-foreground marker:content-none hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
+            <span>
+              Sections
+              <span className="ml-1 font-medium text-muted-foreground">
+                {suggested && pct <= 0
+                  ? `${sections.length}`
+                  : `${completedSections}/${sections.length}`}
+              </span>
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+            {sections.map((section) => (
+              <li key={`${module.id}-${section.index}`}>
+                <Link
+                  href={`${module.href}?section=${section.index + 1}`}
+                  className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-[11px] hover:bg-slate-50"
+                >
+                  <CheckCircle2
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0',
+                      section.completed ? 'text-primary' : 'text-slate-200',
+                    )}
+                    strokeWidth={2}
+                  />
+                  <span className={cn('min-w-0 flex-1 truncate', section.completed ? 'text-foreground' : 'text-muted-foreground')}>
+                    {section.title}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </article>
   );
 }
 
-export function OverallProgressCard({
-  overall,
-  completed,
-  inProgress,
-  notStarted,
+function ContinueSection({
+  continueModules,
+  suggestedModules,
 }: {
-  overall: number;
-  completed: number;
-  inProgress: number;
-  notStarted: number;
+  continueModules: ContinueModule[];
+  suggestedModules: ContinueModule[];
 }) {
-  const pct = Math.min(100, Math.max(0, Math.round(overall)));
-  const r = 54;
+  const started = continueModules.filter((m) => m.progress > 0);
+  const hasContinue = started.some((m) => m.progress < 100);
+  const hasAnyStarted = started.length > 0;
+  const continueIds = new Set(started.map((m) => m.id));
+  const modules: Array<ContinueModule & { suggested: boolean }> = hasAnyStarted
+    ? [
+        ...started.map((m) => ({ ...m, suggested: false })),
+        ...suggestedModules
+          .filter((m) => !continueIds.has(m.id))
+          .map((m) => ({ ...m, suggested: true })),
+      ].slice(0, 3)
+    : suggestedModules.map((m) => ({ ...m, suggested: true })).slice(0, 3);
+
+  return (
+    <section className="dashboard-home__modules">
+      <div className="mb-2 flex shrink-0 items-end justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight text-foreground">
+            {hasContinue ? 'Continue learning' : hasAnyStarted ? 'Your modules' : 'Suggested for you'}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {hasContinue
+              ? 'Pick up modules you have started.'
+              : hasAnyStarted
+                ? 'Modules you have already worked through.'
+                : 'Start with these — they cover the core OOW topics.'}
+          </p>
+        </div>
+        <Link href="/unit-modules" className="shrink-0 text-xs font-semibold text-primary hover:underline">
+          See all
+        </Link>
+      </div>
+
+      {modules.length === 0 ? (
+        <div className={paneCard('flex flex-1 flex-col items-center justify-center px-5 py-6 text-center')}>
+          <p className="text-sm font-semibold text-foreground">No modules to show yet</p>
+          <p className="mt-1 text-xs text-muted-foreground">Browse the library and start your first one.</p>
+          <Link
+            href="/unit-modules"
+            className="mt-3 inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90"
+          >
+            Browse modules
+          </Link>
+        </div>
+      ) : (
+        <div className="dashboard-home__modules-grid">
+          {modules.map((module) => (
+            <ModuleCard key={module.id} module={module} suggested={module.suggested} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProgressRingAvatar({
+  avatar,
+  percent,
+}: {
+  avatar: DashboardAvatar;
+  percent: number;
+}) {
+  const pct = Math.min(100, Math.max(0, Math.round(percent)));
+  const size = 96;
+  const stroke = 6;
+  const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
 
   return (
-    <DashCard className="p-5 md:p-6 h-full">
-      <h2 className="text-base font-bold tracking-tight text-foreground">Overall Progress</h2>
-      <div className="mt-4 flex flex-col sm:flex-row items-center gap-5">
-        <div className="relative h-36 w-36 shrink-0">
-          <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90">
-            <circle cx="64" cy="64" r={r} fill="none" stroke="#E8EEF9" strokeWidth="12" />
-            <circle
-              cx="64"
-              cy="64"
-              r={r}
-              fill="none"
-              stroke="#2966F2"
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={c}
-              strokeDashoffset={offset}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-extrabold text-primary tabular-nums">{pct}%</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Overall
-            </span>
-          </div>
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E8EEF9" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="#2966F2"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <UserAvatar
+          fullName={avatar.fullName}
+          avatarKind={avatar.avatarKind}
+          avatarPreset={avatar.avatarPreset}
+          avatarColor={avatar.avatarColor}
+          role={avatar.role}
+          size={62}
+          showRoleBadge={false}
+        />
+      </div>
+      <span className="absolute -right-0.5 top-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary shadow-[0_2px_8px_rgba(15,23,42,0.12)]">
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+function WeeklyUsageChart({
+  weekUsage,
+  weeklyMinutes,
+  dailyGoalMinutes,
+}: {
+  weekUsage: WeekDayUsage[];
+  weeklyMinutes: number;
+  dailyGoalMinutes: number;
+}) {
+  const max = Math.max(dailyGoalMinutes, ...weekUsage.map((d) => d.minutes), 1);
+  const hasAny = weekUsage.some((d) => d.minutes > 0);
+
+  return (
+    <section className={paneCard('dashboard-home__week px-4 py-3.5')}>
+      <div className="mb-2.5 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-bold text-foreground">This week</h2>
+          <p className="text-[11px] text-muted-foreground">{dailyGoalMinutes} min a day</p>
         </div>
-        <ul className="w-full space-y-3 text-sm">
-          <li className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Courses Completed
-            </span>
-            <span className="font-bold tabular-nums">{completed}</span>
-          </li>
-          <li className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-              In Progress
-            </span>
-            <span className="font-bold tabular-nums">{inProgress}</span>
-          </li>
-          <li className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-muted-foreground">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-              Not Started
-            </span>
-            <span className="font-bold tabular-nums">{notStarted}</span>
-          </li>
-        </ul>
+        <p className="text-[11px] font-semibold tabular-nums text-foreground">
+          {weeklyMinutes}
+          <span className="font-medium text-muted-foreground"> min</span>
+        </p>
       </div>
-    </DashCard>
-  );
-}
-
-type UpcomingItem = {
-  title: string;
-  meta: string;
-  tag: string;
-  tagTone: 'amber' | 'blue' | 'green';
-  href: string;
-};
-
-const TAG_TONES = {
-  amber: 'bg-amber-500/10 text-amber-700',
-  blue: 'bg-primary/10 text-primary',
-  green: 'bg-emerald-500/10 text-emerald-700',
-} as const;
-
-export function UpcomingCard({ items }: { items: UpcomingItem[] }) {
-  return (
-    <DashCard className="p-5 h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold tracking-tight">Upcoming</h2>
-        <Link href="/practice" className="text-xs font-semibold text-primary hover:underline">
-          View all
-        </Link>
-      </div>
-      <ul className="space-y-4">
-        {items.map((item) => (
-          <li key={item.title} className="flex gap-3">
-            <div className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-            <div className="min-w-0 flex-1">
-              <Link href={item.href} className="text-sm font-semibold text-foreground hover:text-primary">
-                {item.title}
-              </Link>
-              <p className="mt-0.5 text-xs text-muted-foreground">{item.meta}</p>
-              <span
-                className={cn(
-                  'mt-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                  TAG_TONES[item.tagTone],
-                )}
-              >
-                {item.tag}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </DashCard>
-  );
-}
-
-type AnnouncementItem = {
-  title: string;
-  time: string;
-  href: string;
-  icon: LucideIcon;
-};
-
-export function AnnouncementsCard({ items }: { items: AnnouncementItem[] }) {
-  return (
-    <DashCard className="p-5 h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold tracking-tight">Announcements</h2>
-        <Link href="/free-content" className="text-xs font-semibold text-primary hover:underline">
-          View all
-        </Link>
-      </div>
-      <ul className="space-y-4">
-        {items.map((item) => {
-          const Icon = item.icon;
+      <div className="flex h-[4.5rem] items-end gap-1.5">
+        {weekUsage.map((day) => {
+          const height = hasAny ? Math.max(day.minutes > 0 ? 14 : 8, (day.minutes / max) * 100) : 12;
+          const isPeak = hasAny && day.minutes === max && day.minutes > 0;
           return (
-            <li key={item.title}>
-              <Link href={item.href} className="flex items-start gap-3 group">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
-                  <Icon className="h-4 w-4" strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                    {item.title}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{item.time}</p>
-                </div>
-              </Link>
-            </li>
+            <div key={day.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div className="flex h-12 w-full items-end justify-center">
+                <div
+                  className={cn(
+                    'w-[70%] max-w-[18px] rounded-t-md',
+                    isPeak ? 'bg-primary' : day.minutes > 0 ? 'bg-primary/45' : 'bg-slate-100',
+                  )}
+                  style={{ height: `${height}%` }}
+                  title={`${day.label}: ${day.minutes} min`}
+                />
+              </div>
+              <span className="text-[9px] font-medium text-muted-foreground">{day.label}</span>
+            </div>
           );
         })}
-      </ul>
-    </DashCard>
+      </div>
+    </section>
   );
 }
 
-const QUICK_LINKS: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: 'Browse Courses', href: '/unit-modules', icon: BookOpen },
-  { label: 'Practice Orals', href: '/practice', icon: PenLine },
-  { label: 'View Progress', href: '/progress', icon: ClipboardList },
-  { label: 'Community', href: '/community', icon: MessageSquare },
-  { label: 'Free Articles', href: '/free-content', icon: Newspaper },
-  { label: 'Resources', href: '/resources', icon: LayoutGrid },
-];
+function CommunityPane({
+  posts,
+  isGuest,
+}: {
+  posts: CommunityPostPreview[];
+  isGuest: boolean;
+}) {
+  const composeHref = isGuest
+    ? `/auth?mode=signup&redirectTo=${encodeURIComponent('/community?compose=1')}`
+    : '/community?compose=1';
 
-export function QuickLinksCard({ links = QUICK_LINKS }: { links?: typeof QUICK_LINKS }) {
   return (
-    <DashCard className="p-5 h-full">
-      <h2 className="text-base font-bold tracking-tight mb-4">Quick Links</h2>
-      <ul className="space-y-1">
-        {links.map(({ label, href, icon: Icon }) => (
-          <li key={label}>
-            <Link
-              href={href}
-              className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-sm font-medium text-foreground hover:bg-slate-50 transition-colors min-h-[44px]"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="h-4 w-4" strokeWidth={1.75} />
-              </span>
-              <span className="flex-1">{label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </DashCard>
+    <section className={cn(paneCard('dashboard-home__community px-4 pb-3 pt-3.5'))}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold text-foreground">Community</h2>
+        <Link href="/community" className="text-xs font-semibold text-primary hover:underline">
+          See all
+        </Link>
+      </div>
+
+      {posts.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MessageSquare className="h-4 w-4" strokeWidth={1.75} />
+          </div>
+          <p className="text-sm font-semibold text-foreground">No posts yet</p>
+          <p className="mt-1 max-w-[14rem] text-xs leading-relaxed text-muted-foreground">
+            Share a question or tip with other cadets.
+          </p>
+        </div>
+      ) : (
+        <ul className="flex min-h-0 flex-1 flex-col justify-between gap-1">
+          {posts.map((post) => (
+            <li key={post.id}>
+              <Link
+                href={`/community/post/${post.id}`}
+                className="flex items-center gap-2.5 rounded-xl px-1 py-1.5 hover:bg-slate-50"
+              >
+                <UserAvatar
+                  fullName={post.author.fullName}
+                  avatarKind={post.author.avatarKind}
+                  avatarPreset={post.author.avatarPreset}
+                  avatarColor={post.author.avatarColor}
+                  size={32}
+                  showRoleBadge={false}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-foreground">
+                    {post.title}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                    {post.authorName} · {post.createdAtLabel}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Link
+        href={composeHref}
+        className="mt-3 inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-full bg-slate-100 text-xs font-semibold text-slate-600 hover:bg-slate-200/80"
+      >
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />
+        Create post
+      </Link>
+    </section>
   );
 }
 
-export const DASH_STAT_ICONS = {
-  BookOpen,
-  ClipboardList,
-  Trophy,
-  Clock,
-} as const;
+export function DashboardHome({
+  firstName,
+  greeting,
+  isPremium,
+  isGuest = false,
+  streakDays,
+  weeklyMinutes,
+  dailyGoalMinutes,
+  todayMinutes,
+  targetPercent,
+  avatar,
+  weekUsage,
+  inProgressCount,
+  completedCount,
+  continueModules,
+  suggestedModules,
+  communityPosts,
+}: DashboardHomeProps) {
+  const remaining = Math.max(0, dailyGoalMinutes - todayMinutes);
+  const hitTarget = todayMinutes >= dailyGoalMinutes;
+
+  return (
+    <div className="dashboard-home">
+      <PremiumBanner isPremium={isPremium} isGuest={isGuest} />
+
+      <section className={paneCard('dashboard-home__profile px-4 pb-4 pt-4 text-center')}>
+        <ProgressRingAvatar avatar={avatar} percent={targetPercent} />
+        <h1 className="dashboard-home__greeting">
+          {greeting} {firstName}
+          {streakDays > 0 && (
+            <Flame className="ml-1 inline h-4 w-4 align-[-2px] text-amber-500" strokeWidth={2} />
+          )}
+        </h1>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {hitTarget
+            ? `Today's ${dailyGoalMinutes}-minute target is done.`
+            : `${dailyGoalMinutes} minutes a day — ${remaining} min to go.`}
+        </p>
+      </section>
+
+      <QuickLinks
+        inProgressCount={inProgressCount}
+        completedCount={completedCount}
+        isGuest={isGuest}
+      />
+
+      <WeeklyUsageChart
+        weekUsage={weekUsage}
+        weeklyMinutes={weeklyMinutes}
+        dailyGoalMinutes={dailyGoalMinutes}
+      />
+
+      <ContinueSection continueModules={continueModules} suggestedModules={suggestedModules} />
+
+      <CommunityPane posts={communityPosts} isGuest={isGuest} />
+    </div>
+  );
+}

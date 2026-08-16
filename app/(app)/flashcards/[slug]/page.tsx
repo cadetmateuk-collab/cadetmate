@@ -31,22 +31,51 @@ export default function PackDetailPage() {
   const [owned, setOwned] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [justPurchased, setJustPurchased] = useState(false);
+  const [confirmingPurchase, setConfirmingPurchase] = useState(false);
   const purchaseTracked = useRef(false);
 
   useEffect(() => {
     if (userId && pack) loadOwnership(userId, pack.id).then(setOwned);
   }, [userId, pack]);
 
-  // Handle return from Stripe Checkout (success=1 query param)
+  // Handle return from Stripe Checkout — confirm session then refresh ownership
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('success') !== '1') return;
-    setJustPurchased(true);
-    setOwned(true);
-    const clean = window.location.pathname;
-    window.history.replaceState({}, '', clean);
-  }, []);
+    const sessionId = params.get('session_id');
+    window.history.replaceState({}, '', window.location.pathname);
+    if (!userId || !pack) return;
+
+    let cancelled = false;
+    setConfirmingPurchase(true);
+    (async () => {
+      try {
+        await fetch('/api/checkout/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: sessionId ?? '' }),
+        });
+      } catch {
+        /* ownership poll below still runs */
+      }
+      const deadline = Date.now() + 8000;
+      while (!cancelled && Date.now() < deadline) {
+        const ok = await loadOwnership(userId, pack.id);
+        if (ok) {
+          setOwned(true);
+          setJustPurchased(true);
+          setConfirmingPurchase(false);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      if (!cancelled) setConfirmingPurchase(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, pack]);
 
   useEffect(() => {
     if (!justPurchased || !pack || purchaseTracked.current) return;
@@ -142,6 +171,16 @@ export default function PackDetailPage() {
 
       {pack && (
         <div className="bp-anim-1">
+
+          {confirmingPurchase && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '12px 16px', borderRadius: 12, marginBottom: 20,
+              background: '#fffbeb', border: '1px solid #fcd34d', color: '#92400e',
+            }}>
+              Confirming your purchase… this usually takes a few seconds.
+            </div>
+          )}
 
           {/* Post-purchase success banner */}
           {justPurchased && (

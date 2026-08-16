@@ -102,10 +102,14 @@ const nextConfig: NextConfig = {
       ? [{ key: 'Cache-Control', value: 'no-cache, max-age=0, must-revalidate' }]
       : longCache;
 
+    const imageHeaders = isDev
+      ? [{ key: 'Cache-Control', value: 'no-cache, max-age=0, must-revalidate' }]
+      : longCache;
+
     return [
       { source: '/(.*)', headers: securityHeaders },
       { source: '/_next/static/(.*)', headers: nextStaticHeaders },
-      { source: '/images/(.*)', headers: longCache },
+      { source: '/images/(.*)', headers: imageHeaders },
       { source: '/shipimages/(.*)', headers: longCache },
       { source: '/buoyage/(.*)', headers: longCache },
       { source: '/:path*.webm', headers: longCache },

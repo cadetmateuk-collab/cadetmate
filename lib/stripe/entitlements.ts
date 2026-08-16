@@ -1,16 +1,19 @@
 import type Stripe from 'stripe';
 import { isProtectedStaffRole } from '@cadet-mate/shared';
+import { getPremiumPriceId } from '@/lib/security/env';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-/** Comma-separated Stripe Price IDs that grant Premium (subscription or one-time). */
+/** Stripe Price IDs that grant Premium (singular env + optional extra allowlist). */
 export function premiumPriceIds(): Set<string> {
-  const raw = process.env.STRIPE_PREMIUM_PRICE_IDS ?? '';
-  return new Set(
-    raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
-  );
+  const ids = new Set<string>();
+  const primary = getPremiumPriceId();
+  if (primary) ids.add(primary);
+  const extras = process.env.STRIPE_PREMIUM_PRICE_IDS ?? '';
+  for (const id of extras.split(',')) {
+    const trimmed = id.trim();
+    if (trimmed) ids.add(trimmed);
+  }
+  return ids;
 }
 
 export function isPremiumCheckout(
@@ -20,9 +23,10 @@ export function isPremiumCheckout(
   const meta = session.metadata ?? {};
   if (meta.product_type === 'premium' || meta.entitlement === 'premium') return true;
   if (meta.pack_id) return false;
-  if (session.mode === 'subscription') return true;
+  const mode = String(session.mode);
+  if (mode === 'subscription') return true;
   const prices = premiumPriceIds();
-  if (prices.size === 0) return session.mode === 'subscription';
+  if (prices.size === 0) return mode === 'subscription';
   return linePriceIds.some((id) => prices.has(id));
 }
 
@@ -70,9 +74,12 @@ export async function grantPremium(opts: {
 
   const { data: profile } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, premium_status')
     .eq('id', userId)
     .maybeSingle();
+
+  const alreadyActive = profile?.premium_status === 'active';
+  const shouldNotify = notify && !alreadyActive;
 
   const patch: Record<string, unknown> = {
     premium_status: 'active',
@@ -84,7 +91,7 @@ export async function grantPremium(opts: {
 
   await supabaseAdmin.from('profiles').update(patch).eq('id', userId);
 
-  if (notify) {
+  if (shouldNotify) {
     const { data: prefs } = await supabaseAdmin
       .from('notification_preferences')
       .select('in_app_billing')

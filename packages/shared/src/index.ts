@@ -4,3 +4,4 @@ export * from './roles';
 export * from './permissions';
 export * from './supabase';
 export * from './config';
+export * from './offline';

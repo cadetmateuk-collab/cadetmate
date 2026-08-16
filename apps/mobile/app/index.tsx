@@ -1,18 +1,14 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../lib/AuthContext';
+import { LoadingScreen } from '../components/ui';
 
 export default function Index() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0B1F3A' }}>
-        <ActivityIndicator color="#5B8CFF" />
-      </View>
-    );
-  }
-
+  if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/(auth)/login" />;
-  return <Redirect href="/(tabs)/flashcards" />;
+  if (profile && profile.onboarding_completed === false) {
+    return <Redirect href="/(auth)/onboarding" />;
+  }
+  return <Redirect href="/(tabs)/home" />;
 }

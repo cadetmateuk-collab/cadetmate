@@ -1,0 +1,30 @@
+import { CompassEmptyIcon } from '@/components/icons/MaritimeIcons';
+import { cn } from '@/lib/utils';
+
+export function EmptyState({
+  title,
+  description,
+  action,
+  className,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/60 px-6 py-12 text-center',
+        className,
+      )}
+    >
+      <CompassEmptyIcon className="h-14 w-14 text-muted-foreground" />
+      <h3 className="mt-4 text-base font-semibold tracking-tight text-foreground">{title}</h3>
+      {description && (
+        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>
+      )}
+      {action && <div className="mt-5">{action}</div>}
+    </div>
+  );
+}

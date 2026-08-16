@@ -23,6 +23,11 @@ async function authRedirectPath(): Promise<string> {
 
 /** Per-request deduped user lookup. Always validates with getUser() (JWT). */
 export const getCurrentUser = cache(async () => {
+  const headerStore = await headers();
+  if (headerStore.get('x-auth-stale') === '1') {
+    return null;
+  }
+
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 

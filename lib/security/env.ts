@@ -19,6 +19,35 @@ export function getSiteUrl(): string {
   return optional('NEXT_PUBLIC_URL', 'https://cadetmate.co.uk').replace(/\/$/, '');
 }
 
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const NGROK_HOST = /\.ngrok(-free)?\.(app|dev|io)$/i;
+
+/**
+ * Origin Stripe should redirect back to after Checkout / Portal.
+ * Prefers the request Host when it is localhost, ngrok, or the configured site —
+ * so a dead ngrok URL in NEXT_PUBLIC_URL does not trap local test payments.
+ */
+export function getCheckoutReturnOrigin(req: { headers: Headers }): string {
+  const configured = getSiteUrl();
+  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || req.headers.get('host')?.split(',')[0]?.trim() || '';
+  if (!host) return configured;
+
+  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const proto =
+    forwardedProto ||
+    (LOCAL_HOST.test(host) ? 'http' : 'https');
+  const origin = `${proto}://${host}`.replace(/\/$/, '');
+
+  if (LOCAL_HOST.test(host) || NGROK_HOST.test(host)) return origin;
+  try {
+    if (new URL(configured).host === host) return origin;
+  } catch {
+    /* ignore invalid NEXT_PUBLIC_URL */
+  }
+  return configured;
+}
+
 export function getSupabaseUrl(): string {
   return required('NEXT_PUBLIC_SUPABASE_URL');
 }
@@ -42,6 +71,22 @@ export function getStripeWebhookSecret(): string {
 
 export function getStripePublishableKey(): string | null {
   return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || null;
+}
+
+/** Recurring Premium Price ID (`price_…`). Null if not configured. */
+export function getPremiumPriceId(): string | null {
+  return process.env.STRIPE_PREMIUM_PRICE_ID?.trim() || null;
+}
+
+/** PKCS8 PEM for ES256 offline licences. Server only. */
+export function getOfflineLicencePrivateKey(): string {
+  return required('OFFLINE_LICENCE_PRIVATE_KEY').replace(/\\n/g, '\n');
+}
+
+export function getOfflineLicencePublicKey(): string {
+  const value = process.env.OFFLINE_LICENCE_PUBLIC_KEY?.trim() || process.env.NEXT_PUBLIC_OFFLINE_LICENCE_PUBLIC_KEY?.trim();
+  if (!value) throw new Error('Missing required environment variable: OFFLINE_LICENCE_PUBLIC_KEY');
+  return value.replace(/\\n/g, '\n');
 }
 
 /** Hosts allowed for server-side PDF fetches (SSRF protection). */

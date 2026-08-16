@@ -8,6 +8,30 @@ type CookieToSet = {
   options: Record<string, unknown>;
 };
 
+function isStaleRefreshError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  const code = error.code ?? '';
+  const message = (error.message ?? '').toLowerCase();
+  return (
+    code === 'refresh_token_not_found' ||
+    code === 'refresh_token_already_used' ||
+    code === 'session_not_found' ||
+    message.includes('refresh token')
+  );
+}
+
+function clearSupabaseAuthCookies(response: NextResponse, request: NextRequest) {
+  for (const { name } of request.cookies.getAll()) {
+    if (!name.startsWith('sb-')) continue;
+    if (!name.includes('auth-token')) continue;
+    response.cookies.set(name, '', {
+      path: '/',
+      maxAge: 0,
+      sameSite: 'lax',
+      secure: request.nextUrl.protocol === 'https:',
+    });
+  }
+}
 function applyCookies(response: NextResponse, cookies: CookieToSet[], requestUrl?: URL) {
   const isHttps = requestUrl?.protocol === 'https:';
   cookies.forEach(({ name, value, options }) => {
@@ -61,7 +85,33 @@ export async function updateSession(request: NextRequest) {
   // Do not add logic between createServerClient and getUser()
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+
+  if (isStaleRefreshError(authError)) {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      /* session is already invalid */
+    }
+    requestHeaders.set('x-auth-stale', '1');
+    const pathname = request.nextUrl.pathname;
+    if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/auth';
+      loginUrl.searchParams.set('redirectTo', pathname);
+      const res = NextResponse.redirect(loginUrl);
+      applyCookies(res, cookiesToSet, request.nextUrl);
+      clearSupabaseAuthCookies(res, request);
+      return res;
+    }
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    applyCookies(response, cookiesToSet, request.nextUrl);
+    clearSupabaseAuthCookies(response, request);
+    return response;
+  }
 
   const pathname = request.nextUrl.pathname;
 

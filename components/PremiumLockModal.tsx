@@ -1,13 +1,14 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-import { Lock, Sparkles, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { getPremiumPricingTable } from "@/lib/stripe/store-tables";
-import { useFocusTrap } from "@/lib/a11y/useFocusTrap";
-import { useEscapeKey } from "@/lib/a11y/useEscapeKey";
-import { useBodyScrollLock } from "@/lib/a11y/useBodyScrollLock";
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Crown, Lock, Sparkles, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SubscribeButton } from '@/components/billing/SubscribeButton';
+import { useFocusTrap } from '@/lib/a11y/useFocusTrap';
+import { useEscapeKey } from '@/lib/a11y/useEscapeKey';
+import { useBodyScrollLock } from '@/lib/a11y/useBodyScrollLock';
+import type { PremiumPrice } from '@/lib/stripe/premium-price';
 
 interface PremiumLockModalProps {
   isOpen: boolean;
@@ -15,8 +16,7 @@ interface PremiumLockModalProps {
 }
 
 export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
-  const [userId, setUserId] = useState<string | null>(null);
-  const table = getPremiumPricingTable();
+  const [price, setPrice] = useState<PremiumPrice | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -26,26 +26,18 @@ export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
 
   useEffect(() => {
     if (!isOpen) return;
-    void import("@/lib/analytics").then(({ trackEvent }) => {
-      trackEvent("premium_lock_view", { location: "premium_lock_modal" });
+    void import('@/lib/analytics').then(({ trackEvent }) => {
+      trackEvent('premium_lock_view', { location: 'premium_lock_modal' });
     });
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-
-    if (document.querySelector('script[src="https://js.stripe.com/v3/pricing-table.js"]')) return;
-    const script = document.createElement("script");
-    script.src = "https://js.stripe.com/v3/pricing-table.js";
-    script.async = true;
-    document.body.appendChild(script);
+    fetch('/api/premium-price')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: PremiumPrice | null) => {
+        if (data?.formatted) setPrice(data);
+      })
+      .catch(() => {});
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const attrs: Record<string, string> = {
-    "pricing-table-id": table.pricingTableId,
-    "publishable-key": table.publishableKey,
-  };
-  if (userId) attrs["client-reference-id"] = userId;
 
   return (
     <div
@@ -57,7 +49,7 @@ export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
     >
       <div
         ref={dialogRef}
-        className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl max-h-[min(92dvh,900px)] overflow-y-auto overscroll-contain"
+        className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-lg max-h-[min(92dvh,900px)] overflow-y-auto overscroll-contain"
         role="dialog"
         aria-modal="true"
         aria-labelledby="premium-lock-title"
@@ -86,9 +78,9 @@ export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
         <div className="p-5 sm:p-8">
           <div className="mb-6 space-y-3">
             {[
-              ["All Unit Modules", "Complete access to maritime training modules"],
-              ["Bridge & buoyage sims", "Premium simulator access"],
-              ["TRB & Sea Survival", "Training record book and safety content"],
+              ['All Unit Modules', 'Complete access to maritime training modules'],
+              ['Bridge & buoyage sims', 'Premium simulator access'],
+              ['TRB & Sea Survival', 'Training record book and safety content'],
             ].map(([title, body]) => (
               <div key={title} className="flex items-start gap-3">
                 <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1" aria-hidden>
@@ -102,8 +94,12 @@ export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
             ))}
           </div>
 
-          <div className="mb-6 w-full overflow-x-auto [-webkit-overflow-scrolling:touch]">
-            {React.createElement("stripe-pricing-table", attrs)}
+          <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">CadetMate Premium</p>
+            <p className="mt-1 text-3xl font-bold text-gray-900">
+              {price?.formattedWithInterval ?? 'See store'}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Flashcard packs are sold separately in the store.</p>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
@@ -114,14 +110,16 @@ export function PremiumLockModal({ isOpen, onClose }: PremiumLockModalProps) {
             >
               Maybe Later
             </button>
-            <Link
-              href="/store"
-              className="flex-1 min-h-11 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg text-center inline-flex items-center justify-center touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={onClose}
-            >
-              Open Store
-            </Link>
+            <SubscribeButton
+              className="flex-1 min-h-11"
+              label={price ? `Subscribe · ${price.formatted}` : 'Subscribe'}
+            />
           </div>
+          <Button variant="ghost" className="w-full mt-2" asChild>
+            <Link href="/store" onClick={onClose}>
+              <Crown className="h-4 w-4" /> Open store for flashcard packs
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

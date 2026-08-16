@@ -209,8 +209,20 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       if (data && data.length > 0) {
         const completedSet = new Set(data.map((r: any) => r.section_index as number));
         setCompleted(completedSet);
-        const lastDone = Math.max(...Array.from(completedSet));
-        setActivePage(Math.min(lastDone + 1, totalPages - 1));
+        const params = new URLSearchParams(window.location.search);
+        const sectionParam = Number(params.get('section'));
+        if (Number.isFinite(sectionParam) && sectionParam >= 1 && totalPages > 0) {
+          setActivePage(Math.min(totalPages - 1, sectionParam - 1));
+        } else {
+          const lastDone = Math.max(...Array.from(completedSet));
+          setActivePage(Math.min(lastDone + 1, totalPages - 1));
+        }
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const sectionParam = Number(params.get('section'));
+        if (Number.isFinite(sectionParam) && sectionParam >= 1 && totalPages > 0) {
+          setActivePage(Math.min(totalPages - 1, sectionParam - 1));
+        }
       }
 
       await supabase.from("user_module_progress").upsert({

@@ -1,5 +1,6 @@
 import { createCadetMateClient, type CadetMateSupabase } from '@cadet-mate/shared';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { gatedFetch } from './offline/gatedFetch';
+import { secureStorage } from './offline/secureStorage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -14,10 +15,11 @@ export function getSupabase(): CadetMateSupabase {
       );
     }
     client = createCadetMateClient(url, anonKey, {
+      global: { fetch: gatedFetch },
       auth: {
-        storage: AsyncStorage,
+        storage: secureStorage,
         persistSession: true,
-        autoRefreshToken: true,
+        autoRefreshToken: false,
         detectSessionInUrl: false,
       },
     });

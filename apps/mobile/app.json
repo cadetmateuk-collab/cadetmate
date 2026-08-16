@@ -5,12 +5,12 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "cadetmate",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {
       "package": "uk.co.cadetmate.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0B1F3A"
+        "backgroundColor": "#F5F7FB"
       },
       "intentFilters": [
         {
@@ -22,7 +22,10 @@
               "host": "*"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -31,15 +34,15 @@
       "supportsTablet": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser",
+      "expo-font",
+      "expo-secure-store",
+      "expo-sqlite"
     ],
     "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "replace-with-eas-project-id"
-      }
+      "typedRoutes": true,
+      "autolinkingModuleResolution": true
     }
   }
 }

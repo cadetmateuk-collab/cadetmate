@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { getCurrentUser } from '@/lib/auth/get-user';
+import { isPremiumRole } from '@/lib/auth/roles';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import {
   buildOrganizationSchema,
@@ -8,9 +10,11 @@ import {
   buildFAQSchema,
 } from '@/lib/seo/schema';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { Check, Sparkles, ArrowRight } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TrackedLink } from '@/components/analytics/TrackedLink';
+import { PricingCta } from '@/components/billing/PricingCta';
+import { getPremiumPrice } from '@/lib/stripe/premium-price';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Pricing — Free & Premium UK Deck Cadet Training',
@@ -30,14 +34,13 @@ const FREE_FEATURES = [
   'Community access — post, comment, vote',
   'Daily quiz & question of the day',
   'Progress tracking & study streaks',
-  'Limited flashcard packs',
+  'Limited free flashcard packs',
   'Free blog & learning articles',
   'Community leaderboard',
 ];
 
 const PREMIUM_FEATURES = [
   'All learning modules & unit guides',
-  'Unlimited flashcards with spaced repetition',
   'Full oral question bank (2,500+ questions)',
   'Mock oral exams & timed quizzes',
   'Emergency scenario simulators',
@@ -56,16 +59,25 @@ const PRICING_FAQS = [
   {
     question: 'What does Premium include?',
     answer:
-      'Premium unlocks all learning modules, unlimited flashcards, the full oral question bank, mock orals, simulators, TRB and sea survival resources, and advanced analytics.',
+      'Premium unlocks all learning modules, the full oral question bank, mock orals, simulators, TRB and sea survival resources, and advanced analytics. Flashcard packs are sold separately in the store.',
   },
   {
     question: 'Can I try CadetMate before upgrading?',
     answer:
       'Absolutely. Create a free account and explore community features and free content. Upgrade only when you are ready for the full training ecosystem.',
   },
+  {
+    question: 'Are flashcards included with Premium?',
+    answer:
+      'No. Flashcard packs are à-la-carte. Free packs can be claimed in the store; paid packs are purchased individually. Premium is for modules, orals, simulators, and TRB tools.',
+  },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const [price, user] = await Promise.all([getPremiumPrice(), getCurrentUser()]);
+  const isAuthenticated = !!user;
+  const isPremium = isPremiumRole(user?.profile?.role);
+  const priceLabel = price?.formattedWithInterval ?? null;
   const faqSchema = buildFAQSchema(PRICING_FAQS);
 
   return (
@@ -88,7 +100,10 @@ export default function PricingPage() {
           },
           {
             name: 'CadetMate Premium',
-            description: 'Full modules, unlimited flashcards, oral banks, simulators, and TRB resources. See current plans on the pricing page.',
+            description:
+              'Full modules, oral banks, simulators, and TRB resources. Flashcard packs sold separately.',
+            price: price ? (price.amountCents / 100).toFixed(2) : undefined,
+            priceCurrency: price?.currency?.toUpperCase(),
             url: '/pricing',
           },
         ])}
@@ -129,8 +144,10 @@ export default function PricingPage() {
             </span>
           </div>
           <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Premium</h2>
-          <p className="text-4xl font-bold mt-2">See plans</p>
-          <p className="text-sm text-muted-foreground mt-1">Full access to everything</p>
+          <p className="text-4xl font-bold mt-2">{price?.formatted ?? '—'}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {price?.interval ? `Billed per ${price.interval}` : 'Full access to Premium training'}
+          </p>
           <ul className="mt-6 space-y-3">
             {PREMIUM_FEATURES.map((f) => (
               <li key={f} className="flex items-start gap-2 text-sm">
@@ -139,11 +156,11 @@ export default function PricingPage() {
               </li>
             ))}
           </ul>
-          <Button className="w-full mt-8" asChild>
-            <TrackedLink href="/store" trackLabel="pricing_view_premium_plans" trackParams={{ plan: 'premium' }}>
-              View Premium Plans <ArrowRight className="ml-1 h-4 w-4" />
-            </TrackedLink>
-          </Button>
+          <PricingCta
+            isAuthenticated={isAuthenticated}
+            isPremium={isPremium}
+            priceLabel={priceLabel}
+          />
         </div>
       </div>
 
@@ -162,7 +179,11 @@ export default function PricingPage() {
       </section>
 
       <p className="text-center text-sm text-muted-foreground mt-10">
-        Premium content is always visible with previews — never hidden behind opaque paywalls.{' '}
+        Flashcard packs are sold separately in the store.{' '}
+        <TrackedLink href="/store" className="text-primary hover:underline" trackLabel="pricing_open_store">
+          Open the store
+        </TrackedLink>
+        {' · '}
         <TrackedLink href="/free-content" className="text-primary hover:underline" trackLabel="pricing_browse_free_articles">
           Browse free articles
         </TrackedLink>
