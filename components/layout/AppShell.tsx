@@ -87,7 +87,9 @@ export function AppShell({
             'relative flex-1 outline-none',
             fillMain
               ? 'flex min-h-0 flex-col overflow-hidden'
-              : 'flex min-w-0 flex-col items-center',
+              : dashboard
+                ? 'flex min-w-0 w-full flex-col'
+                : 'flex min-w-0 flex-col items-center',
           )}
         >
           {fillMain ? (
@@ -104,7 +106,7 @@ export function AppShell({
               )}
             >
               {dashboard ? (
-                <PageTransition className="flex h-full min-h-0 flex-1 flex-col">
+                <PageTransition className="flex h-full min-h-0 w-full flex-1 flex-col">
                   {children}
                 </PageTransition>
               ) : (

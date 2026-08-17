@@ -860,48 +860,6 @@
   background-repeat: no-repeat;
 }
 
-@media (max-width: 767px) {
-  .dashboard-home-shell {
-    height: auto;
-    min-height: calc(100dvh - 4rem);
-    width: calc(100% - 2rem);
-    max-width: calc(100% - 2rem);
-    padding: 0.85rem 0 1.25rem;
-  }
-
-  .dashboard-home {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-    height: auto;
-  }
-
-  .dashboard-home__hero,
-  .dashboard-home__profile,
-  .dashboard-home__quicklinks,
-  .dashboard-home__week,
-  .dashboard-home__modules,
-  .dashboard-home__community {
-    grid-column: auto;
-    grid-row: auto;
-    height: auto;
-    width: 100%;
-    max-width: none;
-  }
-
-  .dashboard-home__hero {
-    min-height: 136px;
-  }
-
-  .dashboard-home__modules-grid {
-    grid-template-columns: minmax(0, 1fr);
-    height: auto;
-  }
-
-  .dashboard-home__modules-grid > * {
-    min-height: 18rem;
-  }
-}
-
 /* Centered 80% column of the main area (beside the sidebar) */
 .page-col-80 {
   width: 80% !important;
