@@ -1,5 +1,6 @@
 const config = {
-  darkMode: "class",
+  // Tailwind 4 DarkModeStrategy is `["class", selector]`, not `["class"]` alone.
+  darkMode: ["class", ".dark"] as const,
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",

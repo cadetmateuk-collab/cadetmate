@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type JSX } from "react";
 import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Menu, X, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -550,12 +550,17 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   const renderBlock = useCallback((block: ContentBlock) => {
     switch (block.type) {
       case "heading": {
-        const level = block.content?.level || 2;
+        const raw = Number(block.content?.level);
+        const level = raw >= 1 && raw <= 6 ? raw : 2;
+        const HeadingTag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
         const sizes: Record<number, string> = { 1: "2rem", 2: "1.5rem", 3: "1.2rem" };
         return (
-          <div key={block.id} style={{ fontSize: sizes[level] || "1.5rem", fontWeight: 800, color: "hsl(var(--foreground))", lineHeight: 1.2, marginBottom: 8, marginTop: level === 1 ? 8 : 32 }}>
+          <HeadingTag
+            key={block.id}
+            style={{ fontSize: sizes[level] || "1.5rem", fontWeight: 800, color: "hsl(var(--foreground))", lineHeight: 1.2, marginBottom: 8, marginTop: level === 1 ? 8 : 32 }}
+          >
             {block.content?.text}
-          </div>
+          </HeadingTag>
         );
       }
       case "text":

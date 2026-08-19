@@ -595,7 +595,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
         setUserProfile({
           name,
           email:    profile?.email || user.email || "",
-          initials: name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2),
+          initials: name.split(" ").map((part: string) => part[0]).join("").toUpperCase().slice(0, 2),
           role:     (profile?.role as UserProfile["role"]) || "free",
           avatarKind,
           avatarPreset: avatarKind === "preset"
