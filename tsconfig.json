@@ -36,6 +36,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "types/**/*.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
@@ -57,7 +58,6 @@
     "components/AdminActivityLogTab.tsx",
     "components/admin/HomepageAdminClient.tsx",
     "components/bridge/BridgeInteractions.tsx",
-    "components/bridge/BridgeScene.tsx",
-    "components/Sidebar/CadetMateSidebar.tsx"
+    "components/bridge/BridgeScene.tsx"
   ]
 }
