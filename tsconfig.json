@@ -46,6 +46,8 @@
   "exclude": [
     "node_modules",
     "apps",
+    "cadetmate",
+    "cadet-mate",
     ".server-out",
     "supabase/functions",
     "app/(app)/admin/module-builder/ModuleBuilder.tsx",
