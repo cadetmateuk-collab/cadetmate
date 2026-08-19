@@ -12,8 +12,8 @@ async function fetchAllBlogPosts(): Promise<BlogPostSummary[]> {
   const { data, error } = await supabase
     .from('blog_posts')
     .select(SUMMARY_FIELDS)
-    .or('hidden.eq.false,hidden.is.null')
-    .order('date', { ascending: false, nullsFirst: false });
+    .eq('hidden', false)
+    .order('date', { ascending: false });
 
   if (error) {
     console.error('[blog] failed to load posts:', error.message);

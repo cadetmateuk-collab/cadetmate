@@ -4,16 +4,13 @@ import {
   Plus, Pencil, Trash2, Eye, EyeOff, Star,
   Save, X, Search, AlertTriangle
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/client';
 import AdminModal from '@/components/AdminModal'
 import { slugifySegment, buildBlogPostPath } from '@/lib/blog/paths';
 import { useCanDelete } from '@/components/admin/permissions-context'
 import { logClientActivity } from '@/lib/activity/log-event-client';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabase = createClient();
 
 interface BlogPost {
   id?: string;
@@ -294,6 +291,7 @@ export default function AdminBlogTab() {
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -303,9 +301,15 @@ export default function AdminBlogTab() {
 
   const fetchPosts = async () => {
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await supabase
       .from('blog_posts').select('*').order('date', { ascending: false });
-    if (!error && data) setPosts(data);
+    if (error) {
+      setLoadError(error.message);
+      setPosts([]);
+    } else {
+      setPosts(data ?? []);
+    }
     setLoading(false);
   };
 
@@ -462,6 +466,11 @@ export default function AdminBlogTab() {
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+        </div>
+      ) : loadError ? (
+        <div className="text-center py-20 text-red-600">
+          <p className="text-lg">Could not load posts.</p>
+          <p className="mt-2 text-sm">{loadError}</p>
         </div>
       ) : filteredPosts.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
