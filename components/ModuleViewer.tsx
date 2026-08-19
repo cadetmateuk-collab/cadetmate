@@ -169,7 +169,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   const [activePage, setActivePage]             = useState(0);
   const [completed, setCompleted]               = useState<Set<number>>(new Set());
   const [saving, setSaving]                     = useState(false);
-  const [quizAnswers, setQuizAnswers]           = useState<Record<string, any>>({});
+  const [quizAnswers, setQuizAnswers]           = useState<Record<string, string | number | number[]>>({});
   const [quizSubmitted, setQuizSubmitted]       = useState<Record<string, boolean>>({});
   const [quizQuestionIndex, setQuizQuestionIndex] = useState<Record<string, number>>({});
   const [downloadingPdf, setDownloadingPdf]     = useState<string | null>(null);
@@ -335,7 +335,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
   }, [userEmail]);
 
   // Quiz handlers
-  const handleQuizAnswer = useCallback((quizId: string, questionId: string, answer: any) => {
+  const handleQuizAnswer = useCallback((quizId: string, questionId: string, answer: string | number | number[]) => {
     setQuizAnswers(prev => ({ ...prev, [`${quizId}-${questionId}`]: answer }));
   }, []);
 
@@ -352,7 +352,9 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
 
   const renderQuiz = useCallback((block: ContentBlock) => {
     const isSubmitted = quizSubmitted[block.id];
-    const questions: QuizQuestion[] = block.content?.questions || [];
+    const questions: QuizQuestion[] = Array.isArray(block.content?.questions)
+      ? (block.content.questions as QuizQuestion[])
+      : [];
     if (questions.length === 0) return null;
 
     const currentIdx = quizQuestionIndex[block.id] || 0;
@@ -361,10 +363,13 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
 
     const isAnswerCorrect = (q: QuizQuestion) => {
       const ua = quizAnswers[`${block.id}-${q.id}`];
-      if (q.type === "text-input") return checkTextInputAnswer(ua || "", q.keywords || []);
+      if (q.type === "text-input") {
+        return checkTextInputAnswer(typeof ua === "string" ? ua : "", q.keywords || []);
+      }
       if (q.type === "multi-select") {
         const ca = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
-        return JSON.stringify((ua || []).sort()) === JSON.stringify(ca.sort());
+        const picked = Array.isArray(ua) ? [...ua].sort((a, b) => a - b) : [];
+        return JSON.stringify(picked) === JSON.stringify([...ca].map(Number).sort((a, b) => a - b));
       }
       return ua === q.correctAnswer;
     };
@@ -391,7 +396,13 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
           }} />
         </div>
 
-        {currentQuestion && (
+        {currentQuestion && (() => {
+          const answerKey = `${block.id}-${currentQuestion.id}`;
+          const currentAnswer = quizAnswers[answerKey];
+          const selectedIndexes = Array.isArray(currentAnswer) ? currentAnswer : [];
+          const textAnswer = typeof currentAnswer === "string" ? currentAnswer : "";
+
+          return (
           <div>
             {/* Question text */}
             <div style={{ fontSize: 16, fontWeight: 600, color: "hsl(var(--foreground))", marginBottom: 16, lineHeight: 1.6 }}>
@@ -401,10 +412,10 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             {/* Multiple Choice / Multi-Select */}
             {["multiple-choice", "multi-select"].includes(currentQuestion.type) && currentQuestion.options && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {currentQuestion.options.map((opt, i) => {
+                  {currentQuestion.options.map((opt: string, i: number) => {
                   const selected = currentQuestion.type === "multi-select"
-                    ? Array.isArray(quizAnswers[`${block.id}-${currentQuestion.id}`]) && quizAnswers[`${block.id}-${currentQuestion.id}`].includes(i)
-                    : quizAnswers[`${block.id}-${currentQuestion.id}`] === i;
+                    ? selectedIndexes.includes(i)
+                    : currentAnswer === i;
                   const isCorrect = currentQuestion.type === "multi-select"
                     ? Array.isArray(currentQuestion.correctAnswer) && (currentQuestion.correctAnswer as number[]).includes(i)
                     : currentQuestion.correctAnswer === i;
@@ -419,7 +430,11 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                     <button key={i}
                       onClick={() => !isSubmitted && handleQuizAnswer(block.id, currentQuestion.id,
                         currentQuestion.type === "multi-select"
-                          ? (() => { const cur = Array.isArray(quizAnswers[`${block.id}-${currentQuestion.id}`]) ? quizAnswers[`${block.id}-${currentQuestion.id}`] : []; return cur.includes(i) ? cur.filter((x: number) => x !== i) : [...cur, i]; })()
+                          ? (() => {
+                              return selectedIndexes.includes(i)
+                                ? selectedIndexes.filter((x) => x !== i)
+                                : [...selectedIndexes, i];
+                            })()
                           : i
                       )}
                       disabled={isSubmitted}
@@ -453,7 +468,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             {currentQuestion.type === "true-false" && (
               <div style={{ display: "flex", gap: 8 }}>
                 {["True", "False"].map((lbl, i) => {
-                  const selected  = quizAnswers[`${block.id}-${currentQuestion.id}`] === i;
+                  const selected  = currentAnswer === i;
                   const isCorrect = currentQuestion.correctAnswer === i;
                   let borderColor = "hsl(var(--border))";
                   let color       = "hsl(var(--foreground))";
@@ -473,7 +488,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
             {/* Text Input */}
             {currentQuestion.type === "text-input" && (
               <div>
-                <input type="text" value={quizAnswers[`${block.id}-${currentQuestion.id}`] || ""}
+                <input type="text" value={textAnswer}
                   onChange={e => !isSubmitted && handleQuizAnswer(block.id, currentQuestion.id, e.target.value)}
                   disabled={isSubmitted}
                   placeholder="Type your answer…"
@@ -494,7 +509,8 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Navigation / submit */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20 }}>
