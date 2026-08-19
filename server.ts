@@ -17,7 +17,7 @@ const port = parseInt(process.env.PORT ?? '3000', 10);
 
 const app  = next({
   dev,
-  turbopack: true,
+  turbopack: dev,
 });
 const handle = app.getRequestHandler();
 
