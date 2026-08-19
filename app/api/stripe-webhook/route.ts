@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe/client';
 import { getStripeWebhookSecret } from '@/lib/security/env';
 import { grantPremium, revokePremium } from '@/lib/stripe/entitlements';
-import { fulfillCheckoutSession } from '@/lib/stripe/fulfill';
+import { fulfillCheckoutSession, revokePackOwnership } from '@/lib/stripe/fulfill';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { isDuplicateStripeEventError } from '@/lib/stripe/webhook-ledger';
 import type Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -19,6 +20,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Bad signature' }, { status: 400 });
   }
 
+  const { error: ledgerError } = await supabaseAdmin.from('stripe_events').insert({
+    event_id: event.id,
+    event_type: event.type,
+  });
+  if (ledgerError) {
+    if (isDuplicateStripeEventError(ledgerError.code)) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    console.error('[stripe-webhook] ledger', ledgerError.message);
+    return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':
@@ -30,11 +43,18 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+        break;
+      case 'charge.refunded':
+        await handleChargeRefunded(event.data.object as Stripe.Charge);
+        break;
       default:
         break;
     }
   } catch (err) {
     console.error('[stripe-webhook]', event.type, err);
+    await supabaseAdmin.from('stripe_events').delete().eq('event_id', event.id);
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 
@@ -85,4 +105,34 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
     subscriptionId: sub.id,
     userId: sub.metadata?.user_id,
   });
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+  if (!customerId) return;
+
+  await supabaseAdmin
+    .from('profiles')
+    .update({
+      premium_status: 'past_due',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_customer_id', customerId);
+}
+
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  const paymentIntent =
+    typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+  if (!paymentIntent) return;
+
+  const listed = await getStripe().checkout.sessions.list({
+    payment_intent: paymentIntent,
+    limit: 1,
+  });
+  const session = listed.data[0];
+  const packId = session?.metadata?.pack_id;
+  const userId = session?.metadata?.user_id;
+  if (packId && userId) {
+    await revokePackOwnership({ userId, packId });
+  }
 }

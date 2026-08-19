@@ -5,6 +5,7 @@ import {
   filterNavForUser,
   APP_NAV_GROUPS,
 } from '@/lib/navigation/config';
+import { House } from 'lucide-react';
 import type { NavGroupConfig } from '@/lib/navigation/types';
 
 describe('isNavItemActive', () => {
@@ -24,8 +25,8 @@ describe('isNavItemActive', () => {
 describe('isGroupActive', () => {
   it('is true when any item path matches', () => {
     const items = [
-      { id: 'a', label: 'A', href: '/learn' },
-      { id: 'b', label: 'B', href: '/practice' },
+      { id: 'a', label: 'A', href: '/learn', icon: House },
+      { id: 'b', label: 'B', href: '/practice', icon: House },
     ];
     expect(isGroupActive('/practice/orals', items)).toBe(true);
     expect(isGroupActive('/store', items)).toBe(false);
@@ -37,13 +38,13 @@ describe('filterNavForUser', () => {
     {
       id: 'main',
       label: 'Main',
-      items: [{ id: 'dash', label: 'Home', href: '/dashboard' }],
+      items: [{ id: 'dash', label: 'Home', href: '/dashboard', icon: House }],
     },
     {
       id: 'admin',
       label: 'Admin',
       adminOnly: true,
-      items: [{ id: 'admin-home', label: 'Admin', href: '/admin', adminOnly: true }],
+      items: [{ id: 'admin-home', label: 'Admin', href: '/admin', icon: House, adminOnly: true }],
     },
   ];
 
@@ -62,15 +63,15 @@ describe('filterNavForUser', () => {
       {
         id: 'main',
         label: 'Main',
-        items: [{ id: 'dash', label: 'Home', href: '/dashboard' }],
+        items: [{ id: 'dash', label: 'Home', href: '/dashboard', icon: House }],
       },
       {
         id: 'admin',
         label: 'Admin',
         staffOnly: true,
         items: [
-          { id: 'admin-home', label: 'Admin', href: '/admin', staffOnly: true },
-          { id: 'activity', label: 'Activity', href: '/admin?tab=activity', adminOnly: true },
+          { id: 'admin-home', label: 'Admin', href: '/admin', icon: House, staffOnly: true },
+          { id: 'activity', label: 'Activity', href: '/admin?tab=activity', icon: House, adminOnly: true },
         ],
       },
     ];

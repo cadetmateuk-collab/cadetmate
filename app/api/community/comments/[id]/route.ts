@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateComment } from '@/lib/community/validation';
+import { insertModerationLog } from '@/lib/community/log-moderation';
 import { moderateContent } from '@/lib/community/moderation';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -28,7 +29,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const moderation = await moderateContent(body);
   if (moderation.action === 'blocked') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'comment',
       content_id: id,
       user_id: user.id,
@@ -58,7 +59,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (moderation.action === 'flagged') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'comment',
       content_id: id,
       user_id: user.id,

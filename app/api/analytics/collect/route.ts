@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { rateLimit, clientIp } from '@/lib/security/rate-limit';
 
 function parseUa(ua: string | null) {
   const s = ua ?? '';
@@ -29,6 +30,9 @@ function parseUa(ua: string | null) {
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!rateLimit(`analytics:${clientIp(request)}`, 40, 60_000)) {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
     const body = await request.json();
     const path = typeof body.path === 'string' ? body.path.slice(0, 500) : null;
     if (!path || path.startsWith('/admin')) {

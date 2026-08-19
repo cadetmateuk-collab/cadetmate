@@ -1,9 +1,11 @@
 import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { notFound } from 'next/navigation';
+import { createPublicSupabase } from '@/lib/supabase/public';
+import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { requireAuth } from '@/lib/auth/get-user';
+import { isPremiumRole } from '@/lib/auth/roles';
 
 const ModuleViewer = dynamic(() => import('@/components/ModuleViewer'), {
   loading: () => (
@@ -20,17 +22,17 @@ interface PageProps {
   }>;
 }
 
+function moduleSlug(category: string, subcategory: string) {
+  return `${category.toLowerCase()}/${subcategory.toLowerCase()}`;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { category, subcategory } = await params;
-  const slug = `${category.toLowerCase()}/${subcategory.toLowerCase()}`;
-
-  const supabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const slug = moduleSlug(category, subcategory);
+  const supabase = createPublicSupabase();
 
   const { data: moduleData } = await supabase
-    .from('modules')
+    .from('modules_catalog')
     .select('title, description, category, subcategory')
     .eq('slug', slug)
     .maybeSingle();
@@ -46,30 +48,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ModulePage({ params }: PageProps) {
+  const user = await requireAuth();
   const { category, subcategory } = await params;
   const supabase = await createClient();
+  const slug = moduleSlug(category, subcategory);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: catalog } = await supabase
+    .from('modules_catalog')
+    .select('id, title, description, category, subcategory, is_premium, slug')
+    .eq('slug', slug)
+    .maybeSingle();
 
-  const slug = `${category.toLowerCase()}/${subcategory.toLowerCase()}`;
+  if (!catalog) {
+    notFound();
+  }
+
+  if (catalog.is_premium && !isPremiumRole(user.profile?.role)) {
+    redirect('/store');
+  }
 
   const { data: moduleData, error } = await supabase
     .from('modules')
-    .select('*')
+    .select('id, title, description, category, subcategory, blocks')
     .eq('slug', slug)
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      notFound();
-    }
-
-    throw new Error(`Database error: ${error.message}`);
-  }
-
-  if (!moduleData) {
+  if (error || !moduleData) {
     notFound();
   }
 
@@ -87,19 +91,15 @@ export default async function ModulePage({ params }: PageProps) {
       <ModuleViewer
         moduleId={transformedModule.id}
         moduleData={transformedModule}
-        userEmail={user?.email}
+        userEmail={user.email}
       />
     </div>
   );
 }
 
 export async function generateStaticParams() {
-  const supabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-
-  const { data: modules } = await supabase.from('modules').select('category, subcategory');
+  const supabase = createPublicSupabase();
+  const { data: modules } = await supabase.from('modules_catalog').select('category, subcategory');
 
   return (modules ?? []).map((m) => ({
     category: m.category,

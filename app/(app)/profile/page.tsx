@@ -8,6 +8,7 @@ import { User, Sparkles, CreditCard, Bell, Settings, Crown, Shield, Ship } from 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
+import { sendPasswordReset } from '../settings/send-password-reset';
 import { SubscribeButton } from '@/components/billing/SubscribeButton';
 import { BillingPortalButton } from '@/components/billing/BillingPortalButton';
 import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
@@ -172,7 +173,7 @@ export default async function ProfilePage({
                   )}
               </div>
             </div>
-            <PasswordResetButton />
+            <PasswordResetButton action={sendPasswordReset} />
           </div>
         </div>
       )}

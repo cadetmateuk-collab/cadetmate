@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { requirePremium } from '@/lib/auth/get-user';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'TRB Tasks',
@@ -8,6 +9,7 @@ export const metadata: Metadata = buildPageMetadata({
   noIndex: true,
 });
 
-export default function TrbLayout({ children }: { children: React.ReactNode }) {
+export default async function TrbLayout({ children }: { children: React.ReactNode }) {
+  await requirePremium();
   return children;
 }

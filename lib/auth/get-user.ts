@@ -6,6 +6,20 @@ import { safeRedirectPath } from '@/lib/security/env';
 import { syncOnboardingFromMetadata } from '@/lib/onboarding/sync-from-metadata';
 import { hasPermission, isPremiumRole, type Permission } from '@/lib/auth/roles';
 
+export type AppProfile = {
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  training_phase?: string | null;
+  nautical_college?: string | null;
+  learning_interests?: string[] | null;
+  referral_source?: string | null;
+  avatar_kind?: string | null;
+  avatar_preset?: string | null;
+  avatar_color?: string | null;
+  onboarding_completed?: boolean | null;
+};
+
 const PROFILE_COLUMNS =
   'full_name, email, role, training_phase, nautical_college, learning_interests, referral_source, avatar_kind, avatar_preset, avatar_color, onboarding_completed';
 
@@ -41,7 +55,7 @@ export const getCurrentUser = cache(async () => {
     /* migration may not be applied yet */
   }
 
-  let profile = null;
+  let profile: AppProfile | null = null;
   const full = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
@@ -54,9 +68,9 @@ export const getCurrentUser = cache(async () => {
       .select(PROFILE_COLUMNS_FALLBACK)
       .eq('id', user.id)
       .single();
-    profile = fallback.data;
+    profile = (fallback.data as AppProfile | null) ?? null;
   } else {
-    profile = full.data;
+    profile = (full.data as AppProfile | null) ?? null;
   }
 
   return {
@@ -78,7 +92,7 @@ export async function requireAuth() {
 export async function requireRole(allowedRoles: string[]) {
   const user = await requireAuth();
 
-  if (!user.profile || !allowedRoles.includes(user.profile.role)) {
+  if (!user.profile || !allowedRoles.includes(user.profile.role ?? '')) {
     redirect('/unauthorized');
   }
 

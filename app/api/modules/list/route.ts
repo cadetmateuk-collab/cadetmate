@@ -6,7 +6,7 @@ export async function GET() {
     const supabase = await createClient(); // ✅ Add await here
     
     const { data, error } = await supabase
-      .from('modules')
+      .from('modules_catalog')
       .select('id, title, description, category, subcategory, slug')
       .order('title');
 

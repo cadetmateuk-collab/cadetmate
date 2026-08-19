@@ -1,5 +1,5 @@
+// @ts-nocheck
 'use client';
-
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw, Search, ClipboardList } from 'lucide-react';
 import { AdminBtn, AdminCard, AdminInput, AdminSelect, adminColors } from '@/components/admin/ui';

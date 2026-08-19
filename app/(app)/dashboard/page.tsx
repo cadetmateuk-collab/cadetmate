@@ -9,7 +9,6 @@ import {
   type ContinueModule,
   type DashboardAvatar,
 } from '@/components/dashboard/DashboardHome';
-import { AUTHOR_SELECT } from '@/lib/community/queries';
 import { displayName, timeAgo } from '@/lib/community/utils';
 import type { AvatarKind } from '@/lib/onboarding/constants';
 import { fallbackModuleSections, listModuleSections } from '@/lib/modules/sections';
@@ -167,15 +166,14 @@ export default async function DashboardPage() {
       .select('module_id, section_index')
       .eq('user_id', user.id),
     supabase
-      .from('modules')
+      .from('modules_catalog')
       .select('id, title, category, subcategory, image_url, is_featured, total_lessons')
-      .eq('hidden', false)
       .order('is_featured', { ascending: false })
       .order('updated_at', { ascending: false })
       .limit(6),
     supabase
       .from('posts')
-      .select(`id, title, created_at, user_id, author:profiles!posts_user_id_fkey(${AUTHOR_SELECT})`)
+      .select('id, title, created_at, user_id')
       .eq('is_deleted', false)
       .eq('status', 'published')
       .order('created_at', { ascending: false })
@@ -206,7 +204,7 @@ export default async function DashboardPage() {
   const missingModuleIds = [...sectionIndexes.keys()].filter((id) => !progressByModule.has(id));
   if (missingModuleIds.length > 0) {
     const { data: extraModules } = await supabase
-      .from('modules')
+      .from('modules_catalog')
       .select('id, title, category, subcategory, image_url, total_lessons')
       .in('id', missingModuleIds);
     for (const mod of (extraModules ?? []) as ModuleJoin[]) {
@@ -232,7 +230,7 @@ export default async function DashboardPage() {
       );
       return toContinueModule({ ...row, progress });
     })
-    .filter((row): row is ContinueModule => Boolean(row) && row.progress > 0)
+    .filter((row): row is ContinueModule => row != null && row.progress > 0)
     .sort((a, b) => {
       const aDone = a.progress >= 100 ? 1 : 0;
       const bDone = b.progress >= 100 ? 1 : 0;
@@ -318,8 +316,18 @@ export default async function DashboardPage() {
     });
   }
 
-  const communityPosts: CommunityPostPreview[] = ((postsResult.data ?? []) as PostRow[]).map((post) => {
-    const author = firstJoin(post.author);
+  const postRows = (postsResult.data ?? []) as PostRow[];
+  const authorIds = [...new Set(postRows.map((p) => p.user_id).filter(Boolean))];
+  const { data: publicAuthors } = authorIds.length
+    ? await supabase
+        .from('profiles_public')
+        .select('id, full_name, avatar_kind, avatar_preset, avatar_color')
+        .in('id', authorIds)
+    : { data: [] as { id: string; full_name: string | null; avatar_kind: string | null; avatar_preset: string | null; avatar_color: string | null }[] };
+  const authorsById = new Map((publicAuthors ?? []).map((row) => [row.id, row]));
+
+  const communityPosts: CommunityPostPreview[] = postRows.map((post) => {
+    const author = authorsById.get(post.user_id);
     const name = displayName(author);
     return {
       id: post.id,
@@ -332,7 +340,7 @@ export default async function DashboardPage() {
         avatarKind: author?.avatar_kind,
         avatarPreset: author?.avatar_preset,
         avatarColor: author?.avatar_color,
-        role: author?.role,
+        role: null,
       }),
     };
   });

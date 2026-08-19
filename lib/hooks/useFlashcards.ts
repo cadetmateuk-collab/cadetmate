@@ -55,7 +55,6 @@ export function usePack(slug: string) {
 
       let list: Flashcard[] = [];
       if (p.storage_path) {
-        // Load card content from Storage JSON
         const { data: file } = await supabase.storage.from('flashcards').download(p.storage_path);
         if (file) {
           const json = JSON.parse(await file.text());
@@ -73,7 +72,8 @@ export function usePack(slug: string) {
             difficulty: c.difficulty ?? 'beginner',
           }));
         }
-      } else {
+      }
+      if (list.length === 0) {
         const { data: rows } = await supabase
           .from('flashcards').select('*').eq('pack_id', p.id).order('position');
         list = (rows ?? []) as Flashcard[];

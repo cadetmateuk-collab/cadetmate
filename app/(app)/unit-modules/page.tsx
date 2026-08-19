@@ -486,7 +486,7 @@ function ModulesPageInner({
       try {
         // Fetch modules + user progress in parallel
         const [modulesRes, sessionRes] = await Promise.all([
-          supabase.from("modules").select("*").eq("hidden", false).order("category").order("title"),
+          supabase.from("modules_catalog").select("id, title, slug, description, category, subcategory, hidden, is_premium, is_new, is_featured, difficulty, estimated_hours, total_lessons, accent_color, image_url, tags").order("category").order("title"),
           supabase.auth.getSession(),
         ]);
 

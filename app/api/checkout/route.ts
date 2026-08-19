@@ -6,6 +6,7 @@ import { getPremiumPriceId, getCheckoutReturnOrigin } from '@/lib/security/env';
 import { requireUserApi } from '@/lib/auth/require-user-api';
 import { isPremiumRole } from '@/lib/auth/roles';
 import { getStripe } from '@/lib/stripe/client';
+import { stripePublicError } from '@/lib/stripe/public-error';
 
 type CheckoutBody = {
   product?: string;
@@ -119,8 +120,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (err: unknown) {
     console.error('Stripe checkout error:', err);
-    const message = err instanceof Error ? err.message : 'Stripe error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: stripePublicError() }, { status: 500 });
   }
 }
 

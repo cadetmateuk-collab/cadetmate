@@ -1,7 +1,6 @@
 import { requireAuth } from '@/lib/auth/get-user'
 import { isPremiumRole } from '@/lib/auth/roles'
 import { createClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -20,9 +19,9 @@ import {
   Sparkles,
   CheckCircle2,
   XCircle,
-  KeyRound
 } from 'lucide-react'
 import { PasswordResetButton } from './PasswordResetButton'
+import { sendPasswordReset } from './send-password-reset'
 import { SubscribeButton } from '@/components/billing/SubscribeButton'
 import { BillingPortalButton } from '@/components/billing/BillingPortalButton'
 import { getPremiumPrice } from '@/lib/stripe/premium-price'
@@ -49,20 +48,6 @@ export default async function DashboardPage() {
     const supabase = await createClient()
     await supabase.auth.signOut()
     redirect('/auth')
-  }
-
-  async function sendPasswordReset() {
-    'use server'
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user?.email) return
-    const headerStore = await headers()
-    const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host')
-    const proto = headerStore.get('x-forwarded-proto') ?? 'http'
-    const origin = host ? `${proto.split(',')[0].trim()}://${host.split(',')[0].trim()}` : undefined
-    await supabase.auth.resetPasswordForEmail(user.email, {
-      redirectTo: origin ? `${origin}/reset-password` : undefined,
-    })
   }
 
   const isPremium = isPremiumRole(user.profile?.role)

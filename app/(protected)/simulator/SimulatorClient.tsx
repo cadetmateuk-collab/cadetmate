@@ -148,8 +148,7 @@ export default function ShipBridgeSimulator() {
   const [aiProcessingStatus, setAiProcessingStatus] = useState('');
   const recognitionRef = useRef<unknown>(null);
   const radioAudioRef = useRef<HTMLAudioElement | null>(null);
-  const [openaiApiKey] = useState(process.env.NEXT_PUBLIC_OPENAI_API_KEY || '');
-  const [useAI] = useState(!!process.env.NEXT_PUBLIC_OPENAI_API_KEY);
+  const [useAI] = useState(true);
 
   // Lookout
   const [lookoutPosition, setLookoutPosition] = useState<Scene>('center');
@@ -527,23 +526,21 @@ export default function ShipBridgeSimulator() {
       setTimeout(() => setAiProcessingStatus(''), 3000);
     };
 
-    if (useAI && openaiApiKey) {
+    if (useAI) {
       try {
         setAiProcessingStatus('☁️ Sending to OpenAI...');
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        const res = await fetch('/api/simulator/ai', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiApiKey}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'You are a bosun. Choose the single best numbered response (1-29) for the bridge officer\'s message. Reply with only the number.' },
-              { role: 'user', content: `Officer said: "${transcript}"\nResponse number:` },
-            ],
-            max_tokens: 5, temperature: 0.1,
+            transcript,
+            maxIndex: 29,
+            system:
+              'You are a bosun. Choose the single best numbered response (1-29) for the bridge officer\'s message. Reply with only the number.',
           }),
         });
-        const data = await res.json();
-        choose(data.choices[0].message.content.trim());
+        const data = (await res.json()) as { choice?: string | null };
+        choose(data.choice?.trim() || '3');
       } catch {
         setAiProcessingStatus('❌ API Error - using fallback');
         choose('3');
@@ -579,7 +576,7 @@ export default function ShipBridgeSimulator() {
     else if (lower.includes('what should') || lower.includes('advise') || lower.includes('next')) key = '29';
 
     choose(key);
-  }, [useAI, openaiApiKey, playRadioResponse, addEventToLog]);
+  }, [useAI, playRadioResponse, addEventToLog]);
 
   const handlePTTPress = useCallback(() => {
     const rec = recognitionRef.current as { start: () => void } | null;

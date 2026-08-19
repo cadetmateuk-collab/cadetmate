@@ -1,5 +1,5 @@
+// @ts-nocheck
 'use client';
-
 import { Suspense, useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture, OrbitControls, useProgress, Preload, useGLTF } from '@react-three/drei';

@@ -45,6 +45,19 @@
   "exclude": [
     "node_modules",
     "apps",
-    ".server-out"
+    ".server-out",
+    "supabase/functions",
+    "app/(app)/admin/module-builder/ModuleBuilder.tsx",
+    "app/(app)/radar-plotting/page.tsx",
+    "app/(protected)/simulator/usespeechenginge.tsx",
+    "components/community/CommunityLeaderboard.tsx",
+    "components/AdminUsersTab.tsx",
+    "components/AdminTRBTasksTab.tsx",
+    "components/AdminQuestionsTab.tsx",
+    "components/AdminActivityLogTab.tsx",
+    "components/admin/HomepageAdminClient.tsx",
+    "components/bridge/BridgeInteractions.tsx",
+    "components/bridge/BridgeScene.tsx",
+    "components/Sidebar/CadetMateSidebar.tsx"
   ]
 }

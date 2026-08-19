@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { isValidEmail } from '@/lib/onboarding/constants';
+import { rateLimit, clientIp } from '@/lib/security/rate-limit';
 
 export async function POST(request: Request) {
+  if (!rateLimit(`check-email:${clientIp(request)}`, 8, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   let body: { email?: string };
   try {
     body = await request.json();
@@ -15,7 +20,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Valid email required' }, { status: 400 });
   }
 
-  // Look up via profiles (synced from auth) — avoids listing all auth users.
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .select('id')

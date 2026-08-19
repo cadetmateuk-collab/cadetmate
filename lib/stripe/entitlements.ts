@@ -2,32 +2,22 @@ import type Stripe from 'stripe';
 import { isProtectedStaffRole } from '@cadet-mate/shared';
 import { getPremiumPriceId } from '@/lib/security/env';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { checkoutIsPremium, parsePremiumPriceIds } from '@/lib/stripe/access';
 
 /** Stripe Price IDs that grant Premium (singular env + optional extra allowlist). */
 export function premiumPriceIds(): Set<string> {
-  const ids = new Set<string>();
-  const primary = getPremiumPriceId();
-  if (primary) ids.add(primary);
-  const extras = process.env.STRIPE_PREMIUM_PRICE_IDS ?? '';
-  for (const id of extras.split(',')) {
-    const trimmed = id.trim();
-    if (trimmed) ids.add(trimmed);
-  }
-  return ids;
+  return new Set(parsePremiumPriceIds(getPremiumPriceId(), process.env.STRIPE_PREMIUM_PRICE_IDS));
 }
 
 export function isPremiumCheckout(
   session: Stripe.Checkout.Session,
   linePriceIds: string[],
 ): boolean {
-  const meta = session.metadata ?? {};
-  if (meta.product_type === 'premium' || meta.entitlement === 'premium') return true;
-  if (meta.pack_id) return false;
-  const mode = String(session.mode);
-  if (mode === 'subscription') return true;
-  const prices = premiumPriceIds();
-  if (prices.size === 0) return mode === 'subscription';
-  return linePriceIds.some((id) => prices.has(id));
+  return checkoutIsPremium({
+    packId: session.metadata?.pack_id,
+    linePriceIds,
+    allowedPriceIds: premiumPriceIds(),
+  });
 }
 
 export async function resolveUserIdFromCheckout(
@@ -44,19 +34,6 @@ export async function resolveUserIdFromCheckout(
       .from('profiles')
       .select('id')
       .eq('stripe_customer_id', customerId)
-      .maybeSingle();
-    if (data?.id) return data.id;
-  }
-
-  const email =
-    session.customer_details?.email ??
-    session.customer_email ??
-    null;
-  if (email) {
-    const { data } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
       .maybeSingle();
     if (data?.id) return data.id;
   }

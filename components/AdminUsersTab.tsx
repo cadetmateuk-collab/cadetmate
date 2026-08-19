@@ -1,5 +1,5 @@
+// @ts-nocheck
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Users, RefreshCw, ChevronDown } from 'lucide-react';

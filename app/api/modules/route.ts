@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { hasPermission } from '@/lib/auth/roles'
+import { hasPermission, isPremiumRole, isStaffRole } from '@/lib/auth/roles'
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event'
+import { getCurrentUser } from '@/lib/auth/get-user'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export async function GET(request: Request) {
   try {
@@ -9,43 +11,66 @@ export async function GET(request: Request) {
     const id = searchParams.get('id')
     const slug = searchParams.get('slug')
 
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const supabase = await createClient()
+    const staff = isStaffRole(user.profile?.role)
 
-    if (id) {
-      const { data, error } = await supabase
-        .from('modules')
-        .select('*')
-        .eq('id', id)
-        .single()
+    if (id || slug) {
+      if (staff) {
+        let fullQuery = supabaseAdmin.from('modules').select('*')
+        fullQuery = id ? fullQuery.eq('id', id) : fullQuery.eq('slug', slug as string)
+        const { data, error } = await fullQuery.maybeSingle()
+        if (error || !data) {
+          return NextResponse.json({ error: 'Module not found' }, { status: 404 })
+        }
+        return NextResponse.json(data)
+      }
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 404 })
+      let catalogQuery = supabase.from('modules_catalog').select('id, slug, is_premium')
+      catalogQuery = id ? catalogQuery.eq('id', id) : catalogQuery.eq('slug', slug)
+      const { data: catalog } = await catalogQuery.maybeSingle()
+
+      if (!catalog) {
+        return NextResponse.json({ error: 'Module not found' }, { status: 404 })
+      }
+
+      if (catalog.is_premium && !isPremiumRole(user.profile?.role)) {
+        return NextResponse.json({ error: 'Premium required' }, { status: 403 })
+      }
+
+      let fullQuery = supabase.from('modules').select('*')
+      fullQuery = id ? fullQuery.eq('id', id) : fullQuery.eq('slug', slug as string)
+      const { data, error } = await fullQuery.maybeSingle()
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'Module not found' }, { status: 404 })
       }
 
       return NextResponse.json(data)
     }
 
-    if (slug) {
-      const { data, error } = await supabase
+    if (staff) {
+      const { data, error } = await supabaseAdmin
         .from('modules')
-        .select('*')
-        .eq('slug', slug)
-        .single()
-
+        .select('id, title, description, category, subcategory, slug, is_premium, image_url, tags, difficulty, total_lessons, hidden')
+        .order('category', { ascending: true })
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 404 })
+        return NextResponse.json({ error: 'Failed to load modules' }, { status: 500 })
       }
-
-      return NextResponse.json(data)
+      return NextResponse.json(data || [])
     }
 
     const { data, error } = await supabase
-      .from('modules')
-      .select('*')
+      .from('modules_catalog')
+      .select('id, title, description, category, subcategory, slug, is_premium, image_url, tags, difficulty, total_lessons')
       .order('category', { ascending: true })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to load modules' }, { status: 500 })
     }
 
     return NextResponse.json(data || [])

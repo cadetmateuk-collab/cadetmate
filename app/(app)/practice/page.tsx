@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { Mic, HelpCircle, Zap, Target, GraduationCap, Lock, ArrowRight, LifeBuoy } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
 import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
@@ -73,9 +74,18 @@ const PRACTICE_ITEMS = [
   },
 ];
 
-export default async function PracticePage() {
+export default async function PracticePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const user = await getCurrentUser();
   const isPremium = isPremiumRole(user?.profile?.role);
+  const premiumTabs = new Set(['mock-oral', 'oral-questions', 'scenarios']);
+  if (tab && premiumTabs.has(tab) && !isPremium) {
+    redirect('/store');
+  }
 
   return (
     <div className="py-8">

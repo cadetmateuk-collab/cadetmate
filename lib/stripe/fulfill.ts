@@ -1,11 +1,13 @@
 import type Stripe from 'stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { getStripe } from '@/lib/stripe/client';
+import { sessionPaid } from '@/lib/stripe/access';
 import {
   grantPremium,
   isPremiumCheckout,
   resolveUserIdFromCheckout,
 } from '@/lib/stripe/entitlements';
+import { packOwnershipGrantRow } from '@/lib/stripe/webhook-ledger';
 
 export type FulfillResult = {
   ok: boolean;
@@ -27,15 +29,15 @@ async function lineItemPriceIds(session: Stripe.Checkout.Session): Promise<strin
   }
 }
 
-function sessionPaid(session: Stripe.Checkout.Session): boolean {
-  return session.payment_status === 'paid' || session.status === 'complete';
+function checkoutSessionPaid(session: Stripe.Checkout.Session): boolean {
+  return sessionPaid(session.payment_status);
 }
 
 /** Grant pack ownership and/or Premium from a completed Checkout session. Idempotent. */
 export async function fulfillCheckoutSession(
   session: Stripe.Checkout.Session,
 ): Promise<FulfillResult> {
-  if (!sessionPaid(session)) {
+  if (!checkoutSessionPaid(session)) {
     return { ok: false, userId: null, premium: false, packId: null, reason: 'unpaid' };
   }
 
@@ -62,15 +64,14 @@ export async function fulfillCheckoutSession(
       (pack.price_cents ?? 0) > 0;
 
     if (priceOk) {
-      await supabaseAdmin.from('flashcard_pack_ownership').upsert(
-        {
-          user_id: userId,
-          pack_id: packId,
-          source: 'stripe',
-          stripe_session_id: session.id,
-        },
+      const { error: grantError } = await supabaseAdmin.from('flashcard_pack_ownership').upsert(
+        packOwnershipGrantRow({ userId, packId, sessionId: session.id }),
         { onConflict: 'user_id,pack_id' },
       );
+      if (grantError) {
+        console.error('[stripe] Pack grant failed', { packId, userId, message: grantError.message });
+        return { ok: false, userId, premium: false, packId, reason: 'pack_grant_failed' };
+      }
     } else {
       console.error('[stripe] Pack grant rejected — price mismatch', {
         packId,
@@ -101,6 +102,17 @@ export async function fulfillCheckoutSession(
   return { ok: true, userId, premium, packId };
 }
 
+export async function revokePackOwnership(opts: {
+  userId: string;
+  packId: string;
+}): Promise<void> {
+  await supabaseAdmin
+    .from('flashcard_pack_ownership')
+    .delete()
+    .eq('user_id', opts.userId)
+    .eq('pack_id', opts.packId);
+}
+
 export async function findLatestPaidSessionForUser(opts: {
   userId: string;
   email?: string | null;
@@ -121,7 +133,7 @@ export async function findLatestPaidSessionForUser(opts: {
     const listed = await stripe.checkout.sessions.list({ customer, limit: 10 });
     const match = listed.data.find(
       (s) =>
-        sessionPaid(s) &&
+        sessionPaid(s.payment_status) &&
         (s.metadata?.user_id === opts.userId || s.client_reference_id === opts.userId),
     );
     if (match) return match;

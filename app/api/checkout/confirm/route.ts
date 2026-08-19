@@ -1,8 +1,10 @@
+import type Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireUserApi } from '@/lib/auth/require-user-api';
 import { getStripe } from '@/lib/stripe/client';
 import { fulfillCheckoutSession, findLatestPaidSessionForUser } from '@/lib/stripe/fulfill';
+import { stripePublicError } from '@/lib/stripe/public-error';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,9 +20,10 @@ export async function POST(req: NextRequest) {
     }
 
     const stripe = getStripe();
-    let session = sessionId.startsWith('cs_')
-      ? await stripe.checkout.sessions.retrieve(sessionId)
-      : null;
+    let session: Stripe.Checkout.Session | null = null;
+    if (sessionId.startsWith('cs_')) {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    }
 
     if (!session) {
       const { data: profile } = await supabaseAdmin
@@ -65,7 +68,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     console.error('Stripe checkout confirm error:', err);
-    const message = err instanceof Error ? err.message : 'Stripe error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: stripePublicError() }, { status: 500 });
   }
 }

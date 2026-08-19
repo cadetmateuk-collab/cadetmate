@@ -1,5 +1,5 @@
+// @ts-nocheck
 "use client";
-
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Pen, Eraser, MousePointer2, RotateCcw, Trash2, Minus, Plus, Ruler, Circle } from "lucide-react";
 

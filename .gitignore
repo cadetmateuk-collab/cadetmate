@@ -55,9 +55,6 @@ next-env.d.ts
 schemas.sql
 schema.sql
 
-# Keep Supabase migrations local — not pushed to GitHub
-supabase/migrations/
-
 # Internal build / deploy docs — not pushed to GitHub
 /docs/
 

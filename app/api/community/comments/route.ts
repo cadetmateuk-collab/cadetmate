@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { moderateContent } from '@/lib/community/moderation';
 import { validateComment } from '@/lib/community/validation';
-import { AUTHOR_SELECT } from '@/lib/community/queries';
+import { insertModerationLog } from '@/lib/community/log-moderation';
+import { attachAuthors } from '@/lib/community/queries';
 import type { Comment } from '@/lib/community/types';
 
 const COMMENT_SELECT = `
   id, post_id, parent_id, user_id, body, vote_score, depth,
-  status, is_deleted, created_at, updated_at,
-  author:profiles!comments_user_id_fkey(${AUTHOR_SELECT})
+  status, is_deleted, created_at, updated_at
 `;
 
 export async function GET(request: NextRequest) {
@@ -28,11 +28,8 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const comments = (data ?? []).map((c) => {
-    const raw = c.author as unknown;
-    const author = Array.isArray(raw) ? raw[0] : raw;
-    return { ...c, author } as Comment;
-  });
+  let comments = (data ?? []).map((c) => c as Comment);
+  comments = await attachAuthors(supabase, comments);
 
   if (user && comments.length > 0) {
     const ids = comments.map((c) => c.id);
@@ -117,7 +114,7 @@ export async function POST(request: NextRequest) {
 
   const moderation = await moderateContent(body);
   if (moderation.action === 'blocked') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'comment',
       user_id: user.id,
       provider: moderation.provider,
@@ -146,7 +143,7 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await supabase.from('moderation_logs').insert({
+  await insertModerationLog({
     content_type: 'comment',
     content_id: comment.id,
     user_id: user.id,
@@ -169,11 +166,10 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const raw = comment.author as unknown;
-  const author = Array.isArray(raw) ? raw[0] : raw;
+  const [withAuthor] = await attachAuthors(supabase, [comment as Comment]);
 
   return NextResponse.json({
-    comment: { ...comment, author, replies: [] } as Comment,
+    comment: { ...withAuthor, replies: [] } as Comment,
     warning: moderation.action === 'flagged' ? moderation.explanation : undefined,
   });
 }

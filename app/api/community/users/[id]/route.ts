@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { POST_SELECT, attachPostTags, asPost } from '@/lib/community/queries';
+import { POST_SELECT, attachPostTags, attachAuthors, asPost } from '@/lib/community/queries';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -10,23 +10,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const limit = Math.min(parseInt(request.nextUrl.searchParams.get('limit') ?? '10', 10), 30);
 
   const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select(`
-      id, full_name, created_at, role, avatar_kind, avatar_preset, avatar_color,
-      community_user_profiles(karma_score, post_count, comment_count)
-    `)
+    .from('profiles_public')
+    .select('id, full_name, avatar_kind, avatar_preset, avatar_color')
     .eq('id', id)
     .maybeSingle();
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
   if (!profile) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const stats = profile.community_user_profiles as {
-    karma_score: number;
-    post_count: number;
-    comment_count: number;
-  } | { karma_score: number; post_count: number; comment_count: number }[] | null;
-  const communityStats = Array.isArray(stats) ? stats[0] : stats;
+  const { data: statsRow } = await supabase
+    .from('community_user_profiles')
+    .select('karma_score, post_count, comment_count')
+    .eq('user_id', id)
+    .maybeSingle();
 
   const { data: posts } = await supabase
     .from('posts')
@@ -39,6 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   let normalizedPosts = (posts ?? []).map((p) => asPost(p));
   normalizedPosts = await attachPostTags(supabase, normalizedPosts);
+  normalizedPosts = await attachAuthors(supabase, normalizedPosts);
 
   const { data: recentComments } = await supabase
     .from('comments')
@@ -55,14 +52,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
     profile: {
       id: profile.id,
       full_name: profile.full_name,
-      created_at: profile.created_at,
-      role: profile.role ?? null,
+      created_at: null,
+      role: null,
       avatar_kind: profile.avatar_kind ?? null,
       avatar_preset: profile.avatar_preset ?? null,
       avatar_color: profile.avatar_color ?? null,
-      karma_score: communityStats?.karma_score ?? 0,
-      post_count: communityStats?.post_count ?? 0,
-      comment_count: communityStats?.comment_count ?? 0,
+      karma_score: statsRow?.karma_score ?? 0,
+      post_count: statsRow?.post_count ?? 0,
+      comment_count: statsRow?.comment_count ?? 0,
     },
     recentPosts: normalizedPosts,
     recentComments: recentComments ?? [],

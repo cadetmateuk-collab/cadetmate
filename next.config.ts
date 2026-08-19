@@ -51,7 +51,7 @@ const nextConfig: NextConfig = {
     'unexpeditable-sinistral-maverick.ngrok-free.dev',
   ],
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   typedRoutes: false,
   compress: true,

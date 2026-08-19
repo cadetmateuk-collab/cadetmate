@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { insertModerationLog } from '@/lib/community/log-moderation';
 import { moderateContent } from '@/lib/community/moderation';
 import { validatePost } from '@/lib/community/validation';
 import { slugify, topPeriodToDate } from '@/lib/community/utils';
 import {
   POST_SELECT,
   attachPostTags,
+  attachAuthors,
   attachUserVotes,
   asPost,
 } from '@/lib/community/queries';
@@ -80,6 +82,7 @@ export async function GET(request: NextRequest) {
   const posts = hasMore ? rows.slice(0, limit) : rows;
 
   let enriched = await attachPostTags(supabase, posts);
+  enriched = await attachAuthors(supabase, enriched);
   enriched = await attachUserVotes(supabase, user?.id, enriched);
 
   const last = enriched[enriched.length - 1];
@@ -121,7 +124,7 @@ export async function POST(request: NextRequest) {
 
   const moderation = await moderateContent(`${title}\n\n${postBody}`);
   if (moderation.action === 'blocked') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'post',
       user_id: user.id,
       provider: moderation.provider,
@@ -168,7 +171,7 @@ export async function POST(request: NextRequest) {
     ...requestContext(request),
   });
 
-  await supabase.from('moderation_logs').insert({
+  await insertModerationLog({
     content_type: 'post',
     content_id: post.id,
     user_id: user.id,
@@ -209,9 +212,10 @@ export async function POST(request: NextRequest) {
 
   const normalized = asPost(post);
   const [withTags] = await attachPostTags(supabase, [normalized]);
+  const [withAuthor] = await attachAuthors(supabase, [withTags]);
 
   return NextResponse.json({
-    post: withTags,
+    post: withAuthor,
     warning: moderation.action === 'flagged' ? moderation.explanation : undefined,
   });
 }

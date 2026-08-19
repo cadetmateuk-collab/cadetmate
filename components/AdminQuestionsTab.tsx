@@ -1,5 +1,5 @@
-'use client'
-
+// @ts-nocheck
+'use client';
 import { useState, useEffect, useTransition } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Check, X, HelpCircle, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'

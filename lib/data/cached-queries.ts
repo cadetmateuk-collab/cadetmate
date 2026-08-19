@@ -5,8 +5,8 @@ import { ENABLE_DATA_CACHE, REVALIDATE_SECONDS } from '@/lib/dev-cache';
 async function fetchLandingPageStats() {
   const supabase = createPublicSupabase();
   const [users, modules, flashcards, posts] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('modules').select('*', { count: 'exact', head: true }).eq('hidden', false),
+    supabase.from('profiles_public').select('*', { count: 'exact', head: true }),
+    supabase.from('modules_catalog').select('*', { count: 'exact', head: true }),
     supabase.from('flashcard_packs').select('*', { count: 'exact', head: true }),
     supabase.from('posts').select('*', { count: 'exact', head: true }),
   ]);

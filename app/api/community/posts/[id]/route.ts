@@ -5,9 +5,11 @@ import { moderateContent } from '@/lib/community/moderation';
 import {
   POST_SELECT,
   attachPostTags,
+  attachAuthors,
   attachUserVotes,
   asPost,
 } from '@/lib/community/queries';
+import { insertModerationLog } from '@/lib/community/log-moderation';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -26,6 +28,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   if (!data || data.is_deleted) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
 
   let post = asPost(data);
+  [post] = await attachAuthors(supabase, [post]);
   [post] = await attachPostTags(supabase, [post]);
   [post] = await attachUserVotes(supabase, user?.id, [post]);
 
@@ -55,7 +58,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const moderation = await moderateContent(`${title}\n\n${postBody}`);
   if (moderation.action === 'blocked') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'post',
       content_id: id,
       user_id: user.id,
@@ -87,7 +90,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (moderation.action === 'flagged') {
-    await supabase.from('moderation_logs').insert({
+    await insertModerationLog({
       content_type: 'post',
       content_id: id,
       user_id: user.id,
@@ -109,8 +112,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
   }
 
+  const [post] = await attachAuthors(supabase, [asPost(data)]);
   return NextResponse.json({
-    post: asPost(data),
+    post,
     warning: moderation.action === 'flagged' ? moderation.explanation : undefined,
   });
 }

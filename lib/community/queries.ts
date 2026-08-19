@@ -1,15 +1,34 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Post, AuthorProfile } from '@/lib/community/types';
 
-export const AUTHOR_SELECT =
-  'id, full_name, email, created_at, role, avatar_kind, avatar_preset, avatar_color';
+export const AUTHOR_PUBLIC_SELECT =
+  'id, full_name, avatar_kind, avatar_preset, avatar_color';
+
+/** @deprecated Use AUTHOR_PUBLIC_SELECT — email is no longer exposed via community embeds. */
+export const AUTHOR_SELECT = AUTHOR_PUBLIC_SELECT;
 
 export const POST_SELECT = `
   id, user_id, category_id, title, body, vote_score, comment_count,
   hot_score, status, is_deleted, created_at, updated_at,
-  author:profiles!posts_user_id_fkey(${AUTHOR_SELECT}),
   category:post_categories(id, name, slug, description, color)
 `;
+
+export async function attachAuthors<T extends { user_id: string; author?: AuthorProfile | null }>(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: T[],
+): Promise<T[]> {
+  if (rows.length === 0) return rows;
+  const ids = [...new Set(rows.map((row) => row.user_id).filter(Boolean))];
+  if (ids.length === 0) return rows;
+
+  const { data } = await supabase
+    .from('profiles_public')
+    .select(AUTHOR_PUBLIC_SELECT)
+    .in('id', ids);
+
+  const map = new Map((data ?? []).map((row) => [row.id as string, row as AuthorProfile]));
+  return rows.map((row) => ({ ...row, author: map.get(row.user_id) ?? row.author ?? null }));
+}
 
 export async function attachPostTags(supabase: Awaited<ReturnType<typeof createClient>>, posts: Post[]) {
   if (posts.length === 0) return posts;

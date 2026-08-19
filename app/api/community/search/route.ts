@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { POST_SELECT, attachPostTags, asPost } from '@/lib/community/queries';
+import { POST_SELECT, attachPostTags, attachAuthors, asPost } from '@/lib/community/queries';
 import type { Post } from '@/lib/community/types';
 import { escapeIlike } from '@/lib/security/env';
 
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     }
     let posts = Array.from(merged.values()).slice(0, limit);
     posts = await attachPostTags(supabase, posts);
+    posts = await attachAuthors(supabase, posts);
     results.posts = posts;
   }
 

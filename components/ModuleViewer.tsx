@@ -1039,7 +1039,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                     background: isActive ? "hsl(221 91% 96%)" : "transparent",
                     cursor: "pointer", transition: "background 0.15s",
                   }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, background: isCompleted ? "hsl(var(--primary))" : isActive ? "hsl(var(--primary))" : "#f1f3f5", color: isCompleted || isActive ? "#fff" : "#6b7280", fontWeight: 700, fontSize: isCompleted ? 13 : 14 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: isCompleted ? "hsl(var(--primary))" : isActive ? "hsl(var(--primary))" : "#f1f3f5", color: isCompleted || isActive ? "#fff" : "#6b7280", fontWeight: 700, fontSize: isCompleted ? 13 : 14 }}>
                       {isCompleted ? "✓" : icon}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1118,7 +1118,7 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
                 }}>
                   <div style={{
                     width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                    display: "flex", alignItems: "center", justifyContent: "center",
                     background: isCompleted
                       ? "hsl(var(--primary))"
                       : isActive

@@ -23,10 +23,9 @@ export async function GET(request: NextRequest) {
 
   const [modules, flashcards, posts, blogs, users] = await Promise.all([
     supabase
-      .from('modules')
+      .from('modules_catalog')
       .select('id, title, category, subcategory')
       .ilike('title', pattern)
-      .eq('hidden', false)
       .limit(limit),
 
     supabase
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     // Never search or return emails publicly
     supabase
-      .from('profiles')
+      .from('profiles_public')
       .select('id, full_name')
       .ilike('full_name', pattern)
       .limit(5),
