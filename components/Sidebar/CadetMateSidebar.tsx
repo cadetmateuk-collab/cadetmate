@@ -588,7 +588,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
           profile = withAvatar.data;
         }
 
-        const name = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+        const name: string = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
         const avatarKind = profile?.avatar_kind === "preset" || user.user_metadata?.avatar_kind === "preset"
           ? "preset" as const
           : "initials" as const;

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
 import { CheckCircle2, FileText, Download, Pen, Highlighter, Trash2, Eraser, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Menu, X, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -29,6 +29,31 @@ interface Page {
   title: string;
   estimatedMinutes: number;
   blocks: ContentBlock[];
+}
+
+function ModuleHeading({
+  level,
+  style,
+  children,
+}: {
+  level: number;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  switch (level) {
+    case 1:
+      return <h1 style={style}>{children}</h1>;
+    case 3:
+      return <h3 style={style}>{children}</h3>;
+    case 4:
+      return <h4 style={style}>{children}</h4>;
+    case 5:
+      return <h5 style={style}>{children}</h5>;
+    case 6:
+      return <h6 style={style}>{children}</h6>;
+    default:
+      return <h2 style={style}>{children}</h2>;
+  }
 }
 
 interface ModuleData {
@@ -552,15 +577,15 @@ export default function ModuleViewer({ moduleId, moduleData: initialData, userEm
       case "heading": {
         const raw = Number(block.content?.level);
         const level = raw >= 1 && raw <= 6 ? raw : 2;
-        const HeadingTag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
         const sizes: Record<number, string> = { 1: "2rem", 2: "1.5rem", 3: "1.2rem" };
         return (
-          <HeadingTag
+          <ModuleHeading
             key={block.id}
+            level={level}
             style={{ fontSize: sizes[level] || "1.5rem", fontWeight: 800, color: "hsl(var(--foreground))", lineHeight: 1.2, marginBottom: 8, marginTop: level === 1 ? 8 : 32 }}
           >
             {block.content?.text}
-          </HeadingTag>
+          </ModuleHeading>
         );
       }
       case "text":
