@@ -478,7 +478,7 @@ function TaskRow({
   task, onSave, onDelete, isNew = false, onCancelNew,
 }: {
   task: TRBTask
-  onSave: (t: TRBTask) => Promise<void>
+  onSave: (t: TRBTask, isNew: boolean) => Promise<boolean>
   onDelete?: (id: string) => Promise<void>
   isNew?: boolean
   onCancelNew?: () => void
@@ -499,8 +499,8 @@ function TaskRow({
 
   function handleSave() {
     start(async () => {
-      await onSave(draft)
-      if (!isNew) setEditing(false)
+      const saved = await onSave(draft, isNew)
+      if (saved && !isNew) setEditing(false)
     })
   }
 
@@ -775,10 +775,23 @@ export default function AdminTRBTasksTab() {
     setLoading(false)
   }
 
-  async function saveTask(task: TRBTask) {
+  async function saveTask(task: TRBTask, isNew = false): Promise<boolean> {
+    const code = task.code.trim()
+    if (!code) {
+      alert('Enter a task code, for example A13.')
+      return false
+    }
+    const nextId = code.toLowerCase()
+    const existing = !isNew ? tasks.find(t => t.id === task.id) : undefined
+    const taken = tasks.some(t => t.id === nextId && t.id !== existing?.id)
+    if (taken) {
+      alert(`Task code ${code} is already used.`)
+      return false
+    }
+
     const payload = {
-      id:          task.id,
-      code:        task.code,
+      id:          nextId,
+      code,
       title:       task.title,
       category:    task.category,
       description: task.description,
@@ -787,19 +800,20 @@ export default function AdminTRBTasksTab() {
       image_urls:  task.image_urls || [],
     }
 
-    const { error } = task.id && tasks.find(t => t.id === task.id)
-      ? await supabase.from('trb_tasks').update(payload).eq('id', task.id)
+    const { error } = existing
+      ? await supabase.from('trb_tasks').update(payload).eq('id', existing.id)
       : await supabase.from('trb_tasks').insert(payload)
 
-    if (error) { alert(error.message); return }
+    if (error) { alert(error.message); return false }
     void logClientActivity({
-      action: task.id && tasks.find(t => t.id === task.id) ? 'trb.updated' : 'trb.created',
+      action: existing ? 'trb.updated' : 'trb.created',
       entityType: 'trb_task',
-      entityId: task.id || task.code,
+      entityId: nextId,
       entityTitle: task.title,
     })
     setAdding(false)
     await loadTasks()
+    return true
   }
 
   async function deleteTask(id: string) {
