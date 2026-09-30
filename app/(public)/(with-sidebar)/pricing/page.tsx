@@ -9,17 +9,17 @@ import {
   buildOfferCatalogSchema,
   buildFAQSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 import { Check, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TrackedLink } from '@/components/analytics/TrackedLink';
-import { PricingCta } from '@/components/billing/PricingCta';
+import { TrackedLink } from '@/components/feature/analytics/TrackedLink';
+import { PricingCta } from '@/components/feature/billing/PricingCta';
 import { getPremiumPrice } from '@/lib/stripe/premium-price';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Pricing — Free & Premium UK Deck Cadet Training',
   description:
-    'CadetMate pricing for UK deck cadets. Free plan: community, quizzes, limited flashcards, free guides. Premium: full modules, COLREGS revision, MCA oral practice, and simulators.',
+    'CadetMate pricing for UK deck cadets. Free plan: community, quizzes, limited flashcards, free guides. Premium: full modules, COLREGS revision, and MCA oral practice.',
   path: '/pricing',
   keywords: [
     'CadetMate pricing',
@@ -43,7 +43,6 @@ const PREMIUM_FEATURES = [
   'All learning modules & unit guides',
   'Full oral question bank (2,500+ questions)',
   'Mock oral exams & timed quizzes',
-  'Emergency scenario simulators',
   'TRB & Sea Survival resources',
   'Advanced progress analytics',
   'Certificates & premium badges',
@@ -59,7 +58,7 @@ const PRICING_FAQS = [
   {
     question: 'What does Premium include?',
     answer:
-      'Premium unlocks all learning modules, the full oral question bank, mock orals, simulators, TRB and sea survival resources, and advanced analytics. Flashcard packs are sold separately in the store.',
+      'Premium unlocks all learning modules, the full oral question bank, mock orals, TRB and sea survival resources, and advanced analytics. Flashcard packs are sold separately in the store.',
   },
   {
     question: 'Can I try CadetMate before upgrading?',
@@ -69,7 +68,12 @@ const PRICING_FAQS = [
   {
     question: 'Are flashcards included with Premium?',
     answer:
-      'No. Flashcard packs are à-la-carte. Free packs can be claimed in the store; paid packs are purchased individually. Premium is for modules, orals, simulators, and TRB tools.',
+      'No. Flashcard packs are à-la-carte. Free packs can be claimed in the store; paid packs are purchased individually. Premium is for modules, orals, and TRB tools.',
+  },
+  {
+    question: 'Can I get a refund if Premium is not right for me?',
+    answer:
+      'Refund and cancellation terms are in the Refund Policy. You can cancel renewal from your billing portal; cooling-off refunds may apply if paid content has not been substantially used.',
   },
 ];
 
@@ -101,7 +105,7 @@ export default async function PricingPage() {
           {
             name: 'CadetMate Premium',
             description:
-              'Full modules, oral banks, simulators, and TRB resources. Flashcard packs sold separately.',
+              'Full modules, oral banks, and TRB resources. Flashcard packs sold separately.',
             price: price ? (price.amountCents / 100).toFixed(2) : undefined,
             priceCurrency: price?.currency?.toUpperCase(),
             url: '/pricing',
@@ -132,7 +136,7 @@ export default async function PricingPage() {
           </ul>
           <Button variant="outline" className="w-full mt-8" asChild>
             <TrackedLink href="/auth?mode=signup" trackLabel="pricing_create_free_account" trackParams={{ plan: 'free' }}>
-              Create Free Account
+              Start Learning Free
             </TrackedLink>
           </Button>
         </div>
@@ -186,6 +190,10 @@ export default async function PricingPage() {
         {' · '}
         <TrackedLink href="/free-content" className="text-primary hover:underline" trackLabel="pricing_browse_free_articles">
           Browse free articles
+        </TrackedLink>
+        {' · '}
+        <TrackedLink href="/refunds" className="text-primary hover:underline" trackLabel="pricing_refunds">
+          Refund policy
         </TrackedLink>
         {' · '}
         <TrackedLink href="/about" className="text-primary hover:underline" trackLabel="pricing_about">

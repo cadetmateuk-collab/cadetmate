@@ -3,9 +3,10 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { manrope } from '@/lib/fonts';
 import './globals.css';
 import { DeferredAppChrome } from '@/components/layout/DeferredAppChrome';
-import { AnalyticsRoot } from '@/components/analytics/AnalyticsRoot';
-import { AnalyticsErrorBoundary } from '@/components/analytics/AnalyticsErrorBoundary';
-import { MotionProvider } from '@/components/motion/MotionProvider';
+import { AnalyticsRoot } from '@/components/feature/analytics/AnalyticsRoot';
+import { AnalyticsErrorBoundary } from '@/components/feature/analytics/AnalyticsErrorBoundary';
+import { MotionProvider } from '@/components/feature/motion/MotionProvider';
+import { CookieConsentRoot } from '@/components/feature/cookies/CookieConsentRoot';
 import {
   SITE_NAME,
   DEFAULT_DESCRIPTION,
@@ -106,6 +107,7 @@ export default function RootLayout({
         >
           <MotionProvider>
             <AnalyticsRoot />
+            <CookieConsentRoot />
             <DeferredAppChrome />
             <AnalyticsErrorBoundary>{children}</AnalyticsErrorBoundary>
           </MotionProvider>

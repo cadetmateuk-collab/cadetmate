@@ -1,0 +1,188 @@
+"use client";
+import { useState } from "react";
+import { Anchor } from "lucide-react";
+import SearchBar from "./components/SearchBar";
+import TaskList from "./components/TaskList";
+import type { TRBTask } from "./data/trbTasks";
+
+export default function TrbBrowser({
+  tasks,
+  error,
+}: {
+  tasks: TRBTask[];
+  error: string | null;
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  return (
+    <>
+      <style>{`
+
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulseRing {
+          0%   { transform: scale(0.95); opacity: 0.6; }
+          70%  { transform: scale(1.05); opacity: 0; }
+          100% { transform: scale(0.95); opacity: 0; }
+        }
+        @keyframes shimmer {
+          0%   { background-position: -600px 0; }
+          100% { background-position: 600px 0; }
+        }
+
+        .trb-anim-1 { animation: fadeUp 0.45s ease both 0.05s; }
+        .trb-anim-2 { animation: fadeUp 0.45s ease both 0.14s; }
+        .trb-anim-3 { animation: fadeUp 0.45s ease both 0.22s; }
+
+        .trb-page {
+          min-height: 0;
+          background-color: hsl(var(--background));
+          font-family: inherit;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        .trb-glow {
+          pointer-events: none; position: fixed;
+          top: -200px; left: 50%; transform: translateX(-50%);
+          width: 900px; height: 900px; border-radius: 50%;
+          background: radial-gradient(circle, hsl(var(--primary) / 0.055) 0%, transparent 66%);
+          z-index: 0;
+        }
+        .trb-noise {
+          pointer-events: none; position: fixed; inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+          background-repeat: repeat; background-size: 180px 180px;
+          opacity: 0.025; mix-blend-mode: multiply; z-index: 0;
+        }
+
+        .trb-content {
+          position: relative; z-index: 1;
+          width: 100%;
+          margin: 0 auto;
+          padding: 3rem 0 6rem;
+        }
+
+        .trb-header {
+          text-align: center;
+          margin-bottom: 2.5rem;
+        }
+        .trb-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          letter-spacing: 0.13em;
+          text-transform: uppercase;
+          color: hsl(var(--primary));
+          margin-bottom: 1rem;
+          padding: 0.35rem 0.9rem;
+          border: 1px solid hsl(var(--primary) / 0.25);
+          border-radius: 999px;
+          background: hsl(var(--primary) / 0.06);
+        }
+        .trb-eyebrow-dot {
+          width: 5px; height: 5px;
+          border-radius: 50%;
+          background: hsl(var(--primary));
+          animation: pulseRing 2s ease-out infinite;
+        }
+        .trb-title {
+          font-size: clamp(2.25rem, 5vw, 3.75rem);
+          font-weight: 800;
+          letter-spacing: -0.03em;
+          line-height: 1.08;
+          margin: 0 0 0.75rem;
+          background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--foreground) / 0.6) 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .trb-subtitle {
+          font-size: 1.0625rem;
+          color: hsl(var(--muted-foreground));
+          max-width: 520px;
+          margin: 0 auto;
+          line-height: 1.65;
+          font-weight: 300;
+        }
+
+        .trb-search-wrap {
+          max-width: 560px;
+          margin: 0 auto 2rem;
+        }
+
+        /* Skeleton loader */
+        .trb-skeleton {
+          border-radius: 12px;
+          height: 68px;
+          background: linear-gradient(
+            90deg,
+            hsl(var(--muted)) 25%,
+            hsl(var(--muted) / 0.5) 50%,
+            hsl(var(--muted)) 75%
+          );
+          background-size: 600px 100%;
+          animation: shimmer 1.4s ease-in-out infinite;
+        }
+
+        @media (max-width: 580px) {
+          .trb-content { padding: 2rem 1.25rem 4rem; }
+          .trb-title { font-size: 2rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .trb-anim-1, .trb-anim-2, .trb-anim-3,
+          .trb-eyebrow-dot, .trb-skeleton {
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="trb-page">
+        <div className="trb-glow" aria-hidden="true" />
+        <div className="trb-noise" aria-hidden="true" />
+
+        <div className="trb-content">
+
+          {/* Header */}
+          <div className="trb-header trb-anim-1">
+            <div className="trb-eyebrow">
+              <span className="trb-eyebrow-dot" />
+              <Anchor size={9} />
+              Deck TRB · HOW TO
+            </div>
+            <h1 className="trb-title">Training Tasks</h1>
+            <p className="trb-subtitle">
+              All training tasks from the Merchant Navy Deck Training Record Book.
+              Click any task to view step-by-step instructions.
+            </p>
+          </div>
+
+          {/* Search */}
+          <div className="trb-search-wrap trb-anim-2">
+            <SearchBar value={searchTerm} onChange={setSearchTerm} />
+          </div>
+
+          {/* Task List / states */}
+          <div className="trb-anim-3">
+            {error && (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="text-lg font-semibold mb-1 text-red-500">Failed to load tasks</p>
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {!error && (
+              <TaskList tasks={tasks} searchTerm={searchTerm} />
+            )}
+          </div>
+
+        </div>
+      </div>
+    </>
+  );
+}

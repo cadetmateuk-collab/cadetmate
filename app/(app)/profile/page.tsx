@@ -2,18 +2,18 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAuth } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { User, Sparkles, CreditCard, Bell, Settings, Crown, Shield, Ship } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PasswordResetButton } from '../settings/PasswordResetButton';
 import { sendPasswordReset } from '../settings/send-password-reset';
-import { SubscribeButton } from '@/components/billing/SubscribeButton';
-import { BillingPortalButton } from '@/components/billing/BillingPortalButton';
-import { NotificationPreferencesForm } from '@/components/profile/NotificationPreferencesForm';
-import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
-import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
+import { SubscribeButton } from '@/components/feature/billing/SubscribeButton';
+import { BillingPortalButton } from '@/components/feature/billing/BillingPortalButton';
+import { NotificationPreferencesForm } from '@/components/feature/profile/NotificationPreferencesForm';
+import { UserAvatar } from '@/components/feature/auth/onboarding/UserAvatar';
+import { ProfileAvatarEditor } from '@/components/feature/profile/ProfileAvatarEditor';
 import { labelForPhase, labelsForInterests, labelForReferral } from '@/lib/onboarding/constants';
 
 export const metadata: Metadata = buildPageMetadata({
@@ -36,9 +36,11 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const { tab } = await searchParams;
-  const user = await requireAuth();
-  const supabase = await createClient();
+  const [{ tab }, user, supabase] = await Promise.all([
+    searchParams,
+    requireAuth(),
+    createClient(),
+  ]);
   const role = user.profile?.role ?? 'free';
   const isPremium = isPremiumRole(role);
 
@@ -195,7 +197,7 @@ export default async function ProfilePage({
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Upgrade to Premium to unlock modules, simulators, oral banks, and TRB tools. Flashcard packs are sold separately.
+                Upgrade to Premium to unlock modules, oral banks, and TRB tools. Flashcard packs are sold separately.
               </p>
               <div className="flex flex-wrap gap-3">
                 <SubscribeButton />

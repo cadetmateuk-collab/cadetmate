@@ -13,7 +13,7 @@ export {
 } from './site';
 export { buildPageMetadata, buildNoIndexMetadata, buildArticleMetadata } from './metadata';
 export { FREE_CONTENT_KEYWORDS, CONTENT_GAP_KEYWORDS, buildArticleKeywords } from './keywords';
-export { LANDING_FAQS } from './faqs';
+export { LANDING_FAQS, FAQ_PAGE_EXTRA, ALL_PUBLIC_FAQS } from './faqs';
 export {
   buildOrganizationSchema,
   buildWebSiteSchema,

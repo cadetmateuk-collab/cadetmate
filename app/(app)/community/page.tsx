@@ -3,18 +3,18 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/db/client';
 import { Button } from '@/components/ui/button';
-import { FeedFilters } from '@/components/community/FeedFilters';
-import { PostCard } from '@/components/community/PostCard';
-import { PostForm } from '@/components/community/PostForm';
-import { CommunitySearch } from '@/components/community/CommunitySearch';
-import { PostSkeletonList } from '@/components/community/PostSkeleton';
-import { EmptyState } from '@/components/community/EmptyState';
-import { ToastContainer } from '@/components/community/ToastContainer';
+import { FeedFilters } from '@/components/feature/community/FeedFilters';
+import { PostCard } from '@/components/feature/community/PostCard';
+import { PostForm } from '@/components/feature/community/PostForm';
+import { CommunitySearch } from '@/components/feature/community/CommunitySearch';
+import { PostSkeletonList } from '@/components/feature/community/PostSkeleton';
+import { EmptyState } from '@/components/feature/community/EmptyState';
+import { ToastContainer } from '@/components/feature/community/ToastContainer';
 import { useToast } from '@/lib/hooks/useToast';
 import { useCommunityFeed, useCategories, useInfiniteScroll } from '@/lib/hooks/useCommunityFeed';
-import { CommunityLeaderboard } from '@/components/community/CommunityLeaderboard';
+import { CommunityLeaderboard } from '@/components/feature/community/CommunityLeaderboard';
 import type { FeedSort, TopPeriod } from '@/lib/community/types';
 
 function parseSort(value: string | null): FeedSort {

@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminAnalyticsTab from '@/components/AdminAnalyticsTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminAnalyticsTab from '@/components/feature/admin/AdminAnalyticsTab';
 
 export default async function AdminAnalyticsPage() {
   await requireAdminPagePermission('analytics.view');

@@ -2,15 +2,33 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { requireAuth } from '@/lib/auth/get-user';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { Flame, Trophy, BookOpen, Target, History, TrendingUp } from 'lucide-react';
-import { StatPill, ProgressBar, DashboardCard } from '@/components/dashboard/DashboardWidgets';
+import { StatPill, ProgressBar, DashboardCard } from '@/components/feature/dashboard/DashboardWidgets';
 import { rankForXP } from '@/lib/algorithms';
 import { unifiedTotalXp } from '@/lib/gamification';
-import { ProgressTabNav } from '@/components/progress/ProgressTabNav';
-import { ProgressTabSync } from '@/components/progress/ProgressTabSync';
+import { ProgressTabNav } from '@/components/feature/progress/ProgressTabNav';
+import { ProgressTabSync } from '@/components/feature/progress/ProgressTabSync';
 import { DAILY_STUDY_GOAL_MINUTES, WEEKLY_STUDY_GOAL_MINUTES, buildWeekUsage } from '@/lib/study/time';
+import { firstJoin } from '@/lib/db/join';
+
+interface CompletedModuleRow {
+  completed_at: string | null;
+  modules: { title: string | null } | { title: string | null }[] | null;
+}
+
+interface AchievementRow {
+  achievements: {
+    title: string | null;
+    description: string | null;
+    xp_reward: number | null;
+  } | {
+    title: string | null;
+    description: string | null;
+    xp_reward: number | null;
+  }[] | null;
+}
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Progress',
@@ -52,8 +70,8 @@ export default async function ProgressPage() {
   const stats = statsResult.data;
   const xp = xpResult.data;
   const gamification = gamificationResult.data;
-  const completed = completedResult.data ?? [];
-  const achievements = achievementsResult.data ?? [];
+  const completed = (completedResult.data ?? []) as CompletedModuleRow[];
+  const achievements = (achievementsResult.data ?? []) as AchievementRow[];
 
   const totalXp = unifiedTotalXp(gamification?.total_xp, xp?.xp);
   const rank = rankForXP(totalXp);
@@ -128,19 +146,27 @@ export default async function ProgressPage() {
         <DashboardCard title="Completed Modules" icon={BookOpen} className="lg:col-span-2">
           {completed.length > 0 ? (
             <div className="space-y-2">
-              {completed.map((m: any, i: number) => (
+              {completed.map((row, i) => {
+                const moduleRow = firstJoin(row.modules);
+                return (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/40">
-                  <p className="text-sm font-medium">{m.modules?.title ?? 'Module'}</p>
-                  {m.completed_at && (
+                  <p className="text-sm font-medium">{moduleRow?.title ?? 'Module'}</p>
+                  {row.completed_at && (
                     <p className="text-xs text-muted-foreground">
-                      {new Date(m.completed_at).toLocaleDateString()}
+                      {new Date(row.completed_at).toLocaleDateString()}
                     </p>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-6">No completed modules yet</p>
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No completed modules yet</p>
+              <Link href="/unit-modules" className="inline-block mt-3 text-sm text-primary hover:underline">
+                Open learning modules
+              </Link>
+            </div>
           )}
         </DashboardCard>
         </div>
@@ -149,18 +175,24 @@ export default async function ProgressPage() {
         <DashboardCard title="Achievements" icon={Trophy} className="lg:col-span-2">
           {achievements.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {achievements.map((a: any, i: number) => (
+              {achievements.map((row, i) => {
+                const achievement = firstJoin(row.achievements);
+                return (
                 <div key={i} className="p-3 rounded-xl border border-border/60 bg-muted/30">
-                  <p className="text-sm font-medium">{a.achievements?.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{a.achievements?.description}</p>
-                  <p className="text-[10px] text-primary font-medium mt-1">+{a.achievements?.xp_reward} XP</p>
+                  <p className="text-sm font-medium">{achievement?.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{achievement?.description}</p>
+                  <p className="text-[10px] text-primary font-medium mt-1">+{achievement?.xp_reward} XP</p>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground">No achievements unlocked yet</p>
               <p className="text-xs text-muted-foreground mt-1">Study, post, and engage to earn badges</p>
+              <Link href="/learn" className="inline-block mt-3 text-sm text-primary hover:underline">
+                Start studying
+              </Link>
             </div>
           )}
         </DashboardCard>

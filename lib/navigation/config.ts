@@ -11,7 +11,6 @@ import {
   Search,
   Mic,
   HelpCircle,
-  Zap,
   Target,
   Users,
   TrendingUp,
@@ -35,7 +34,6 @@ import {
   Mail,
   LogIn,
   Bookmark,
-  LifeBuoy,
   ClipboardList,
 } from 'lucide-react';
 import type { MobileNavItem, NavGroupConfig, NavItemConfig, UserRole } from './types';
@@ -105,8 +103,6 @@ export const APP_NAV_GROUPS: NavGroupConfig[] = [
     items: [
       { id: 'mock-oral', label: 'Mock Oral Exams', href: '/practice?tab=mock-oral', icon: Mic, premiumOnly: true },
       { id: 'oral-questions', label: 'Oral Questions', href: '/practice?tab=oral-questions', icon: HelpCircle, premiumOnly: true },
-      { id: 'simulators', label: 'Emergency Simulators', href: '/simulator', icon: Zap, premiumOnly: true },
-      { id: 'buoyage', label: 'Buoyage Simulator', href: '/buoyage', icon: LifeBuoy, premiumOnly: true },
       { id: 'quick-quiz', label: 'Quick Quiz', href: '/practice#daily-quiz', icon: Target },
       { id: 'scenarios', label: 'Scenario Challenges', href: '/practice?tab=scenarios', icon: GraduationCap, premiumOnly: true },
       { id: 'practice-hub', label: 'All Practice', href: '/practice', icon: PenLine },

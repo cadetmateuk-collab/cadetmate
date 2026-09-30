@@ -1,16 +1,18 @@
 import type { Metadata } from 'next';
 import { requireAuth } from '@/lib/auth/get-user';
+import { firstJoin } from '@/lib/db/join';
 import { isPremiumRole } from '@/lib/auth/roles';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import {
   DashboardHome,
   type CommunityPostPreview,
   type ContinueModule,
   type DashboardAvatar,
-} from '@/components/dashboard/DashboardHome';
+} from '@/components/feature/dashboard/DashboardHome';
 import { displayName, timeAgo } from '@/lib/community/utils';
 import type { AvatarKind } from '@/lib/onboarding/constants';
+import { moduleHrefFromSlug } from '@/lib/modules/path';
 import { fallbackModuleSections, listModuleSections } from '@/lib/modules/sections';
 import {
   DAILY_STUDY_GOAL_MINUTES,
@@ -30,6 +32,7 @@ type ModuleJoin = {
   title?: string | null;
   category?: string | null;
   subcategory?: string | null;
+  slug?: string | null;
   image_url?: string | null;
   total_lessons?: number | null;
 };
@@ -66,15 +69,6 @@ type PostRow = {
   }> | null;
 };
 
-function firstJoin<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-function moduleHref(category?: string | null, subcategory?: string | null) {
-  if (category && subcategory) return `/modules/${category}/${subcategory}`;
-  return '/unit-modules';
-}
 
 function toAvatar(input: {
   fullName: string;
@@ -121,7 +115,7 @@ function toContinueModule(
     category: mod.category ?? null,
     imageUrl: mod.image_url ?? null,
     progress: 'progress' in row ? Number(row.progress ?? 0) : 0,
-    href: moduleHref(mod.category, mod.subcategory),
+    href: moduleHrefFromSlug(mod.slug),
     sections: [],
     totalLessons: Number(mod.total_lessons ?? 0) || undefined,
   };
@@ -157,7 +151,7 @@ export default async function DashboardPage() {
     supabase.from('user_statistics').select('*').eq('user_id', user.id).maybeSingle(),
     supabase
       .from('user_module_progress')
-      .select('module_id, progress, last_accessed, completed, modules(id, title, category, subcategory, image_url, total_lessons)')
+      .select('module_id, progress, last_accessed, completed, modules(id, title, slug, category, subcategory, image_url, total_lessons)')
       .eq('user_id', user.id)
       .order('last_accessed', { ascending: false })
       .limit(24),
@@ -167,7 +161,7 @@ export default async function DashboardPage() {
       .eq('user_id', user.id),
     supabase
       .from('modules_catalog')
-      .select('id, title, category, subcategory, image_url, is_featured, total_lessons')
+      .select('id, title, slug, category, subcategory, image_url, is_featured, total_lessons')
       .order('is_featured', { ascending: false })
       .order('updated_at', { ascending: false })
       .limit(6),
@@ -205,7 +199,7 @@ export default async function DashboardPage() {
   if (missingModuleIds.length > 0) {
     const { data: extraModules } = await supabase
       .from('modules_catalog')
-      .select('id, title, category, subcategory, image_url, total_lessons')
+      .select('id, title, slug, category, subcategory, image_url, total_lessons')
       .in('id', missingModuleIds);
     for (const mod of (extraModules ?? []) as ModuleJoin[]) {
       if (!mod.id) continue;

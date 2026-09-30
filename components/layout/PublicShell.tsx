@@ -5,8 +5,8 @@ import { MainSidebar } from '@/components/layout/MainSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PublicFooter } from '@/components/layout/PublicFooter';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { SkipLink } from '@/components/a11y/SkipLink';
-import { PageTransition } from '@/components/motion/PageTransition';
+import { SkipLink } from '@/components/feature/a11y/SkipLink';
+import { PageTransition } from '@/components/feature/motion/PageTransition';
 
 /** Public chrome — sticky sidebar + top bar; page scrolls */
 export function PublicShell({ children }: { children: React.ReactNode }) {

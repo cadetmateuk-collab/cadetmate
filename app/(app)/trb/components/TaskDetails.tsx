@@ -1,6 +1,6 @@
 import type { TaskStep } from "../data/trbTasks";
 import { ImageIcon, Lightbulb } from "lucide-react";
-import { NoCopy } from "@/components/NoCopy";
+import { NoCopy } from "@/components/feature/study/NoCopy";
 
 interface TaskDetailsProps {
   steps: TaskStep[];

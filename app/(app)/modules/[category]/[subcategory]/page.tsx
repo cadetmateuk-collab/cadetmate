@@ -1,13 +1,15 @@
 import dynamic from 'next/dynamic';
-import { createClient } from '@/lib/supabase/server';
-import { createPublicSupabase } from '@/lib/supabase/public';
+import { createClient } from '@/lib/db/server';
+import { createPublicSupabase } from '@/lib/db/public';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { requireAuth } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
+import { getFreeModuleBySlug } from '@/lib/cache/modules';
+import { moduleSlugFromParams } from '@/lib/modules/path';
 
-const ModuleViewer = dynamic(() => import('@/components/ModuleViewer'), {
+const ModuleViewer = dynamic(() => import('@/components/feature/study/ModuleViewer'), {
   loading: () => (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
       Loading module…
@@ -23,7 +25,7 @@ interface PageProps {
 }
 
 function moduleSlug(category: string, subcategory: string) {
-  return `${category.toLowerCase()}/${subcategory.toLowerCase()}`;
+  return moduleSlugFromParams(category, subcategory);
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -67,11 +69,14 @@ export default async function ModulePage({ params }: PageProps) {
     redirect('/store');
   }
 
-  const { data: moduleData, error } = await supabase
-    .from('modules')
-    .select('id, title, description, category, subcategory, blocks')
-    .eq('slug', slug)
-    .maybeSingle();
+  const cachedFree = catalog.is_premium ? null : await getFreeModuleBySlug(slug);
+  const { data: moduleData, error } = cachedFree
+    ? { data: cachedFree, error: null }
+    : await supabase
+        .from('modules')
+        .select('id, title, description, category, subcategory, blocks')
+        .eq('slug', slug)
+        .maybeSingle();
 
   if (error || !moduleData) {
     notFound();
@@ -99,10 +104,12 @@ export default async function ModulePage({ params }: PageProps) {
 
 export async function generateStaticParams() {
   const supabase = createPublicSupabase();
-  const { data: modules } = await supabase.from('modules_catalog').select('category, subcategory');
+  const { data: modules } = await supabase.from('modules_catalog').select('slug');
 
-  return (modules ?? []).map((m) => ({
-    category: m.category,
-    subcategory: m.subcategory,
-  }));
+  return (modules ?? []).flatMap((moduleRow) => {
+    const slug = moduleRow.slug ?? '';
+    const parts = slug.split('/').filter(Boolean);
+    if (parts.length < 2) return [];
+    return [{ category: parts[0], subcategory: parts.slice(1).join('/') }];
+  });
 }

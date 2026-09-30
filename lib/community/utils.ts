@@ -25,31 +25,11 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/** Strip HTML tags and encode entities for XSS protection */
-export function sanitizeText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .trim();
-}
-
 export function displayName(author?: { full_name?: string | null; email?: string | null } | null): string {
   if (!author) return 'Anonymous';
   if (author.full_name?.trim()) return author.full_name.trim();
   if (author.email) return author.email.split('@')[0];
   return 'User';
-}
-
-export function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function formatScore(score: number): string {

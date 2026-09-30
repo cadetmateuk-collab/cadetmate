@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { isPremiumRole, isStaffRole } from '@cadet-mate/shared';
 import type { CatalogItem, ContentKind, ContentManifest, InstalledContentRef, SessionCheckResponse } from '@cadet-mate/shared';

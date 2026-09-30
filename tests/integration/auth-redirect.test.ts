@@ -8,7 +8,7 @@ import { safeRedirectPath } from '@/lib/security/env';
 describe('auth redirect journey (integration)', () => {
   const cases = [
     { next: '/dashboard', expected: '/dashboard' },
-    { next: '/buoyage', expected: '/buoyage' },
+    { next: '/practice', expected: '/practice' },
     { next: '/flashcards/colregs', expected: '/flashcards/colregs' },
     { next: 'https://evil.test', expected: '/dashboard' },
     { next: '//evil.test', expected: '/dashboard' },

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserApi } from '@/lib/auth/require-user-api'
 import { isPremiumRole } from '@/lib/auth/roles'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/db/server'
+import { getFreeModuleBySlug } from '@/lib/cache/modules'
 
 export async function GET(
   _request: NextRequest,
@@ -31,6 +32,11 @@ export async function GET(
 
   if (catalog.is_premium && !isPremiumRole(profile?.role)) {
     return NextResponse.json({ error: 'Premium required' }, { status: 403 })
+  }
+
+  if (!catalog.is_premium) {
+    const cached = await getFreeModuleBySlug(slug)
+    if (cached) return NextResponse.json(cached)
   }
 
   const { data, error } = await supabase

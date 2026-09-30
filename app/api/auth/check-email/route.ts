@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { isValidEmail } from '@/lib/onboarding/constants';
 import { rateLimit, clientIp } from '@/lib/security/rate-limit';
 
 export async function POST(request: Request) {
-  if (!rateLimit(`check-email:${clientIp(request)}`, 8, 60_000)) {
+  if (!(await rateLimit(`check-email:${clientIp(request)}`, 8, 60_000))) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 

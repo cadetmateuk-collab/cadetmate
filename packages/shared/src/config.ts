@@ -8,14 +8,9 @@ export const MOBILE_APP_SCHEME = 'cadetmate' as const;
 
 export const MOBILE_APP_ID = 'uk.co.cadetmate.app' as const;
 
-/** Paths that stay on web (heavy 3D / admin) — open via system browser from the native app. */
+/** Paths that stay on web (admin) — open via system browser from the native app. */
 export const WEB_ONLY_PATHS = [
-  '/bridge',
-  '/buoyage',
-  '/simulator',
-  '/instructor',
   '/admin',
-  '/radar-plotting',
 ] as const;
 
 export type WebOnlyPath = (typeof WEB_ONLY_PATHS)[number];

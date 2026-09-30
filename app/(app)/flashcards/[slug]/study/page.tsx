@@ -4,12 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import { StudyShell } from '@/components/StudyShell';
-import { FlashcardView } from '@/components/Flashcard';
-import { MatchGame } from '@/components/MatchGame';
-import { QuickFire } from '@/components/QuickFire';
-import { Survival } from '@/components/Survival';
-import { XPBar } from '@/components/XPBar';
+import { StudyShell } from '@/components/feature/study/StudyShell';
+import { FlashcardView } from '@/components/feature/study/Flashcard';
+import { MatchGame } from '@/components/feature/study/MatchGame';
+import { QuickFire } from '@/components/feature/study/QuickFire';
+import { Survival } from '@/components/feature/study/Survival';
+import { XPBar } from '@/components/feature/study/XPBar';
 import {
   usePack, useCurrentUser, loadProgress, saveProgress, bumpPackStats, addXP, useUserXP, loadOwnership,
 } from '@/lib/hooks/useFlashcards';

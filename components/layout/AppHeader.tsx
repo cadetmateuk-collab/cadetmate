@@ -7,13 +7,13 @@ import { LogOut, Mail, Search, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { NavUser } from '@/lib/auth/nav-user';
 import { GlobalSearch } from '@/components/layout/GlobalSearch';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { NotificationCenter } from '@/components/feature/notifications/NotificationCenter';
 import { SidebarMenuButton } from '@/components/layout/MainSidebar';
 import {
   NavDropdownPanel,
   NavDropdownItem,
 } from '@/components/layout/NavDropdownPanel';
-import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
+import { UserAvatar } from '@/components/feature/auth/onboarding/UserAvatar';
 
 type AppHeaderProps = {
   variant: 'app' | 'public';

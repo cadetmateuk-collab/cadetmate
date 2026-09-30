@@ -1,6 +1,6 @@
 import { requireAuth } from '@/lib/auth/get-user'
 import { isPremiumRole } from '@/lib/auth/roles'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/db/server'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -22,26 +22,34 @@ import {
 } from 'lucide-react'
 import { PasswordResetButton } from './PasswordResetButton'
 import { sendPasswordReset } from './send-password-reset'
-import { SubscribeButton } from '@/components/billing/SubscribeButton'
-import { BillingPortalButton } from '@/components/billing/BillingPortalButton'
+import { SubscribeButton } from '@/components/feature/billing/SubscribeButton'
+import { BillingPortalButton } from '@/components/feature/billing/BillingPortalButton'
 import { getPremiumPrice } from '@/lib/stripe/premium-price'
+import { firstJoin } from '@/lib/db/join'
+
+interface RecentModuleRow {
+  last_accessed: string | null
+  progress: number | null
+  modules: { title: string | null } | { title: string | null }[] | null
+}
 
 export default async function DashboardPage() {
-  const user = await requireAuth()
-  const supabase = await createClient()
+  const [user, supabase] = await Promise.all([requireAuth(), createClient()])
 
-  const { data: stats } = await supabase
-    .from('user_statistics')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
-  const { data: recentModules } = await supabase
-    .from('user_module_progress')
-    .select('module_id, modules(title), last_accessed, progress')
-    .eq('user_id', user.id)
-    .order('last_accessed', { ascending: false })
-    .limit(5)
+  const [{ data: stats }, { data: recentModules }, premiumPrice] = await Promise.all([
+    supabase
+      .from('user_statistics')
+      .select('*')
+      .eq('user_id', user.id)
+      .single(),
+    supabase
+      .from('user_module_progress')
+      .select('module_id, modules(title), last_accessed, progress')
+      .eq('user_id', user.id)
+      .order('last_accessed', { ascending: false })
+      .limit(5),
+    getPremiumPrice(),
+  ])
 
   async function signOut() {
     'use server'
@@ -52,7 +60,6 @@ export default async function DashboardPage() {
 
   const isPremium = isPremiumRole(user.profile?.role)
   const isAdmin = user.profile?.role === 'admin'
-  const premiumPrice = await getPremiumPrice()
 
   const totalHours = Math.floor((stats?.total_time_seconds || 0) / 3600)
   const totalMinutes = Math.floor(((stats?.total_time_seconds || 0) % 3600) / 60)
@@ -257,7 +264,9 @@ export default async function DashboardPage() {
             <CardContent>
               {recentModules && recentModules.length > 0 ? (
                 <div className="space-y-3">
-                  {recentModules.map((item: any, idx: number) => (
+                  {recentModules.map((item, idx: number) => {
+                    const moduleRow = firstJoin(item.modules as RecentModuleRow['modules'])
+                    return (
                     <div
                       key={idx}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -268,10 +277,10 @@ export default async function DashboardPage() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {item.modules?.title || 'Module'}
+                            {moduleRow?.title || 'Module'}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Last accessed: {new Date(item.last_accessed).toLocaleDateString()}
+                            Last accessed: {item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : '—'}
                           </p>
                         </div>
                       </div>
@@ -287,7 +296,8 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

@@ -12,10 +12,10 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PremiumLockModal } from "../PremiumLockModal";
+import { PremiumLockModal } from "@/components/feature/study/PremiumLockModal";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
-import { UserAvatar } from "@/components/auth/onboarding/UserAvatar";
+import { createClient } from "@/lib/db/client";
+import { UserAvatar } from "@/components/feature/auth/onboarding/UserAvatar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -261,9 +261,6 @@ function SidebarContent({
         <NavItem icon={BookOpen}  label="Unit Modules"        href="/unit-modules"             isActive={isActive("/unit-modules")}             locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={FileText}  label="TRB"                 href="/trb"                 isActive={isActive("/trb")}                 locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
         <NavItem icon={Anchor}    label="Sea Survival"        href="/sea-survival"        isActive={isActive("/sea-survival")}        locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
-
-        <SectionLabel isCollapsed={isCollapsed}>Simulators</SectionLabel>
-        <NavItem icon={Compass}  label="Emergencies" href="/simulator"  isActive={isActive("/simulator")}  locked={!isPremium} onLockedClick={onLockedClick} isCollapsed={isCollapsed} navRef={navRef} />
 
         {isAdmin && (
           <>
@@ -715,10 +712,6 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
             <MobileNavRow key={href} icon={Icon} label={label} href={href} isActive={pathname.startsWith(href)} locked={locked} onLockedClick={handleLockedClick} onClose={closeMobileMenu} />
           ))}
 
-          {/* Section: Simulators */}
-          <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Simulators</p>
-          <MobileNavRow icon={Compass} label="Emergencies" href="/simulator" isActive={pathname.startsWith("/simulator")} locked={!isPremium} onLockedClick={handleLockedClick} onClose={closeMobileMenu} />
-
           {isAdmin && (
             <>
               <p className="text-white text-[10px] font-semibold uppercase tracking-[1.4px] px-1 pt-4 pb-1 opacity-50">Management</p>
@@ -827,7 +820,7 @@ export function CadetMateSidebar({ className, defaultCollapsed = false }: CadetM
         {[
           { icon: House,    href: "/home" },
           { icon: BookOpen, href: "/unit-modules" },
-          { icon: Compass,  href: "/simulator" },
+          { icon: Compass,  href: "/practice" },
         ].map(({ icon: Icon, href }) => {
           const active = pathname.startsWith(href);
           return (

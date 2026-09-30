@@ -4,8 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { PostCard } from '@/components/community/PostCard';
-import { PostSkeletonList } from '@/components/community/PostSkeleton';
+import { PostCard } from '@/components/feature/community/PostCard';
+import { PostSkeletonList } from '@/components/feature/community/PostSkeleton';
 import { displayName } from '@/lib/community/utils';
 import type { Post } from '@/lib/community/types';
 

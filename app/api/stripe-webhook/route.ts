@@ -3,7 +3,7 @@ import { getStripe } from '@/lib/stripe/client';
 import { getStripeWebhookSecret } from '@/lib/security/env';
 import { grantPremium, revokePremium } from '@/lib/stripe/entitlements';
 import { fulfillCheckoutSession, revokePackOwnership } from '@/lib/stripe/fulfill';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { isDuplicateStripeEventError } from '@/lib/stripe/webhook-ledger';
 import type Stripe from 'stripe';
 

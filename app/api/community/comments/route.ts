@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { moderateContent } from '@/lib/community/moderation';
 import { validateComment } from '@/lib/community/validation';
 import { insertModerationLog } from '@/lib/community/log-moderation';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/db/client';
 import { londonDateKey } from '@/lib/study/time';
 
 const FLUSH_INTERVAL_MS = 60 * 1000;

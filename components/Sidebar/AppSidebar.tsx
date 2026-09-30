@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
-import { PremiumLockModal } from '../PremiumLockModal';
+import { createClient } from '@/lib/db/client';
+import { PremiumLockModal } from '@/components/feature/study/PremiumLockModal';
 import {
   APP_NAV_GROUPS,
   MOBILE_BOTTOM_NAV,

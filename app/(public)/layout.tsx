@@ -8,7 +8,7 @@ import {
   SITE_NAME,
   DEFAULT_DESCRIPTION,
 } from '@/lib/seo/site';
-import { SiteAnalyticsBeacon } from '@/components/analytics/SiteAnalyticsBeacon';
+import { SiteAnalyticsBeacon } from '@/components/feature/analytics/SiteAnalyticsBeacon';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

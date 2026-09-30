@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminSupportTab from '@/components/AdminSupportTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminSupportTab from '@/components/feature/admin/AdminSupportTab';
 
 export default async function AdminSupportPage() {
   await requireAdminPagePermission('support.view');

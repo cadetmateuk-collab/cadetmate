@@ -12,7 +12,7 @@ function ensurePrng() {
   if (prngReady) return;
   nacl.setPRNG((buffer) => {
     if (typeof globalThis.crypto?.getRandomValues === 'function') {
-      globalThis.crypto.getRandomValues(buffer);
+      globalThis.crypto.getRandomValues(buffer as Uint8Array<ArrayBuffer>);
       return;
     }
     for (let i = 0; i < buffer.length; i++) buffer[i] = Math.floor(Math.random() * 256);

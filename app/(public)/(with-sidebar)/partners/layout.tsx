@@ -4,7 +4,7 @@ import {
   buildOrganizationSchema,
   buildBreadcrumbSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Partners — Collaborators Supporting Cadet Training',

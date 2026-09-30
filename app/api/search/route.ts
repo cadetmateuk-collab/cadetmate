@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildBlogPostPath } from '@/lib/blog/paths';
+import { moduleHrefFromSlug } from '@/lib/modules/path';
 import { escapeIlike } from '@/lib/security/env';
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   const [modules, flashcards, posts, blogs, users] = await Promise.all([
     supabase
       .from('modules_catalog')
-      .select('id, title, category, subcategory')
+      .select('id, title, slug, category, subcategory')
       .ilike('title', pattern)
       .limit(limit),
 
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
       type: 'module',
       title: m.title,
       subtitle: [m.category, m.subcategory].filter(Boolean).join(' › '),
-      href: `/modules/${m.category}/${m.subcategory}`,
+      href: moduleHrefFromSlug(m.slug),
     });
   }
 

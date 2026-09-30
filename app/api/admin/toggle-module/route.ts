@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { requirePermissionApi } from '@/lib/auth/require-permission-api';
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event';
+import { invalidateModules } from '@/lib/cache/content';
 
 export async function POST(request: Request) {
   const auth = await requirePermissionApi('modules.update');
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       ...ctx,
     });
 
+    await invalidateModules();
     return NextResponse.json({ success: true, data: data[0] });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error';
@@ -78,6 +80,7 @@ export async function DELETE(request: Request) {
       ...ctx,
     });
 
+    await invalidateModules();
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error';

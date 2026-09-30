@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
 import { isProtectedStaffRole } from '@cadet-mate/shared';
 import { getPremiumPriceId } from '@/lib/security/env';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { checkoutIsPremium, parsePremiumPriceIds } from '@/lib/stripe/access';
 
 /** Stripe Price IDs that grant Premium (singular env + optional extra allowlist). */

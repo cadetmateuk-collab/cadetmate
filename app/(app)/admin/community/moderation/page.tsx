@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import { CommunityModerationClient } from '@/components/admin/CommunityModerationClient';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import { CommunityModerationClient } from '@/components/feature/admin/CommunityModerationClient';
 
 export default async function AdminCommunityModerationPage() {
   await requireAdminPagePermission('community.moderate');

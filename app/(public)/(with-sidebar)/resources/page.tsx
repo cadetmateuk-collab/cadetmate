@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { getAllBlogPosts } from '@/lib/blog/queries';
 import {
   buildOrganizationSchema,
   buildBreadcrumbSchema,
   buildCollectionPageSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 import { buildBlogPostPath } from '@/lib/blog/paths';
 import { absoluteUrl } from '@/lib/seo/site';
 import { BookOpen, Compass, Mic, FileText, LifeBuoy, Anchor, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+export const revalidate = 14400;
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Free Deck Cadet Study Hub — COLREGS, TRB, Orals & More',
@@ -74,14 +76,7 @@ const TOPIC_HUBS = [
 ];
 
 export default async function ResourcesPage() {
-  const supabase = await createClient();
-
-  const { data: blogs } = await supabase
-    .from('blog_posts')
-    .select('slug, title, excerpt, date, category, category_slug')
-    .eq('hidden', false)
-    .order('date', { ascending: false })
-    .limit(6);
+  const blogs = (await getAllBlogPosts()).slice(0, 6);
 
   const collectionSchema = buildCollectionPageSchema({
     name: 'Free Deck Cadet Study Hub',

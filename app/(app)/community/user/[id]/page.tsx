@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { UserProfileCard } from '@/components/community/UserProfileCard';
-import { PostSkeleton } from '@/components/community/PostSkeleton';
+import { UserProfileCard } from '@/components/feature/community/UserProfileCard';
+import { PostSkeleton } from '@/components/feature/community/PostSkeleton';
 import type { Post } from '@/lib/community/types';
 
 export default function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {

@@ -54,7 +54,7 @@ export default function DailyQuizScreen() {
       async () => {
         const { data } = await supabase
           .from('daily_questions')
-          .select('id, question, options, correct_answer, explanation')
+          .select('id, question, options')
           .order('created_at');
         return (data ?? []) as Question[];
       },
@@ -82,7 +82,22 @@ export default function DailyQuizScreen() {
 
   const answer = async (opt: string) => {
     if (!question || selected) return;
-    const isCorrect = opt === question.correct_answer;
+    let isCorrect = question.correct_answer ? opt === question.correct_answer : false;
+    if (!question.correct_answer) {
+      const { data } = await supabase.rpc('grade_daily_question', {
+        p_question_id: question.id,
+        p_selected: opt,
+      });
+      const graded = Array.isArray(data) ? data[0] : data;
+      if (graded) {
+        isCorrect = Boolean(graded.correct);
+        setQuestion((current) => current && ({
+          ...current,
+          correct_answer: graded.correct_answer,
+          explanation: graded.explanation,
+        }));
+      }
+    }
     setSelected(opt);
     setCorrect(isCorrect);
     await ProgressStore.saveQuizAnswer(question.id, opt, isCorrect);

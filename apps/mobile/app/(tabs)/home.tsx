@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
 import {
@@ -701,7 +701,11 @@ const styles = {
     ...shadow.card,
   },
   bannerImage: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     pointerEvents: 'none' as const,
   },
   bannerKicker: {

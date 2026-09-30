@@ -6,7 +6,7 @@ import {
   buildBreadcrumbSchema,
   buildFAQSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 import { Button } from '@/components/ui/button';
 import { Anchor, Users, BookOpen, Target, Shield, Mail } from 'lucide-react';
 import { SUPPORT_EMAIL } from '@/lib/seo/site';
@@ -150,7 +150,7 @@ export default function AboutPage() {
           Browse free guides or create a free account for quizzes, community, and revision tools.
         </p>
         <div className="flex gap-3 justify-center mt-6 flex-wrap">
-          <Button asChild><Link href="/auth?mode=signup">Sign Up Free</Link></Button>
+          <Button asChild><Link href="/auth?mode=signup">Start Learning Free</Link></Button>
           <Button variant="outline" asChild><Link href="/free-content">Free Articles</Link></Button>
           <Button variant="outline" asChild><Link href="/pricing">View Pricing</Link></Button>
         </div>

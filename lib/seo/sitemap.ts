@@ -16,7 +16,8 @@
  * Env required: NEXT_PUBLIC_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 
-import { createPublicSupabase } from '@/lib/supabase/public';
+import { createPublicSupabase } from '@/lib/db/public';
+import { cacheAside, CONTENT_TTL_SECONDS, getCachedPublicNav } from '@/lib/cache/content';
 import { buildBlogPostPath } from '@/lib/blog/paths';
 import { absoluteUrl, SITE_URL } from '@/lib/seo/site';
 import { normalizeCanonicalPath } from '@/lib/seo/metadata';
@@ -59,6 +60,12 @@ export const STATIC_PUBLIC_ROUTES: {
   { path: '/community-preview', priority: 0.7, changefreq: 'daily' },
   { path: '/about', priority: 0.7, changefreq: 'monthly' },
   { path: '/contact', priority: 0.6, changefreq: 'monthly' },
+  { path: '/faq', priority: 0.7, changefreq: 'monthly' },
+  { path: '/privacy', priority: 0.4, changefreq: 'yearly' },
+  { path: '/terms', priority: 0.4, changefreq: 'yearly' },
+  { path: '/cookies', priority: 0.3, changefreq: 'yearly' },
+  { path: '/refunds', priority: 0.4, changefreq: 'yearly' },
+  { path: '/accessibility', priority: 0.3, changefreq: 'yearly' },
   { path: '/partners', priority: 0.3, changefreq: 'yearly' },
 ];
 
@@ -142,6 +149,23 @@ export async function fetchPublishedSlugBlogPosts(): Promise<
     updated_at: string | null;
   }[]
 > {
+  try {
+    return await cacheAside('cm:articles:sitemap', CONTENT_TTL_SECONDS, loadSitemapPosts);
+  } catch (error) {
+    console.error('[sitemap] Slug blog fetch failed (blog_posts):', error);
+    return [];
+  }
+}
+
+async function loadSitemapPosts(): Promise<
+  {
+    slug: string;
+    category: string | null;
+    category_slug: string | null;
+    date: string | null;
+    updated_at: string | null;
+  }[]
+> {
   const supabase = createPublicSupabase();
   const { data, error } = await supabase
     .from('blog_posts')
@@ -150,10 +174,7 @@ export async function fetchPublishedSlugBlogPosts(): Promise<
     .not('slug', 'is', null)
     .order('date', { ascending: false });
 
-  if (error) {
-    console.error('[sitemap] Slug blog fetch failed (blog_posts):', error.message);
-    return [];
-  }
+  if (error) throw new Error(error.message);
 
   return (data ?? []).filter(
     (post): post is {
@@ -167,7 +188,11 @@ export async function fetchPublishedSlugBlogPosts(): Promise<
 }
 
 export async function buildAllSitemapEntries(now: Date = new Date()): Promise<SitemapEntry[]> {
-  const staticEntries: SitemapEntry[] = STATIC_PUBLIC_ROUTES.map(
+  const listed = new Set(STATIC_PUBLIC_ROUTES.map((route) => route.path));
+  const extraNav = getCachedPublicNav()
+    .filter((item) => item.href.startsWith('/') && !listed.has(item.href))
+    .map((item) => ({ path: item.href, priority: 0.5, changefreq: 'monthly' as const }));
+  const staticEntries: SitemapEntry[] = [...STATIC_PUBLIC_ROUTES, ...extraNav].map(
     ({ path, priority, changefreq }) => ({
       loc: toSitemapLoc(path),
       lastmod: toIso8601(now, now),

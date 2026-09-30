@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { NoCopy } from '@/components/NoCopy';
+import { NoCopy } from '@/components/feature/study/NoCopy';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+import { createClient as createServerClient } from '@/lib/db/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 
 // ── Anon client for build-time functions (generateStaticParams, generateMetadata)
@@ -208,6 +208,12 @@ export default async function SeaSurvivalArticlePage({
           .bp-content { padding: 1rem 1.25rem 4rem; }
           .bp-title   { font-size: 2rem; }
           .bp-hero    { aspect-ratio: 16 / 9; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .bp-anim-1, .bp-anim-2, .bp-anim-3, .bp-anim-5, .bp-anim-6 {
+            animation: none !important;
+          }
         }
       `}</style>
 

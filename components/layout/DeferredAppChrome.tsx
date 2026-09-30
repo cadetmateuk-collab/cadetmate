@@ -3,21 +3,11 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { isMarketingPath } from '@/lib/navigation/marketing-paths';
 
-const SupportWidget = dynamic(() => import('@/components/SupportWidget'), {
+const SupportWidget = dynamic(() => import('@/components/feature/study/SupportWidget'), {
   ssr: false,
 });
-
-const HIDE_WIDGET_PREFIXES = [
-  '/home',
-  '/pricing',
-  '/about',
-  '/contact',
-  '/resources',
-  '/free-content',
-  '/community-preview',
-  '/partners',
-];
 
 /**
  * Defers non-critical client chrome until after first paint / idle.
@@ -43,9 +33,7 @@ export function DeferredAppChrome() {
 
   if (!ready) return null;
 
-  const hideSupport = HIDE_WIDGET_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  const hideSupport = isMarketingPath(pathname);
 
   if (hideSupport) return null;
 

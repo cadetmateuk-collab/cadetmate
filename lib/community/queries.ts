@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import type { Post, AuthorProfile } from '@/lib/community/types';
 
 export const AUTHOR_PUBLIC_SELECT =

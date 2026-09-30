@@ -1,9 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/db/server'
 import { NextResponse } from 'next/server'
 import { hasPermission, isPremiumRole, isStaffRole } from '@/lib/auth/roles'
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event'
 import { getCurrentUser } from '@/lib/auth/get-user'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+import { supabaseAdmin } from '@/lib/db/admin'
+import { invalidateModules } from '@/lib/cache/content'
 
 export async function GET(request: Request) {
   try {
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
       ...ctx,
     })
 
+    await invalidateModules()
     return NextResponse.json(data)
   } catch (error: any) {
     return NextResponse.json(
@@ -239,6 +241,7 @@ export async function DELETE(request: Request) {
       ...ctx,
     })
 
+    await invalidateModules()
     return NextResponse.json({
       success: true,
       message: 'Module deleted successfully',

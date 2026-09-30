@@ -4,11 +4,13 @@ import { buildPageMetadata } from '@/lib/seo/metadata';
 import {
   BookOpen, WalletCards, FileText, Anchor, Compass, Navigation, Cloud, Package, Search, ArrowRight, Lock,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
+import { firstJoin } from '@/lib/db/join';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
-import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
+import { PremiumTeaser } from '@/components/feature/dashboard/DashboardWidgets';
 import { Button } from '@/components/ui/button';
+import { moduleHrefFromSlug } from '@/lib/modules/path';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Learn',
@@ -28,15 +30,22 @@ const LEARN_SECTIONS = [
   { href: '/unit-modules?category=cargo', label: 'Cargo', icon: Package, description: 'Cargo operations' },
 ];
 
+interface ModuleSummary {
+  title: string | null;
+  slug: string | null;
+  category: string | null;
+  subcategory: string | null;
+}
+
 export default async function LearnPage() {
-  const user = await getCurrentUser();
+  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()]);
+
   const isPremium = isPremiumRole(user?.profile?.role);
-  const supabase = await createClient();
 
   const { data: recentModules } = user
     ? await supabase
         .from('user_module_progress')
-        .select('progress, modules(title, category, subcategory)')
+        .select('progress, modules(title, slug, category, subcategory)')
         .eq('user_id', user.id)
         .order('last_accessed', { ascending: false })
         .limit(5)
@@ -53,20 +62,23 @@ export default async function LearnPage() {
         <section className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">Continue Learning</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {recentModules.map((m: any, i: number) => (
+            {recentModules.map((row, i) => {
+              const moduleRow = firstJoin(row.modules as ModuleSummary | ModuleSummary[] | null);
+              return (
               <Link
                 key={i}
-                href={`/modules/${m.modules?.category}/${m.modules?.subcategory}`}
+                href={moduleHrefFromSlug(moduleRow?.slug)}
                 className="card card-hover flex items-center gap-3 group"
               >
                 <BookOpen className="h-5 w-5 text-primary shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{m.modules?.title}</p>
-                  <p className="text-xs text-muted-foreground">{m.progress ?? 0}% complete</p>
+                  <p className="text-sm font-medium truncate">{moduleRow?.title}</p>
+                  <p className="text-xs text-muted-foreground">{row.progress ?? 0}% complete</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </Link>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

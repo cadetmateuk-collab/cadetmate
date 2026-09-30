@@ -10,12 +10,12 @@ import {
 import { cn } from '@/lib/utils';
 import { PAGE_SHELL_CLASS } from './PageContainer';
 import type { NavUser } from '@/lib/auth/nav-user';
-import { PremiumLockModal } from '../PremiumLockModal';
-import { GlobalSearch } from '../layout/GlobalSearch';
-import { NotificationCenter } from '../notifications/NotificationCenter';
-import { CadetMateLogo } from '../brand/CadetMateLogo';
+import { PremiumLockModal } from '@/components/feature/study/PremiumLockModal';
+import { GlobalSearch } from './GlobalSearch';
+import { NotificationCenter } from '@/components/feature/notifications/NotificationCenter';
+import { CadetMateLogo } from '@/components/feature/brand/CadetMateLogo';
 import { useFocusTrap } from '@/lib/a11y/useFocusTrap';
-import { UserAvatar } from '@/components/auth/onboarding/UserAvatar';
+import { UserAvatar } from '@/components/feature/auth/onboarding/UserAvatar';
 import {
   APP_NAV_GROUPS,
   MOBILE_BOTTOM_NAV,

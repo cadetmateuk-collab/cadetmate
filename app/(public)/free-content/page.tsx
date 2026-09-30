@@ -1,7 +1,7 @@
-import { JsonLd } from '@/components/seo/JsonLd';
-import { FreeContentListing } from '@/components/blog/FreeContentListing';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
+import { FreeContentListing } from '@/components/feature/blog/FreeContentListing';
 import { buildBlogPostPath } from '@/lib/blog/paths';
-import { getAllBlogPosts } from '@/lib/blog/queries';
+import { getAllBlogPosts, getBlogCategories } from '@/lib/blog/queries';
 import {
   buildPageMetadata,
   buildBreadcrumbSchema,
@@ -12,9 +12,7 @@ import {
   absoluteUrl,
 } from '@/lib/seo';
 
-// Same as article pages: always read live posts so new admin saves show up.
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 14400;
 
 export const metadata = buildPageMetadata({
   title: 'Free Maritime Training Articles & Cadet Resources',
@@ -26,6 +24,7 @@ export const metadata = buildPageMetadata({
 
 export default async function FreeContentPage() {
   const posts = await getAllBlogPosts();
+  const categories = getBlogCategories();
 
   const breadcrumbSchema = buildBreadcrumbSchema([
     { name: 'Home', path: '/home' },
@@ -49,7 +48,7 @@ export default async function FreeContentPage() {
       <JsonLd data={buildWebSiteSchema()} />
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={collectionSchema} />
-      <FreeContentListing posts={posts} />
+      <FreeContentListing posts={posts} categories={categories} />
     </>
   );
 }

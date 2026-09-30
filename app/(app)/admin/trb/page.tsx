@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminTRBTasksTab from '@/components/AdminTRBTasksTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminTRBTasksTab from '@/components/feature/admin/AdminTRBTasksTab';
 
 export default async function AdminTRBPage() {
   await requireAdminPagePermission(undefined, ['trb.create', 'trb.update']);

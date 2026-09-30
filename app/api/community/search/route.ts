@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { POST_SELECT, attachPostTags, attachAuthors, asPost } from '@/lib/community/queries';
 import type { Post } from '@/lib/community/types';
 import { escapeIlike } from '@/lib/security/env';

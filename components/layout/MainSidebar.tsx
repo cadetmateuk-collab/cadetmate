@@ -17,7 +17,7 @@ import {
   PUBLIC_SIDEBAR_NAV,
 } from '@/lib/navigation/sidebar-nav';
 import type { NavUser } from '@/lib/auth/nav-user';
-import { PremiumLockModal } from '@/components/PremiumLockModal';
+import { PremiumLockModal } from '@/components/feature/study/PremiumLockModal';
 import { SIDEBAR_COLORS } from '@/components/Sidebar/sidebar-styles';
 
 type MainSidebarProps = {

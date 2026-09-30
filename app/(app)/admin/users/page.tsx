@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminUsersTab from '@/components/AdminUsersTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminUsersTab from '@/components/feature/admin/AdminUsersTab';
 
 export default async function AdminUsersPage() {
   await requireAdminPagePermission('users.view');

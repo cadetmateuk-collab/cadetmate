@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "cadetmate",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "android": {
       "package": "uk.co.cadetmate.app",
       "adaptiveIcon": {
@@ -38,7 +37,8 @@
       "expo-web-browser",
       "expo-font",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { requireAuth } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
 import { getPremiumPrice } from '@/lib/stripe/premium-price';
-import { StoreView, type StorePack } from '@/components/store/StoreView';
+import { StoreView, type StorePack } from '@/components/feature/store/StoreView';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Store',

@@ -7,7 +7,8 @@ import {
   BookOpen, LayoutGrid, List, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/db/client';
+import { moduleHrefFromSlug } from '@/lib/modules/path';
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
@@ -176,7 +177,17 @@ function ProgressRing({ percent, color, size = 36 }: { percent: number; color: s
   const circ = 2 * Math.PI * r;
   const dash = (percent / 100) * circ;
   return (
-    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+    <svg
+      width={size}
+      height={size}
+      style={{ transform: "rotate(-90deg)" }}
+      role="progressbar"
+      aria-valuenow={percent}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label="Module progress"
+      className={percent >= 100 ? "cm-progress-complete" : undefined}
+    >
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--border))" strokeWidth={3} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={3}
         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
@@ -449,10 +460,10 @@ interface ModulesPageProps {
   onUpgradeClick?: () => void;
 }
 
-export default function ModulesPage(props: ModulesPageProps) {
+export default function ModulesPage() {
   return (
     <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-      <ModulesPageInner {...props} />
+      <ModulesPageInner />
     </Suspense>
   );
 }
@@ -600,7 +611,7 @@ function ModulesPageInner({
 
   const handleModuleSelect = useCallback((m: Module) => {
     if (onModuleSelect) { onModuleSelect(m.slug); return; }
-    router.push(`/modules/${m.slug}`);
+    router.push(moduleHrefFromSlug(m.slug));
   }, [onModuleSelect, router]);
 
   const handleUpgrade = useCallback(() => {
@@ -791,7 +802,7 @@ function ModulesPageInner({
                     Unlock all {modules.filter((m) => m.isPremium).length} premium modules
                   </h3>
                   <p className="text-[12.5px] text-[hsl(var(--muted-foreground))]">
-                    Full access to every module, quiz, simulator and resource.
+                    Full access to every module, quiz, and resource.
                   </p>
                 </div>
                 <button onClick={handleUpgrade}
@@ -818,7 +829,7 @@ function ModulesPageInner({
               </div>
               <h2 className="text-[22px] font-bold text-[hsl(var(--foreground))] mb-2">Go Premium</h2>
               <p className="text-[14px] text-[hsl(var(--muted-foreground))] leading-relaxed">
-                Unlock every module, quiz, and simulator on CadetMate and ace your OOW oral.
+                Unlock every module and quiz on CadetMate and ace your OOW oral.
               </p>
             </div>
             <div className="space-y-2.5 mb-6">

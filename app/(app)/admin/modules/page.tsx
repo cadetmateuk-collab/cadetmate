@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminModuleManagementTab from '@/components/AdminModuleManagementTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminModuleManagementTab from '@/components/feature/admin/AdminModuleManagementTab';
 
 export default async function ModulesPage() {
   await requireAdminPagePermission(undefined, ['modules.create', 'modules.update']);

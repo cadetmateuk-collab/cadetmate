@@ -1,5 +1,5 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
 import { ModuleBuilder } from './ModuleBuilder';
 
 export default async function ModuleBuilderPage() {

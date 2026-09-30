@@ -33,7 +33,7 @@ export default function OralsScreen() {
       async () => {
         const { data } = await supabase
           .from('daily_questions')
-          .select('id, question, options, correct_answer, explanation')
+          .select('id, question, options')
           .order('created_at');
         return (data ?? []) as Question[];
       },
@@ -73,7 +73,20 @@ export default function OralsScreen() {
         {index + 1} / {questions.length}
       </Text>
       <Pressable
-        onPress={() => setFlipped((f) => !f)}
+        onPress={() => {
+          setFlipped((f) => !f);
+          if (!q.correct_answer) {
+            void supabase.rpc('reveal_daily_question', { p_question_id: q.id }).then(({ data }) => {
+              const revealed = Array.isArray(data) ? data[0] : data;
+              if (!revealed?.correct_answer) return;
+              setQuestions((rows) => rows.map((row) => (
+                row.id === q.id
+                  ? { ...row, correct_answer: revealed.correct_answer, explanation: revealed.explanation }
+                  : row
+              )));
+            });
+          }
+        }}
         style={{
           flex: 1,
           backgroundColor: colors.card,

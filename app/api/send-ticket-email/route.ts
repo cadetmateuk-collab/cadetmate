@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/db/server'
 import { escapeHtml } from '@/lib/security/env'
-
-function createTransporter() {
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
-}
-
-const FROM      = () => `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`
-const ADMIN     = () => process.env.SMTP_ADMIN_EMAIL!
+import { createMailTransporter, mailAdmin, mailFrom } from '@/lib/email/mailer'
 
 const STATUS_LABELS: Record<string, { label: string; color: string; description: string }> = {
   open:        { label: 'Open',        color: '#dc2626', description: "Your ticket has been reopened and is awaiting a response." },
@@ -93,12 +78,12 @@ async function handleNewTicket(
   const safeEmail = escapeHtml(userEmail)
   const safeTicketId = escapeHtml(ticketId)
 
-  const t = createTransporter()
+  const t = createMailTransporter()
 
   await t.sendMail({
-    from:    FROM(),
+    from:    mailFrom(),
     to:      userEmail,
-    replyTo: ADMIN(),
+    replyTo: mailAdmin(),
     subject: `We received your support request — ${subject}`,
     html: `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#111">
@@ -121,8 +106,8 @@ async function handleNewTicket(
   })
 
   await t.sendMail({
-    from:    FROM(),
-    to:      ADMIN(),
+    from:    mailFrom(),
+    to:      mailAdmin(),
     replyTo: userEmail,
     subject: `[Support Ticket] ${subject}`,
     html: `
@@ -155,15 +140,15 @@ async function handleStatusUpdate(body: Record<string, unknown>) {
   }
 
   const statusInfo = STATUS_LABELS[newStatus]
-  const t = createTransporter()
+  const t = createMailTransporter()
   const safeName = escapeHtml(userName)
   const safeSubject = escapeHtml(subject)
   const safeTicketId = escapeHtml(ticketId)
 
   await t.sendMail({
-    from:    FROM(),
+    from:    mailFrom(),
     to:      userEmail,
-    replyTo: ADMIN(),
+    replyTo: mailAdmin(),
     subject: `Re: ${subject}`,
     html: `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#111">

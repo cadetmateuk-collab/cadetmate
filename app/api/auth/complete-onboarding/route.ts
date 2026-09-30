@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { requireUserApi } from '@/lib/auth/require-user-api';
 import { AVATAR_PRESETS, TRAINING_PHASES, REFERRAL_SOURCES } from '@/lib/onboarding/constants';
 

@@ -1,14 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
+import { getCommunityPreviewPosts } from '@/lib/cache/queries';
 import {
   buildOrganizationSchema,
   buildBreadcrumbSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 import { MessageSquare, ArrowRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+export const revalidate = 14400;
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Cadet Community Preview — Connect with UK Deck Cadets',
@@ -24,13 +26,7 @@ export const metadata: Metadata = buildPageMetadata({
 });
 
 export default async function CommunityPreviewPage() {
-  const supabase = await createClient();
-
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('id, title, body, vote_score, created_at')
-    .order('vote_score', { ascending: false })
-    .limit(10);
+  const posts = await getCommunityPreviewPosts();
 
   return (
     <div className="w-full py-12 sm:py-16">
@@ -58,7 +54,7 @@ export default async function CommunityPreviewPage() {
           Create a free account to post, comment, vote, and build your reputation.
         </p>
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center mt-4">
-          <Button asChild><Link href="/auth?mode=signup">Sign Up Free</Link></Button>
+          <Button asChild><Link href="/auth?mode=signup">Start Learning Free</Link></Button>
           <Button variant="outline" asChild><Link href="/free-content">Browse Free Content</Link></Button>
         </div>
       </div>

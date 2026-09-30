@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/store/EmptyState';
+import { EmptyState } from '@/components/feature/store/EmptyState';
 
 export default function StoreError({
   reset,

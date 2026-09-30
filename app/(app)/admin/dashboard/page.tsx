@@ -6,7 +6,7 @@ import {
   AdminPageHeader,
   AdminPanel,
   AdminStatCard,
-} from '@/components/admin/AdminChrome';
+} from '@/components/feature/admin/AdminChrome';
 import { hasPermission } from '@/lib/auth/roles';
 
 function formatDate(iso: string | null) {

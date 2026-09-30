@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { PageShell } from '@/components/PageShell';
+import { PageShell } from '@/components/feature/study/PageShell';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Community',

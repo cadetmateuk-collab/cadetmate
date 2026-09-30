@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { Mic, HelpCircle, Zap, Target, GraduationCap, Lock, ArrowRight, LifeBuoy } from 'lucide-react';
+import { Mic, HelpCircle, Target, GraduationCap, Lock, ArrowRight } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { isPremiumRole } from '@/lib/auth/roles';
-import { PremiumTeaser } from '@/components/dashboard/DashboardWidgets';
-import QuestionOfDay from '@/components/QuestionOfDay';
-import { HashScrollSync } from '@/components/navigation/HashScrollSync';
+import { PremiumTeaser } from '@/components/feature/dashboard/DashboardWidgets';
+import QuestionOfDay from '@/components/feature/study/QuestionOfDay';
+import { HashScrollSync } from '@/components/feature/navigation/HashScrollSync';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Practice',
-  description: 'Test your knowledge with quizzes, mock exams, and simulators.',
+  description: 'Test your knowledge with quizzes and mock exams.',
   path: '/practice',
   noIndex: true,
 });
@@ -33,22 +33,6 @@ const PRACTICE_ITEMS = [
     premium: true,
     description: 'Browse the full oral question bank',
     stats: 'By topic',
-  },
-  {
-    href: '/simulator',
-    label: 'Emergency Simulators',
-    icon: Zap,
-    premium: true,
-    description: 'Real-world emergency scenario training',
-    stats: '12 scenarios',
-  },
-  {
-    href: '/buoyage',
-    label: 'Buoyage Simulator',
-    icon: LifeBuoy,
-    premium: true,
-    description: 'IALA marks, night mode & animated lights',
-    stats: 'Region A & B',
   },
   {
     href: '/practice#daily-quiz',
@@ -79,8 +63,7 @@ export default async function PracticePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const { tab } = await searchParams;
-  const user = await getCurrentUser();
+  const [{ tab }, user] = await Promise.all([searchParams, getCurrentUser()]);
   const isPremium = isPremiumRole(user?.profile?.role);
   const premiumTabs = new Set(['mock-oral', 'oral-questions', 'scenarios']);
   if (tab && premiumTabs.has(tab) && !isPremium) {
@@ -134,8 +117,8 @@ export default async function PracticePage({
             description="Full question bank with timed mock oral exams and detailed feedback."
           />
           <PremiumTeaser
-            title="Complete all emergency scenarios"
-            description="Practice bridge team management during emergencies."
+            title="Full oral question bank"
+            description="Browse questions by topic and run timed mock oral sessions."
           />
         </div>
       )}

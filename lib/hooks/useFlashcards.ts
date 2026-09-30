@@ -3,7 +3,7 @@
 // Drop into app/flashcards/lib/useFlashcards.ts
 
 import { useCallback, useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/db/client';
 import type {
   CardProgress, Flashcard, FlashcardPack, PackStats, UserXP, SessionCardState,
 } from '../types';

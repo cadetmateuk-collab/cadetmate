@@ -3,7 +3,7 @@ import {
   AdminEmptyState,
   AdminPageHeader,
   AdminPanel,
-} from '@/components/admin/AdminChrome';
+} from '@/components/feature/admin/AdminChrome';
 import Link from 'next/link';
 
 const SECTIONS = [

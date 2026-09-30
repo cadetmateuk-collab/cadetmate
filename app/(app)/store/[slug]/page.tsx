@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireAuth } from '@/lib/auth/get-user';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { buildPageMetadata } from '@/lib/seo/metadata';
-import { ProductDetail } from '@/components/store/ProductDetail';
-import type { StorePack } from '@/components/store/types';
+import { ProductDetail } from '@/components/feature/store/ProductDetail';
+import type { StorePack } from '@/components/feature/store/types';
 
 const PACK_COLUMNS =
   'id, slug, title, description, category, card_count, is_premium, price_cents, stripe_price_id, thumbnail_url, tags, difficulty';

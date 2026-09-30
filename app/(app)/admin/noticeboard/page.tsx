@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminNoticeboardTab from '@/components/AdminNoticeboardTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminNoticeboardTab from '@/components/feature/admin/AdminNoticeboardTab';
 
 export default async function AdminNoticeboardPage() {
   await requireAdminPagePermission(undefined, ['notices.create', 'notices.update']);

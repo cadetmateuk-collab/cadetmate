@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { AVATAR_PRESETS, isValidAvatarColor } from '@/lib/onboarding/constants';
 
 const PRESET_IDS = new Set(AVATAR_PRESETS.map((p) => p.id));

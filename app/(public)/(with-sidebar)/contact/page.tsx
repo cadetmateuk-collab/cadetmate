@@ -6,14 +6,15 @@ import {
   buildBreadcrumbSchema,
   buildContactPageSchema,
 } from '@/lib/seo/schema';
-import { JsonLd } from '@/components/seo/JsonLd';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
 import { Mail, MessageSquare } from 'lucide-react';
 import { SUPPORT_EMAIL } from '@/lib/seo/site';
+import { ContactForm } from '@/components/feature/contact/ContactForm';
 
 export const metadata: Metadata = buildPageMetadata({
   title: 'Contact CadetMate — Support & Partnerships',
   description:
-    'Contact the CadetMate team for support, feedback, or partnership enquiries. Email support@cadetmate.com or join the cadet community preview.',
+    'Contact the CadetMate team for support, feedback, or partnership enquiries. Send a message or email support@cadetmate.com.',
   path: '/contact',
   keywords: [
     'contact CadetMate',
@@ -42,7 +43,9 @@ export default function ContactPage() {
         </p>
       </div>
 
-      <div className="space-y-4">
+      <ContactForm />
+
+      <div className="space-y-4 mt-6">
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
           className="flex items-center gap-4 p-5 rounded-2xl border border-border/60 hover:border-primary/30 hover:shadow-md transition-all"
@@ -74,6 +77,10 @@ export default function ContactPage() {
         Premium members receive priority support response times.{' '}
         <Link href="/pricing" className="text-primary hover:underline">
           View pricing
+        </Link>
+        {' · '}
+        <Link href="/faq" className="text-primary hover:underline">
+          FAQ
         </Link>
       </p>
     </div>

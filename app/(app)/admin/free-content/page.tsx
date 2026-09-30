@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminBlogTab from '@/components/AdminBlogTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminBlogTab from '@/components/feature/admin/AdminBlogTab';
 
 export default async function AdminFreeContentPage() {
   await requireAdminPagePermission(undefined, ['blog.create', 'blog.update']);

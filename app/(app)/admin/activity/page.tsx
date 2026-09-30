@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminActivityLogTab from '@/components/AdminActivityLogTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminActivityLogTab from '@/components/feature/admin/AdminActivityLogTab';
 
 export default async function AdminActivityPage() {
   await requireAdminPagePermission('activity.view');

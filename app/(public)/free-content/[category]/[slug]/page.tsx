@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Calendar, Clock, ArrowLeft } from 'lucide-react';
-import { JsonLd } from '@/components/seo/JsonLd';
-import { Breadcrumbs } from '@/components/blog/Breadcrumbs';
-import { TableOfContents } from '@/components/blog/TableOfContents';
-import { ArticleFAQ } from '@/components/blog/ArticleFAQ';
-import { RelatedArticles, ArticleCTA } from '@/components/blog/RelatedArticles';
-import { BlogHeroImage } from '@/components/blog/BlogImage';
+import { JsonLd } from '@/components/feature/seo/JsonLd';
+import { Breadcrumbs } from '@/components/feature/blog/Breadcrumbs';
+import { TableOfContents } from '@/components/feature/blog/TableOfContents';
+import { ArticleFAQ } from '@/components/feature/blog/ArticleFAQ';
+import { RelatedArticles, ArticleCTA } from '@/components/feature/blog/RelatedArticles';
+import { BlogHeroImage } from '@/components/feature/blog/BlogImage';
 import { getBlogPostByCategoryAndSlug, getRelatedBlogPosts, getBlogPostSlugs } from '@/lib/blog/queries';
 import { buildBlogPostPath } from '@/lib/blog/paths';
 import {
@@ -25,10 +25,16 @@ import {
   buildOrganizationSchema,
 } from '@/lib/seo';
 
-// Cache off while developing — set ENABLE_DATA_CACHE in lib/dev-cache.ts and swap these
-// to `revalidate = 300` (remove `dynamic`) when re-enabling.
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 14400;
+
+export async function generateStaticParams() {
+  try {
+    const slugs = await getBlogPostSlugs();
+    return slugs.map(({ category, slug }) => ({ category, slug }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function BlogPostPage({
   params,
@@ -136,10 +142,6 @@ export default async function BlogPostPage({
       </div>
     </article>
   );
-}
-
-export async function generateStaticParams() {
-  return getBlogPostSlugs();
 }
 
 export async function generateMetadata({

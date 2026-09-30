@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { safeRedirectPath } from '@/lib/security/env';

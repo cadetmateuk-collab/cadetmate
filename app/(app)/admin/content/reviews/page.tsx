@@ -1,5 +1,5 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import ContentLibraryClient from '@/components/admin/ContentLibraryClient';
+import ContentLibraryClient from '@/components/feature/admin/ContentLibraryClient';
 
 export default async function ContentReviewsPage() {
   await requireAdminPagePermission(undefined, [

@@ -1,5 +1,6 @@
 "use client"
 import { useState } from 'react';
+import Link from 'next/link';
 import { ExternalLink, ArrowRight } from 'lucide-react';
 
 interface Partner {
@@ -462,6 +463,7 @@ export default function PartnersPage() {
           cursor: pointer;
           transition: opacity 0.15s, transform 0.15s;
           white-space: nowrap;
+          text-decoration: none;
         }
         .pp-cta-btn:hover { opacity: 0.85; transform: translateY(-1px); }
 
@@ -483,6 +485,12 @@ export default function PartnersPage() {
         @media (orientation: landscape) and (max-height: 500px) {
           .pp-content { padding-top: 1.25rem; }
           .pp-header { margin-bottom: 1.5rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .pp-anim-1, .pp-anim-2, .pp-anim-3, .pp-anim-4 {
+            animation: none !important;
+          }
         }
       `}</style>
 
@@ -605,9 +613,9 @@ export default function PartnersPage() {
               <h2>Interested in partnering with us?</h2>
               <p>We're always looking to grow our network with forward-thinking organisations.</p>
             </div>
-            <button className="pp-cta-btn">
+            <Link href="/contact" className="pp-cta-btn">
               Get in touch <ArrowRight size={14} />
-            </button>
+            </Link>
           </div>
 
         </div>

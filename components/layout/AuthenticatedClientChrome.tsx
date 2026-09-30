@@ -1,8 +1,8 @@
 'use client';
 
 /** Client chrome for authenticated routes. */
-import { ActivityTrackerProvider } from '@/components/ActivityTrackerProvider';
-import { SiteAnalyticsBeacon } from '@/components/analytics/SiteAnalyticsBeacon';
+import { ActivityTrackerProvider } from '@/components/feature/study/ActivityTrackerProvider';
+import { SiteAnalyticsBeacon } from '@/components/feature/analytics/SiteAnalyticsBeacon';
 
 export function AuthenticatedClientChrome() {
   return (

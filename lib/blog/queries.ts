@@ -1,6 +1,10 @@
-import { unstable_cache } from 'next/cache';
-import { createPublicSupabase } from '@/lib/supabase/public';
-import { ENABLE_DATA_CACHE, REVALIDATE_SECONDS } from '@/lib/dev-cache';
+import { createPublicSupabase } from '@/lib/db/public';
+import {
+  cacheAside,
+  CONTENT_TTL_SECONDS,
+  readBlogCategories,
+  rememberBlogCategories,
+} from '@/lib/cache/content';
 import { resolveCategorySlug } from '@/lib/blog/paths';
 import type { BlogPost, BlogPostSummary } from './types';
 
@@ -15,44 +19,55 @@ async function fetchAllBlogPosts(): Promise<BlogPostSummary[]> {
     .eq('hidden', false)
     .order('date', { ascending: false });
 
-  if (error) {
-    console.error('[blog] failed to load posts:', error.message);
-    return [];
-  }
+  if (error) throw new Error(error.message);
   return (data ?? []) as BlogPostSummary[];
 }
 
-export const getAllBlogPosts = ENABLE_DATA_CACHE
-  ? unstable_cache(fetchAllBlogPosts, ['all-blog-posts'], {
-      revalidate: REVALIDATE_SECONDS,
-      tags: ['blog-posts'],
-    })
-  : fetchAllBlogPosts;
+export async function getAllBlogPosts(): Promise<BlogPostSummary[]> {
+  try {
+    const posts = await cacheAside('cm:articles:list', CONTENT_TTL_SECONDS, fetchAllBlogPosts);
+    const categories = [...new Set(posts.map((post) => post.category).filter(Boolean))].sort();
+    rememberBlogCategories(categories);
+    return posts;
+  } catch (error) {
+    console.error('[blog] failed to load posts:', error);
+    return [];
+  }
+}
+
+export function getBlogCategories(): string[] {
+  return readBlogCategories() ?? [];
+}
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
-  const supabase = createPublicSupabase();
-  const { data } = await supabase
-    .from('blog_posts')
-    .select('*')
-    .eq('slug', slug)
-    .eq('hidden', false)
-    .single();
-  return (data as BlogPost) ?? null;
+  return cacheAside(`cm:articles:slug:${slug}`, CONTENT_TTL_SECONDS, async () => {
+    const supabase = createPublicSupabase();
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('slug', slug)
+      .eq('hidden', false)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as BlogPost | null) ?? null;
+  });
 }
 
 export async function getBlogPostByCategoryAndSlug(
   categorySlug: string,
   slug: string,
 ): Promise<BlogPost | null> {
-  const supabase = createPublicSupabase();
-  const { data } = await supabase
-    .from('blog_posts')
-    .select('*')
-    .eq('slug', slug)
-    .eq('hidden', false);
-
-  const posts = (data ?? []) as BlogPost[];
-  return posts.find((p) => resolveCategorySlug(p) === categorySlug) ?? null;
+  return cacheAside(`cm:articles:path:${categorySlug}:${slug}`, CONTENT_TTL_SECONDS, async () => {
+    const supabase = createPublicSupabase();
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('slug', slug)
+      .eq('hidden', false);
+    if (error) throw new Error(error.message);
+    const posts = (data ?? []) as BlogPost[];
+    return posts.find((post) => resolveCategorySlug(post) === categorySlug) ?? null;
+  });
 }
 
 export async function getRelatedBlogPosts(
@@ -60,8 +75,20 @@ export async function getRelatedBlogPosts(
   category: string,
   limit = 3,
 ): Promise<BlogPostSummary[]> {
+  return cacheAside(
+    `cm:articles:related:${category}:${currentSlug}:${limit}`,
+    CONTENT_TTL_SECONDS,
+    () => loadRelatedBlogPosts(currentSlug, category, limit),
+  );
+}
+
+async function loadRelatedBlogPosts(
+  currentSlug: string,
+  category: string,
+  limit: number,
+): Promise<BlogPostSummary[]> {
   const supabase = createPublicSupabase();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('blog_posts')
     .select(SUMMARY_FIELDS)
     .eq('hidden', false)
@@ -69,34 +96,39 @@ export async function getRelatedBlogPosts(
     .neq('slug', currentSlug)
     .order('date', { ascending: false })
     .limit(limit);
+  if (error) throw new Error(error.message);
 
   const related = (data ?? []) as BlogPostSummary[];
   if (related.length >= limit) return related;
 
-  const { data: fallback } = await supabase
+  const { data: fallback, error: fallbackError } = await supabase
     .from('blog_posts')
     .select(SUMMARY_FIELDS)
     .eq('hidden', false)
     .neq('slug', currentSlug)
     .order('date', { ascending: false })
     .limit(limit);
+  if (fallbackError) throw new Error(fallbackError.message);
 
   const merged = [...related];
   for (const post of (fallback ?? []) as BlogPostSummary[]) {
     if (merged.length >= limit) break;
-    if (!merged.some((p) => p.slug === post.slug)) merged.push(post);
+    if (!merged.some((item) => item.slug === post.slug)) merged.push(post);
   }
   return merged.slice(0, limit);
 }
 
 export async function getBlogPostSlugs(): Promise<{ category: string; slug: string }[]> {
-  const supabase = createPublicSupabase();
-  const { data } = await supabase
-    .from('blog_posts')
-    .select('slug, category, category_slug')
-    .eq('hidden', false);
-  return (data ?? []).map((p) => ({
-    category: resolveCategorySlug(p as { category_slug?: string | null; category: string }),
-    slug: p.slug,
-  }));
+  return cacheAside('cm:articles:slugs', CONTENT_TTL_SECONDS, async () => {
+    const supabase = createPublicSupabase();
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select('slug, category, category_slug')
+      .eq('hidden', false);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((post) => ({
+      category: resolveCategorySlug(post as { category_slug?: string | null; category: string }),
+      slug: post.slug,
+    }));
+  });
 }

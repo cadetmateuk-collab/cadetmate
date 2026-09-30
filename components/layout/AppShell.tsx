@@ -6,8 +6,8 @@ import type { NavUser } from '@/lib/auth/nav-user';
 import { MainSidebar } from '@/components/layout/MainSidebar';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { SkipLink } from '@/components/a11y/SkipLink';
-import { PageTransition } from '@/components/motion/PageTransition';
+import { SkipLink } from '@/components/feature/a11y/SkipLink';
+import { PageTransition } from '@/components/feature/motion/PageTransition';
 import { cn } from '@/lib/utils';
 
 /** `/modules/:category/:subcategory` viewer (exclude tools nested under modules/) */
@@ -17,14 +17,6 @@ function isModuleViewerPath(pathname: string) {
   if (parts.length !== 3) return false;
   if (parts[2] === 'morse-receiver-quiz') return false;
   return true;
-}
-
-/** Tools that fill the main column under the header (no page padding / max-width) */
-function isFullBleedToolPath(pathname: string) {
-  return (
-    pathname === '/radar-plotting' ||
-    pathname.startsWith('/radar-plotting/')
-  );
 }
 
 /** Home dashboard needs the full main column so the right pane can sit beside content */
@@ -43,9 +35,8 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname() ?? '';
   const moduleViewer = isModuleViewerPath(pathname);
-  const fullBleedTool = isFullBleedToolPath(pathname);
   const dashboard = isDashboardPath(pathname);
-  const fillMain = moduleViewer || fullBleedTool;
+  const fillMain = moduleViewer;
   const isAdminArea = pathname.startsWith('/admin');
 
   // Admin has its own chrome — do not trap scroll in a nested overflow shell.

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { requirePermissionApi } from '@/lib/auth/require-permission-api';
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event';
 

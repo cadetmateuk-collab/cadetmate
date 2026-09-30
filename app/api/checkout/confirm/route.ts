@@ -1,6 +1,6 @@
 import type Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { requireUserApi } from '@/lib/auth/require-user-api';
 import { getStripe } from '@/lib/stripe/client';
 import { fulfillCheckoutSession, findLatestPaidSessionForUser } from '@/lib/stripe/fulfill';

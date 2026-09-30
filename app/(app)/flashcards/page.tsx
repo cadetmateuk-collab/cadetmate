@@ -4,10 +4,10 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, BookOpen, Crown, Layers } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { StudyShell } from '@/components/StudyShell';
-import { ProgressRing } from '@/components/ProgressRing';
-import { XPBar } from '@/components/XPBar';
+import { createClient } from '@/lib/db/client';
+import { StudyShell } from '@/components/feature/study/StudyShell';
+import { ProgressRing } from '@/components/feature/study/ProgressRing';
+import { XPBar } from '@/components/feature/study/XPBar';
 import { usePacks, useCurrentUser, useUserXP } from '@/lib/hooks/useFlashcards';
 
 const supabase = createClient();

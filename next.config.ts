@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
-import { ENABLE_DATA_CACHE } from "./lib/dev-cache";
+import bundleAnalyzer from "@next/bundle-analyzer";
+import { ENABLE_DATA_CACHE } from "./lib/cache/dev-cache";
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  openAnalyzer: false,
+  analyzerMode: "json",
+});
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -56,8 +63,8 @@ const nextConfig: NextConfig = {
   typedRoutes: false,
   compress: true,
   poweredByHeader: false,
-  transpilePackages: ['three', '@cadet-mate/shared'],
-  serverExternalPackages: ['ws'],
+  serverExternalPackages: ['ioredis'],
+    transpilePackages: ['@cadet-mate/shared'],
   productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
@@ -110,8 +117,6 @@ const nextConfig: NextConfig = {
       { source: '/(.*)', headers: securityHeaders },
       { source: '/_next/static/(.*)', headers: nextStaticHeaders },
       { source: '/images/(.*)', headers: imageHeaders },
-      { source: '/shipimages/(.*)', headers: longCache },
-      { source: '/buoyage/(.*)', headers: longCache },
       { source: '/:path*.webm', headers: longCache },
       { source: '/:path*.webp', headers: longCache },
       { source: '/:path*.avif', headers: longCache },
@@ -120,4 +125,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

@@ -1,18 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
-import { permanentRedirect, redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 /**
- * Apex `/` — guests land on the marketing homepage; signed-in users go to the app dashboard.
+ * Apex `/`. Signed-in visitors are sent to the dashboard by middleware.
+ * Guests land on the marketing homepage.
  */
-export default async function RootPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/dashboard');
-  }
-
+export default function RootPage() {
   permanentRedirect('/home');
 }

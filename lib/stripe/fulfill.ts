@@ -1,5 +1,5 @@
 import type Stripe from 'stripe';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { getStripe } from '@/lib/stripe/client';
 import { sessionPaid } from '@/lib/stripe/access';
 import {

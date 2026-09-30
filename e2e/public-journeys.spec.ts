@@ -39,9 +39,4 @@ test.describe('Auth gates', () => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/auth/);
   });
-
-  test('protected buoyage redirects anonymous users to auth', async ({ page }) => {
-    await page.goto('/buoyage');
-    await expect(page).toHaveURL(/\/auth/);
-  });
 });

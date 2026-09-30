@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/db/client';
 
 export type ClientActivityInput = {
   action: string;

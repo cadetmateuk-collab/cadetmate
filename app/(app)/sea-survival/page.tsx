@@ -1,7 +1,4 @@
-"use client"
-import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-const supabase = createClient();
+import { createClient } from '@/lib/db/server';
 
 interface Article {
   id: string;
@@ -26,43 +23,22 @@ function categoryColour(index: number) {
   return CATEGORY_ACCENTS[index % CATEGORY_ACCENTS.length];
 }
 
-export default function SeaSurvivalPage() {
-  const [articles, setArticles]       = useState<Article[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [expanded, setExpanded]       = useState<string | null>(null);
+export default async function SeaSurvivalPage() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('sea_survival')
+    .select('id, title, slug, category, position, image')
+    .eq('hidden', false)
+    .order('category')
+    .order('position');
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      const { data } = await supabase
-        .from('sea_survival')
-        .select('id, title, slug, category, position, image')
-        .eq('hidden', false)
-        .order('category')
-        .order('position');
-      if (data) setArticles(data);
-      setLoading(false);
-    }
-    fetch();
-  }, []);
-
-  // Group by category, preserving insertion order
-  const grouped = articles.reduce<Record<string, Article[]>>((acc, a) => {
-    if (!acc[a.category]) acc[a.category] = [];
-    acc[a.category].push(a);
+  const articles = (data ?? []) as Article[];
+  const grouped = articles.reduce<Record<string, Article[]>>((acc, article) => {
+    if (!acc[article.category]) acc[article.category] = [];
+    acc[article.category].push(article);
     return acc;
   }, {});
   const categories = Object.keys(grouped);
-
-  if (loading) {
-    return (
-      <div className="ss-page ss-loading">
-        <div className="ss-glow" />
-        <div className="ss-noise" />
-        <div className="ss-spinner" />
-      </div>
-    );
-  }
 
   return (
     <>
@@ -255,6 +231,12 @@ export default function SeaSurvivalPage() {
           .ss-cat-row { grid-template-columns:100px 1fr; }
           .ss-cat-label { font-size:0.625rem; }
           .ss-node { font-size:0.75rem; padding:0.375rem 0.75rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ss-anim-1, .ss-anim-2, .ss-anim-3, .ss-cat-row {
+            animation: none !important;
+          }
         }
       `}</style>
 

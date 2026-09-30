@@ -13,7 +13,7 @@ export default function PracticeScreen() {
   return (
     <Screen scroll safeTop>
       <Text style={type.h1}>Practice</Text>
-      <Subheading>Quiz yourself. 3D simulators stay on the website.</Subheading>
+      <Subheading>Quiz yourself with the question bank and daily practice.</Subheading>
 
       <HubTile
         title="Daily quiz"

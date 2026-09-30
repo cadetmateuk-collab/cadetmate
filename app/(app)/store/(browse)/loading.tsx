@@ -1,4 +1,4 @@
-import { StorePageSkeleton } from '@/components/store/ProductSkeleton';
+import { StorePageSkeleton } from '@/components/feature/store/ProductSkeleton';
 
 export default function StoreLoading() {
   return <StorePageSkeleton />;

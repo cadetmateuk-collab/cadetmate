@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TrackedButton } from '@/components/analytics/TrackedButton';
+import { TrackedButton } from '@/components/feature/analytics/TrackedButton';
 
 const trackClick = vi.fn();
 

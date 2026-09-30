@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUserApi } from '@/lib/auth/require-user-api';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import type { ProgressSyncPayload, ProgressSyncResponse } from '@cadet-mate/shared';
 
 export async function POST(request: Request) {

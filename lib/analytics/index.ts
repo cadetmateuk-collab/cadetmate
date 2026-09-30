@@ -1,7 +1,9 @@
 /**
  * Analytics configuration and typed event helpers (GA4).
- * Safe no-ops when NEXT_PUBLIC_GA_MEASUREMENT_ID is unset.
+ * Safe no-ops when NEXT_PUBLIC_GA_MEASUREMENT_ID is unset or analytics cookies are refused.
  */
+
+import { hasAnalyticsConsent } from '@/lib/cookies/consent';
 
 export const GA_MEASUREMENT_ID =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || '';
@@ -10,7 +12,7 @@ export const GOOGLE_SITE_VERIFICATION =
   process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() || '';
 
 export function isAnalyticsEnabled(): boolean {
-  return Boolean(GA_MEASUREMENT_ID) && typeof window !== 'undefined';
+  return Boolean(GA_MEASUREMENT_ID) && typeof window !== 'undefined' && hasAnalyticsConsent();
 }
 
 type GtagCommand = 'config' | 'event' | 'js' | 'set' | 'consent';
@@ -39,7 +41,7 @@ export type AnalyticsParams = Record<
 
 /** SPA page view (App Router). */
 export function trackPageView(path: string, title?: string) {
-  if (!GA_MEASUREMENT_ID) return;
+  if (!isAnalyticsEnabled()) return;
   gtag('event', 'page_view', {
     page_path: path,
     page_title: title ?? document.title,
@@ -52,7 +54,7 @@ export function trackPageView(path: string, title?: string) {
 
 /** Generic custom / recommended event. */
 export function trackEvent(name: string, params?: AnalyticsParams) {
-  if (!GA_MEASUREMENT_ID) return;
+  if (!isAnalyticsEnabled()) return;
   gtag('event', name, scrub(params));
 }
 

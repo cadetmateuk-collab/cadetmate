@@ -4,16 +4,16 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Sparkles, Lock, Zap, Brain, Flame, Heart, Target, Shuffle, CheckCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { StudyShell } from '@/components/StudyShell';
-import { ProgressRing } from '@/components/ProgressRing';
+import { ChevronLeft, Sparkles, Lock, Zap, Brain, Flame, Heart, Target, Shuffle, CheckCircle, type LucideIcon } from 'lucide-react';
+import { createClient } from '@/lib/db/client';
+import { StudyShell } from '@/components/feature/study/StudyShell';
+import { ProgressRing } from '@/components/feature/study/ProgressRing';
 import { usePack, useCurrentUser, usePackStats, loadOwnership } from '@/lib/hooks/useFlashcards';
 import type { StudyMode } from '@/lib/types';
 
 const supabase = createClient();
 
-const MODES: { key: StudyMode; em: string; title: string; sub: string; icon: any }[] = [
+const MODES: { key: StudyMode; em: string; title: string; sub: string; icon: LucideIcon }[] = [
   { key: 'standard',     em: '📖', title: 'Standard',       sub: 'Flip through cards at your own pace',       icon: Shuffle },
   { key: 'smart_review', em: '🧠', title: 'Smart Review',   sub: 'Spaced repetition (SM-2). Due cards first',  icon: Brain },
   { key: 'exam_cram',    em: '🔥', title: 'Exam Cram',      sub: 'Weakest cards on repeat',                    icon: Flame },

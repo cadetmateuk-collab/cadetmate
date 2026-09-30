@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { getCheckoutReturnOrigin } from '@/lib/security/env';
 import { requireUserApi } from '@/lib/auth/require-user-api';
 import { getStripe } from '@/lib/stripe/client';

@@ -27,7 +27,7 @@ export function buildOrganizationSchema() {
     },
     image: absoluteUrl(DEFAULT_OG_IMAGE),
     description:
-      'CadetMate is a maritime training platform built for UK deck cadets, offering interactive modules, revision tools, simulators, and free educational content.',
+      'CadetMate is a maritime training platform built for UK deck cadets, offering interactive modules, revision tools, and free educational content.',
     email: SUPPORT_EMAIL,
     contactPoint: {
       '@type': 'ContactPoint',
@@ -95,7 +95,7 @@ export function buildServiceSchema() {
       name: 'United Kingdom',
     },
     description:
-      'Interactive learning modules, flashcards, MCA oral prep, TRB support, and simulators for UK merchant navy deck cadets.',
+      'Interactive learning modules, flashcards, MCA oral prep, and TRB support for UK merchant navy deck cadets.',
     url: absoluteUrl('/pricing'),
   };
 }
@@ -223,7 +223,7 @@ export function buildContactPageSchema() {
   };
 }
 
-/** Product/Offer schema for pricing tiers. */
+/** Product/Offer schema for pricing tiers. Auth-only course modules are not exposed as schema.org Course URLs. */
 export function buildOfferCatalogSchema(offers: {
   name: string;
   description: string;

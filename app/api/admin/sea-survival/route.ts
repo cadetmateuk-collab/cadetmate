@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { createClient } from '@supabase/supabase-js';
 import { hasPermission, type Permission } from '@/lib/auth/roles';
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event';

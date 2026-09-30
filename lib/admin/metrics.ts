@@ -1,5 +1,5 @@
-import { createClient } from '@/lib/supabase/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/db/server';
+import { supabaseAdmin } from '@/lib/db/admin';
 
 export type DashboardMetrics = {
   totalUsers: number;

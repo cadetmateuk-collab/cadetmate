@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getAllowedPdfHosts } from '@/lib/security/env';
 
 export const runtime = 'nodejs';

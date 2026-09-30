@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/db/server';
+import { supabaseAdmin } from '@/lib/db/admin';
 import { stripeReturnUrls } from '@/lib/mobile/urls';
 import { getPremiumPriceId, getCheckoutReturnOrigin } from '@/lib/security/env';
 import { requireUserApi } from '@/lib/auth/require-user-api';

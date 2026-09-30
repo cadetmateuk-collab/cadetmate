@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { hasPermission } from '@/lib/auth/roles';
 import { logActivityEvent, requestContext } from '@/lib/activity/log-event';
 import type { ModerationQueueItem } from '@/lib/community/types';
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
   // Notify the author of the decision
   try {
-    const { supabaseAdmin } = await import('@/lib/supabase/admin');
+    const { supabaseAdmin } = await import('@/lib/db/admin');
     await supabaseAdmin.from('notifications').insert({
       user_id: updated.user_id,
       type: 'community_moderation',

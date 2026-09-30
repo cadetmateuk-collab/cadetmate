@@ -1,6 +1,6 @@
 import { requireAdminPagePermission } from '@/lib/admin/require-page';
-import { AdminPageHeader } from '@/components/admin/AdminChrome';
-import AdminQuestionsTab from '@/components/AdminQuestionsTab';
+import { AdminPageHeader } from '@/components/feature/admin/AdminChrome';
+import AdminQuestionsTab from '@/components/feature/admin/AdminQuestionsTab';
 
 export default async function AdminQuestionsPage() {
   await requireAdminPagePermission(undefined, ['questions.create', 'questions.update']);
